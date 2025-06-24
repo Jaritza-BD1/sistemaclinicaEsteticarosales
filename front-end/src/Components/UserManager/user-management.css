@@ -1,0 +1,76 @@
+/* user-management.css */
+
+/* Contenedor principal en rosa pastel */
+.user-management {
+  background-color: #FCE4EC;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  font-family: sans-serif;
+}
+
+/* Títulos y textos */
+.user-management h3 {
+  color: #880E4F;
+  margin-bottom: 1rem;
+}
+
+/* Tablas */
+.user-management table thead {
+  background-color: rgba(240, 180, 200, 0.5);
+}
+.user-management table tbody tr:nth-child(odd) {
+  background-color: rgba(255, 230, 240, 0.6);
+}
+.user-management table,
+.user-management th,
+.user-management td {
+  border-color: #F8BBD0;
+}
+
+/* Inputs y formularios */
+.user-management .form-control {
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid #F8BBD0;
+  border-radius: 0.375rem;
+  color: #880E4F;
+}
+.user-management .form-control:focus {
+  box-shadow: 0 0 0 0.2rem rgba(240, 180, 200, 0.5);
+}
+
+/* Botones */
+.user-management .btn-primary {
+  background-color: #F06292;
+  border-color: #F06292;
+}
+.user-management .btn-primary:hover {
+  background-color: #EC407A;
+  border-color: #EC407A;
+}
+.user-management .btn-outline-danger {
+  color: #880E4F;
+  border-color: #F8BBD0;
+}
+.user-management .btn-outline-danger:hover {
+  background-color: #F8BBD0;
+  color: #880E4F;
+}
+
+/* Spinner dentro de botones */
+.user-management .btn .spinner-border {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+}
+
+/* Modal y alertas */
+.user-management .modal-content {
+  background-color: #FCE4EC;
+  border: 1px solid #F8BBD0;
+}
+.user-management .alert {
+  background-color: rgba(255, 200, 215, 0.8);
+  color: #880E4F;
+  border: none;
+  border-radius: 0.375rem;
+}

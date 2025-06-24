@@ -1,0 +1,68 @@
+/* log-management.css */
+
+/* Contenedor principal */
+.log-management {
+  background-color: #FCE4EC;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  font-family: sans-serif;
+}
+
+/* Título */
+.log-management h4 {
+  color: #880E4F;
+  margin-bottom: 1rem;
+}
+
+/* Etiquetas de formulario */
+.log-management .form-label {
+  font-weight: 600;
+  color: #880E4F;
+}
+
+/* Botones */
+.log-management .btn-primary {
+  background-color: #F06292;
+  border-color: #F06292;
+}
+.log-management .btn-primary:hover {
+  background-color: #EC407A;
+  border-color: #EC407A;
+}
+.log-management .btn-outline-secondary {
+  color: #880E4F;
+  border-color: #F8BBD0;
+}
+.log-management .btn-outline-secondary:hover {
+  background-color: #F8BBD0;
+}
+
+/* Tabla */
+.log-management table thead {
+  background-color: rgba(240, 180, 200, 0.5);
+}
+.log-management table tbody tr:nth-child(odd) {
+  background-color: rgba(255, 230, 240, 0.6);
+}
+.log-management table,
+.log-management th,
+.log-management td {
+  border-color: #F8BBD0;
+}
+
+/* Alertas */
+.log-management .alert-info {
+  background-color: rgba(200, 230, 255, 0.8);
+  color: #0D47A1;
+  border: none;
+}
+.log-management .alert-danger {
+  background-color: rgba(255, 200, 215, 0.8);
+  color: #880E4F;
+  border: none;
+}
+
+/* Spinner */
+.log-management .spinner-border {
+  color: #F06292;
+}

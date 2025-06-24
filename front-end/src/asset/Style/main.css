@@ -1,0 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Arial:wght@400;700&display=swap');
+
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Agrega aquí otros estilos globales si son necesarios */
