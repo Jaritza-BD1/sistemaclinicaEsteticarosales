@@ -1,7 +1,6 @@
 // models/User.js
-
 const { DataTypes } = require('sequelize');
-const sequelize = require('../Config/db');  // tu instancia configurada
+const sequelize = require('../Config/db');
 const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('tbl_ms_usuario', {
@@ -37,9 +36,9 @@ const User = sequelize.define('tbl_ms_usuario', {
     field: 'atr_nombre_usuario'
   },
   atr_estado_usuario: {
-    type: DataTypes.STRING(100),
+    type: DataTypes.ENUM('ACTIVO','BLOQUEADO','PENDIENTE_VERIFICACION','PENDIENTE_APROBACION','RECHAZADO'),
     allowNull: false,
-    defaultValue: 'Pendiente Verificación',
+    defaultValue: 'PENDIENTE_VERIFICACION',
     field: 'atr_estado_usuario'
   },
   atr_contrasena: {
@@ -56,7 +55,7 @@ const User = sequelize.define('tbl_ms_usuario', {
   atr_id_rol: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    defaultValue: 2, // 1: Admin, 2: Usuario normal
+    defaultValue: 2,
     field: 'atr_id_rol'
   },
   atr_fecha_ultima_conexion: {
@@ -120,6 +119,26 @@ const User = sequelize.define('tbl_ms_usuario', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     field: 'atr_intentos_fallidos'
+  },
+  // Nuevos campos del Componente 2
+  atr_is_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'atr_is_verified'
+  },
+  atr_is_approved: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'atr_is_approved'
+  },
+  atr_2fa_secret: {
+    type: DataTypes.STRING(32),
+    field: 'atr_2fa_secret'
+  },
+  atr_2fa_enabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'atr_2fa_enabled'
   }
 }, {
   tableName: 'tbl_ms_usuario',
@@ -127,7 +146,6 @@ const User = sequelize.define('tbl_ms_usuario', {
   timestamps: false,
   hooks: {
     beforeCreate: (user) => {
-      // Asegurar usuario en mayúsculas y establecer fecha de creación
       if (user.atr_usuario) {
         user.atr_usuario = user.atr_usuario.toUpperCase();
       }
@@ -136,42 +154,35 @@ const User = sequelize.define('tbl_ms_usuario', {
       }
     },
     beforeUpdate: (user) => {
-      // Actualizar fecha de modificación
       user.atr_fecha_modificacion = new Date();
     }
   }
 });
 
 // Métodos de instancia
-
-// Comparar contraseñas
 User.prototype.validPassword = async function(password) {
   return bcrypt.compare(password, this.atr_contrasena);
 };
 
-// Incrementar intentos fallidos
 User.prototype.incrementFailedAttempts = async function() {
   this.atr_intentos_fallidos += 1;
   await this.save();
 };
 
-// Resetear intentos fallidos
 User.prototype.resetFailedAttempts = async function() {
   this.atr_intentos_fallidos = 0;
   await this.save();
 };
 
-// Bloquear cuenta
 User.prototype.lockAccount = async function(lockTime = 30 * 60 * 1000) {
-  this.atr_estado_usuario = 'Bloqueado';
+  this.atr_estado_usuario = 'BLOQUEADO'; // Actualizado para coincidir con el ENUM
   this.atr_reset_expiry = new Date(Date.now() + lockTime);
   await this.save();
 };
 
-// Verificar si está bloqueada
 User.prototype.isLocked = function() {
   return (
-    this.atr_estado_usuario === 'Bloqueado' &&
+    this.atr_estado_usuario === 'BLOQUEADO' && // Actualizado para coincidir con el ENUM
     this.atr_reset_expiry > new Date()
   );
 };

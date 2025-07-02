@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../Config/db');
 
-const PasswordHistory = sequelize.define('PasswordHistory', {
+const PasswordHistory = sequelize.define('tbl_ms_hist_contrasena', {
   atr_id_hist: {
     type: DataTypes.INTEGER,
     primaryKey: true,

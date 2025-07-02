@@ -12,52 +12,22 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Estado inicial seguro
+  // Estado optimizado con carga de datos segura
   const [authState, setAuthState] = useState(() => {
-    try {
-      const rawUser = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      const firstLogin = localStorage.getItem('firstLogin') === 'true';
-      
-      if (rawUser && rawUser !== 'undefined' && token && token !== 'undefined') {
-        return {
-          user: JSON.parse(rawUser),
-          token,
-          firstLogin,
-          isAuthenticated: true,
-          isLoading: false
-        };
-      }
-    } catch (error) {
-      console.error('Error parsing auth state:', error);
-    }
-    
-    // Limpiar datos inválidos
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('firstLogin');
+    const token = localStorage.getItem('token');
+    const firstLogin = localStorage.getItem('firstLogin') === 'true';
     
     return {
       user: null,
-      token: null,
-      firstLogin: false,
+      token,
+      firstLogin,
       isAuthenticated: false,
-      isLoading: true
+      isLoading: !!token
     };
   });
 
-  // Configurar headers de axios
-  useEffect(() => {
-    if (authState.token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authState.token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [authState.token]);
-
-  // Función de logout
+  // 1. Declarar logout PRIMERO - SOLUCIÓN CLAVE
   const logout = useCallback(() => {
-    localStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('firstLogin');
     
@@ -74,48 +44,26 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login';
   }, []);
 
-  // Función para verificar token
-  const verifyToken = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/auth/verify-token');
-      
-      if (response.data.valid) {
-        setAuthState(prev => ({
-          ...prev,
-          isAuthenticated: true,
-          isLoading: false
-        }));
-        return true;
-      } else {
-        logout();
-        return false;
-      }
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      logout();
-      return false;
-    }
-  }, [logout]);
-
-  // Verificar token al cargar
+  // Configurar headers de axios
   useEffect(() => {
-    if (authState.token && authState.isLoading) {
-      verifyToken();
+    if (authState.token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authState.token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
     }
-  }, [authState.token, authState.isLoading, verifyToken]);
+  }, [authState.token]);
 
-  // Función de login
-  const login = useCallback((userData, jwt, firstLogin = false) => {
-    localStorage.setItem('user', JSON.stringify(userData));
+  // 2. Función de login optimizada (depende de logout)
+  const login = useCallback((jwt, firstLogin = false) => {
     localStorage.setItem('token', jwt);
     localStorage.setItem('firstLogin', firstLogin);
     
     setAuthState({
-      user: userData,
+      user: null,
       token: jwt,
       firstLogin,
       isAuthenticated: true,
-      isLoading: false
+      isLoading: true
     });
     
     if (firstLogin) {
@@ -123,18 +71,45 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // NUEVA FUNCIÓN: Verificación activa de autenticación
-  const verifyAuthentication = useCallback(async () => {
+  // 3. Función para obtener datos del usuario (depende de logout)
+  const fetchUserData = useCallback(async () => {
+    if (!authState.token) return;
+    
     try {
-      const response = await axios.get('/api/auth/verify-token');
-      return response.data.valid;
+      const response = await axios.get('/api/auth/me');
+      const userData = response.data;
+      
+      setAuthState(prev => ({
+        ...prev,
+        user: userData,
+        isAuthenticated: true,
+        isLoading: false
+      }));
     } catch (error) {
-      console.error('Active verification failed:', error);
-      return false;
+      console.error('Failed to fetch user data:', error);
+      logout(); // Ahora logout está definido
     }
-  }, []);
+  }, [authState.token, logout]); // Dependencia correcta
 
-  // Resto de funciones...
+  // 4. Verificar token y cargar datos del usuario
+  useEffect(() => {
+    const validateToken = async () => {
+      if (authState.token && !authState.user) {
+        try {
+          await fetchUserData();
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          logout(); // Ahora logout está definido
+        }
+      } else if (!authState.token) {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    validateToken();
+  }, [authState.token, authState.user, fetchUserData, logout]);
+
+  // 5. Otras funciones
   const completeFirstLogin = useCallback(() => {
     localStorage.setItem('firstLogin', 'false');
     setAuthState(prev => ({
@@ -144,22 +119,34 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const hasRole = useCallback((roleId) => {
-    return authState.user?.role === roleId;
+    return authState.user?.atr_id_rol === roleId;
   }, [authState.user]);
 
   const updateUser = useCallback((userData) => {
-    localStorage.setItem('user', JSON.stringify(userData));
     setAuthState(prev => ({
       ...prev,
       user: userData
     }));
   }, []);
 
+  // Verificación activa de autenticación
+  const verifyAuthentication = useCallback(async () => {
+    if (!authState.token) return false;
+    
+    try {
+      const response = await axios.get('/api/auth/verify-token');
+      return response.data.valid;
+    } catch (error) {
+      console.error('Active verification failed:', error);
+      return false;
+    }
+  }, [authState.token]);
+
   // Valor del contexto
   const contextValue = useMemo(() => ({
     user: authState.user,
     token: authState.token,
-    isAuthenticated: authState.isAuthenticated, // BOOLEANO
+    isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
     firstLogin: authState.firstLogin,
     login,
@@ -167,7 +154,7 @@ export const AuthProvider = ({ children }) => {
     completeFirstLogin,
     hasRole,
     updateUser,
-    verifyAuthentication // FUNCIÓN ADICIONAL
+    verifyAuthentication
   }), [
     authState.user,
     authState.token,
@@ -184,7 +171,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {children}
+      {!authState.isLoading && children}
     </AuthContext.Provider>
   );
 };

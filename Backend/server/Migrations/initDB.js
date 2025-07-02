@@ -7,14 +7,35 @@ async function runMigrations() {
   let connection;
   try {
     connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD
+      host: process.env.MYSQL_HOST,
+      user: process.env.MYSQL_USER,
+      password: process.env.MYSQL_PASSWORD
     });
+    
 
     // Crear base de datos si no existe
-    await connection.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}`);
-    await connection.query(`USE ${process.env.DB_NAME}`);
+    await connection.query(`CREATE DATABASE IF NOT EXISTS ${process.env.MYSQL_DATABASE}`);
+    await connection.query(`USE ${process.env.MYSQL_DATABASE}`);
+
+    // Crear tabla de roles
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS tbl_ms_roles (
+        atr_id_rol INT AUTO_INCREMENT PRIMARY KEY,
+        atr_nombre_rol VARCHAR(50) NOT NULL UNIQUE,
+        atr_descripcion_rol VARCHAR(255),
+        atr_estado_rol VARCHAR(20) DEFAULT 'Activo',
+        atr_fecha_creacion DATE DEFAULT (CURRENT_DATE),
+        atr_fecha_modificacion DATE
+      ) ENGINE=InnoDB;
+    `);
+
+    // Insertar roles básicos si no existen
+    await connection.query(`
+      INSERT IGNORE INTO tbl_ms_roles (atr_id_rol, atr_nombre_rol, atr_descripcion_rol, atr_estado_rol)
+      VALUES 
+        (1, 'Administrador', 'Rol con acceso completo al sistema', 'Activo'),
+        (2, 'Usuario', 'Rol de usuario estándar con acceso limitado', 'Activo');
+    `);
 
     // Crear tabla de usuarios principal
     await connection.query(`
@@ -41,22 +62,14 @@ async function runMigrations() {
       ) ENGINE=InnoDB;
     `);
 
-    // Crear tabla de parámetros del sistema
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS tbl_parametros (
-        parametro VARCHAR(50) PRIMARY KEY,
-        valor VARCHAR(255) NOT NULL,
-        descripcion VARCHAR(255)
-      ) ENGINE=InnoDB;
-    `);
-
+  
     // Insertar parámetros esenciales
     await connection.query(`
-      INSERT IGNORE INTO tbl_parametros (parametro, valor, descripcion)
+      INSERT IGNORE INTO tbl_parametros (atr_parametro, atr_valor)
       VALUES 
-        ('ADMIN_INTENTOS_INVALIDOS', '3', 'Intentos máximos de login fallidos'),
-        ('RESET_TOKEN_EXPIRY', '24', 'Horas de validez para tokens de recuperación'),
-        ('VERIFICATION_TOKEN_EXPIRY', '24', 'Horas de validez para tokens de verificación');
+        ('ADMIN_INTENTOS_INVALIDOS', '3'),
+        ('RESET_TOKEN_EXPIRY', '24'),
+        ('VERIFICATION_TOKEN_EXPIRY', '24');
     `);
 
     // Insertar usuario admin si no existe

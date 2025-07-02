@@ -1,469 +1,435 @@
-const { Sequelize } = require('sequelize');
+// Controllers/authControllers.js
+
+const { Sequelize, Op } = require('sequelize');
 const User = require('../Models/User');
+const Parametro = require('../Models/Parametro');
+const HistContrasena = require('../Models/PasswordHistory');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const Parametro = require('../Models/Parametro');
-const { sendResetEmail } = require('../utils/mailer');
-const { generateTempPassword } = require('../utils/passwordGenerator');
+const { sendResetEmail, sendVerificationEmail } = require('../utils/mailer');
+const { generateTempPassword, generateToken } = require('../helpers/tokenHelper');
 
-// Configuración de transporte para emails
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   }
 });
 
-const MAX_LOGIN_ATTEMPTS = parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 3;
-const LOCK_TIME = parseInt(process.env.LOCK_TIME) || 30 * 60 * 1000; // 30 minutos
+// Helper para envío de email de aprobación
+const sendApprovalEmail = async (email) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const loginUrl = `${frontendUrl}/login`;
+  await transporter.sendMail({
+    from: `"Clínica Estética Rosales" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: 'Cuenta Aprobada',
+    html: `
+      <h2>¡Tu cuenta ha sido aprobada!</h2>
+      <p>Ahora puedes iniciar sesión aquí:</p>
+      <a href="${loginUrl}">${loginUrl}</a>
+    `
+  });
+};
 
-const register = async (req, res) => {
+exports.register = async (req, res) => {
   try {
     const { username, name, email, password } = req.body;
+    const usuario = username.toUpperCase();
     
-    // Validar que todos los campos estén presentes
     if (!username || !name || !email || !password) {
-      return res.status(400).json({ 
-        error: 'Todos los campos son obligatorios' 
-      });
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
-
-    // Validar formato de usuario (solo mayúsculas y números)
-    if (!/^[A-Z0-9]+$/.test(username)) {
-      return res.status(400).json({
-        error: 'El usuario solo debe contener mayúsculas y números'
-      });
-    }
-
-    // Validar formato de contraseña
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/;
+    
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
-      return res.status(400).json({
-        error: 'La contraseña debe contener mayúsculas, minúsculas, números y caracteres especiales'
+      return res.status(400).json({ 
+        error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial' 
       });
     }
 
-    // Verificar si usuario existe
-    const existingUser = await User.findOne({
+    const exists = await User.findOne({
       where: {
-        [Sequelize.Op.or]: [
-          { username: username.toUpperCase() },
-          { email: email.toLowerCase() }
+        [Op.or]: [
+          { atr_usuario: usuario },
+          { atr_correo_electronico: email.toLowerCase() }
         ]
       }
     });
-    
-    if (existingUser) {
-      return res.status(400).json({ 
-        error: 'El nombre de usuario o correo ya están registrados' 
-      });
+    if (exists) {
+      return res.status(400).json({ error: 'Usuario o correo ya registrados' });
     }
 
-    // Generar token de verificación
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const user = await User.create({ 
-      username: username.toUpperCase(),
-      name,
-      email: email.toLowerCase(),
-      password,
-      status: 'Pendiente Verificación',
+    const verificationToken = generateToken();
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const user = await User.create({
+      atr_usuario: usuario,
+      atr_nombre_usuario: name,
+      atr_correo_electronico: email.toLowerCase(),
+      atr_contrasena: hashedPassword,
+      atr_estado_usuario: 'PENDIENTE_VERIFICACION',
+      atr_verification_token: verificationToken,
+      atr_token_expiry: tokenExpiry,
+      atr_primer_ingreso: true
+    });
+
+    await sendVerificationEmail(
+      user.atr_correo_electronico, 
       verificationToken,
-      tokenExpiry,
-      firstLogin: true
-    });
-    
-    // Enviar email de verificación
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
-    
-    const mailOptions = {
-      from: `"Clínica Estética Rosales" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'Verificación de Cuenta',
-      html: `
-        <h2>¡Gracias por registrarte!</h2>
-        <p>Por favor verifica tu cuenta haciendo clic en el siguiente enlace:</p>
-        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
-        <p>Este enlace expirará en 24 horas.</p>
-        <p>Después de la verificación, tu cuenta quedará pendiente de aprobación por un administrador.</p>
-      `
-    };
+      user.atr_nombre_usuario
+    );
 
-    transporter.sendMail(mailOptions, (error) => {
-      if (error) {
-        console.error('Error enviando email de verificación:', error);
-      }
-    });
-
-    res.status(201).json({ 
-      message: 'Registro exitoso. Por favor verifica tu email.' 
-    });
+    res.status(201).json({ message: 'Registro exitoso. Revisa tu email para verificar tu cuenta.' });
   } catch (error) {
     console.error('Error en registro:', error);
     res.status(500).json({ error: 'Error en el servidor durante el registro' });
   }
 };
 
-const verifyEmail = async (req, res) => {
+exports.verifyEmail = async (req, res) => {
   const { token } = req.query;
   
   if (!token) {
-    return res.status(400).json({ 
-      error: 'Token de verificación requerido' 
-    });
+    return res.status(400).json({ error: 'Token de verificación requerido' });
   }
-  
+
   try {
     const user = await User.findOne({
       where: {
-        verificationToken: token,
-        tokenExpiry: { [Sequelize.Op.gt]: new Date() }
+        atr_verification_token: token,
+        atr_token_expiry: { [Op.gt]: new Date() }
       }
     });
-    
+
     if (!user) {
-      return res.status(400).json({ 
-        error: 'Token inválido o expirado' 
-      });
+      return res.status(400).json({ error: 'Token inválido o expirado' });
     }
-    
-    // Actualizar estado del usuario
+
     await user.update({
-      status: 'Pendiente Aprobación',
-      verificationToken: null,
-      tokenExpiry: null
+      atr_is_verified: true,
+      atr_verification_token: null,
+      atr_token_expiry: null
     });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/email-verified?success=true`);
     
-    res.json({ 
-      message: 'Email verificado. Tu cuenta está pendiente de aprobación.' 
-    });
   } catch (error) {
     console.error('Error en verificación de email:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/email-verified?success=false&error=${encodeURIComponent(error.message)}`);
   }
 };
 
-const login = async (req, res) => {
+exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
-    const uppercaseUsername = username.toUpperCase();
-    
-    // 1. Buscar usuario
-    const user = await User.findOne({ 
-      where: { username: uppercaseUsername } 
-    });
+    const uname = username.toUpperCase();
+    const user = await User.findOne({ where: { atr_usuario: uname } });
     
     if (!user) {
-      return res.status(401).json({ 
-        error: 'Credenciales inválidas',
-        attemptsLeft: MAX_LOGIN_ATTEMPTS - 1
+      return res.status(401).json({
+        error: 'Credenciales inválidas'
       });
     }
 
-    // 2. Verificar estado de cuenta
-    if (user.status === 'Pendiente Verificación') {
-      return res.status(403).json({ 
-        error: 'Verifica tu email primero' 
-      });
-    }
+    const maxAttemptsParam = await Parametro.findOne({ 
+      where: { atr_parametro: 'ADMIN_INTENTOS_INVALIDOS' } 
+    });
+    const MAX_LOGIN_ATTEMPTS = maxAttemptsParam 
+      ? parseInt(maxAttemptsParam.atr_valor, 10) 
+      : 3;
     
-    if (user.status === 'Pendiente Aprobación') {
-      return res.status(403).json({ 
-        error: 'Cuenta pendiente de aprobación' 
-      });
+    const LOCK_TIME = 30 * 60 * 1000;
+
+    const status = user.atr_estado_usuario;
+    if (status === 'PENDIENTE_VERIFICACION') {
+      return res.status(403).json({ error: 'Verifica tu email primero' });
     }
-    
-    if (user.status === 'Bloqueado') {
-      if (user.lockedUntil && user.lockedUntil > new Date()) {
-        return res.status(403).json({ 
-          error: `Cuenta bloqueada temporalmente. Intente nuevamente después de ${user.lockedUntil.toLocaleTimeString()}`,
-          lockedUntil: user.lockedUntil
+    if (status === 'PENDIENTE_APROBACION') {
+      return res.status(403).json({ error: 'Cuenta pendiente de aprobación' });
+    }
+    if (status === 'BLOQUEADO') {
+      if (user.atr_reset_expiry && user.atr_reset_expiry > new Date()) {
+        return res.status(403).json({
+          error: `Cuenta bloqueada hasta ${user.atr_reset_expiry.toLocaleTimeString()}`
         });
       }
-      // Desbloquear si ya pasó el tiempo
-      user.status = 'Activo';
-      user.failedAttempts = 0;
-      user.lockedUntil = null;
-      await user.save();
-    }
-
-    if (user.status !== 'Activo') {
-      return res.status(403).json({ 
-        error: 'Su cuenta no está activa. Contacte al administrador.' 
+      await user.update({
+        atr_estado_usuario: 'ACTIVO',
+        atr_intentos_fallidos: 0,
+        atr_reset_expiry: null
       });
     }
+    if (user.atr_estado_usuario !== 'ACTIVO') {
+      return res.status(403).json({ error: 'Cuenta no activa' });
+    }
 
-    // 3. Verificar contraseña
-    const isMatch = await bcrypt.compare(password, user.password);
-    
-    if (!isMatch) {
-      // Incrementar intentos fallidos
-      const newAttempts = user.failedAttempts + 1;
-      await user.update({ failedAttempts: newAttempts });
+    const match = await bcrypt.compare(password, user.atr_contrasena);
+    if (!match) {
+      const attempts = user.atr_intentos_fallidos + 1;
+      await user.update({ atr_intentos_fallidos: attempts });
       
-      // Bloquear cuenta si supera el límite
-      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
-        await user.update({ 
-          status: 'Bloqueado',
-          lockedUntil: new Date(Date.now() + LOCK_TIME)
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        await user.update({
+          atr_estado_usuario: 'BLOQUEADO',
+          atr_reset_expiry: new Date(Date.now() + LOCK_TIME)
         });
-        
-        return res.status(403).json({ 
-          error: `Cuenta bloqueada por superar ${MAX_LOGIN_ATTEMPTS} intentos fallidos`,
-          lockedUntil: new Date(Date.now() + LOCK_TIME)
+        return res.status(403).json({
+          error: `Cuenta bloqueada tras ${MAX_LOGIN_ATTEMPTS} intentos fallidos`
         });
       }
       
-      const remaining = MAX_LOGIN_ATTEMPTS - newAttempts;
-      return res.status(401).json({ 
-        error: `Credenciales inválidas. Intentos restantes: ${remaining}`,
-        attemptsLeft: remaining
+      return res.status(401).json({
+        error: `Credenciales inválidas. Restan ${MAX_LOGIN_ATTEMPTS - attempts} intentos`
       });
     }
 
-    // 4. Login exitoso (resetear intentos)
-    await user.update({ 
-      failedAttempts: 0,
-      lockedUntil: null,
-      lastLogin: new Date()
+    await user.update({
+      atr_intentos_fallidos: 0,
+      atr_reset_expiry: null,
+      atr_fecha_ultima_conexion: new Date()
     });
 
-    // Generar token
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { 
-      expiresIn: '24h' 
-    });
-
-    // Omitir password en la respuesta
-    const userResponse = user.toJSON();
-    delete userResponse.password;
-
-    // Manejar primer ingreso
-    if (user.firstLogin) {
-      return res.json({ 
-        token, 
-        user: userResponse,
-        firstLogin: true,
-        message: 'Primer ingreso. Debes cambiar tu contraseña.' 
+    if (user.atr_primer_ingreso) {
+      const resetToken = generateToken();
+      await user.update({ 
+        atr_reset_token: resetToken,
+        atr_reset_expiry: new Date(Date.now() + 3600000)
       });
+      return res.json({ firstLogin: true, resetToken });
     }
 
-    res.json({ 
-      token, 
-      user: userResponse,
-      message: 'Inicio de sesión exitoso' 
-    });
-    
+    if (user.atr_2fa_enabled) {
+      return res.json({ twoFARequired: true, userId: user.atr_id_usuario });
+    }
+
+    const token = jwt.sign(
+      { 
+        id: user.atr_id_usuario, 
+        role: user.atr_id_rol 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    const safe = user.toJSON();
+    delete safe.atr_contrasena;
+    delete safe.atr_intentos_fallidos;
+    delete safe.atr_reset_token;
+    delete safe.atr_reset_expiry;
+
+    res.json({ token, user: safe, message: 'Inicio de sesión exitoso' });
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ error: 'Error en el servidor durante el login' });
   }
 };
 
-const changePassword = async (req, res) => {
+exports.changePassword = async (req, res) => {
   try {
-    const { newPassword, confirmPassword } = req.body;
-    const userId = req.userId; // Obtener del middleware de autenticación
+    const { token, newPassword, confirmPassword } = req.body;
+    const userId = req.user?.atr_id_usuario;
     
-    // Validar que las contraseñas coincidan
     if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Las contraseñas no coinciden' });
+    }
+    
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({ 
-        error: 'Las contraseñas no coinciden' 
+        error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial' 
       });
     }
     
-    // Validar formato de contraseña
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/;
-    if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({
-        error: 'La contraseña debe contener mayúsculas, minúsculas, números y caracteres especiales'
+    let user;
+    if (userId) {
+      user = await User.findByPk(userId);
+    } else {
+      user = await User.findOne({ 
+        where: { 
+          atr_reset_token: token,
+          atr_reset_expiry: { [Op.gt]: new Date() }
+        } 
       });
     }
-
-    const user = await User.findByPk(userId);
     
     if (!user) {
-      return res.status(404).json({ 
-        error: 'Usuario no encontrado' 
-      });
+      return res.status(404).json({ error: 'Usuario no encontrado o token inválido' });
     }
     
-    // Actualizar contraseña
-    user.password = newPassword;
-    user.firstLogin = false;
-    await user.save();
-    
-    res.json({ 
-      message: 'Contraseña actualizada exitosamente' 
+    const passwordHistory = await HistContrasena.findAll({
+      where: { atr_id_usuario: user.atr_id_usuario },
+      order: [['atr_fecha_creacion', 'DESC']],
+      limit: 5
     });
     
+    for (const oldPassword of passwordHistory) {
+      const isSame = await bcrypt.compare(newPassword, oldPassword.atr_contrasena);
+      if (isSame) {
+        return res.status(400).json({ 
+          error: 'No puedes reutilizar contraseñas anteriores' 
+        });
+      }
+    }
+    
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
+    const hashedNew = await bcrypt.hash(newPassword, saltRounds);
+
+    await user.update({
+      atr_contrasena: hashedNew,
+      atr_primer_ingreso: false,
+      atr_reset_token: null,
+      atr_reset_expiry: null
+    });
+    
+    await HistContrasena.create({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_contrasena: hashedNew
+    });
+
+    res.json({ message: 'Contraseña actualizada exitosamente' });
   } catch (error) {
     console.error('Error cambiando contraseña:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    res.status(500).json({ error: 'Error en el servidor durante el cambio de contraseña' });
   }
 };
 
 exports.forgotPassword = async (req, res) => {
   const { email, smtpEmail, smtpPass } = req.body;
-
   try {
-    // 1) Localizar usuario por correo
-    const user = await User.findOne({ 
-      where: { atr_correo_electronico: email.toLowerCase() } 
+    const user = await User.findOne({
+      where: { atr_correo_electronico: email.toLowerCase() }
     });
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado.' });
     }
 
-    // 2) Si vienen credenciales SMTP dinámicas -> flujo de contraseña temporal
     if (smtpEmail && smtpPass) {
-      // Generar y hashear contraseña temporal
-      const tempPassword = generateTempPassword();
+      const tempPwd = generateTempPassword();
       const param = await Parametro.findOne({
         where: { atr_parametro: 'RESET_TOKEN_EXPIRY' }
       });
-      const expiryHours = param ? parseInt(param.atr_valor, 10) : 24;
-      const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
-      const hashedPwd = await bcrypt.hash(tempPassword, saltRounds);
+      const hrs = param ? parseInt(param.atr_valor, 10) : 24;
+      const hashed = await bcrypt.hash(tempPwd, parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10);
 
-      // Guardar en la BD
-      user.atr_contrasena   = hashedPwd;
-      user.atr_reset_expiry = new Date(Date.now() + expiryHours * 3600 * 1000);
-      await user.save();
+      await user.update({
+        atr_contrasena: hashed,
+        atr_reset_expiry: new Date(Date.now() + hrs * 3600 * 1000)
+      });
 
-      // Enviar el correo usando las credenciales proporcionadas
       await sendResetEmail(
         user.atr_correo_electronico,
-        tempPassword,
-        expiryHours,
+        tempPwd,
+        hrs,
         smtpEmail,
         smtpPass
       );
-
       return res.json({ message: 'Correo con contraseña temporal enviado correctamente.' });
     }
 
-    // 3) Si no hay SMTP dinámico -> flujo de enlace de reset
-    const resetToken  = crypto.randomBytes(32).toString('hex');
-    const resetExpiry = new Date(Date.now() + 3600 * 1000); // 1 hora
+    const resetToken = generateToken();
+    const resetExpiry = new Date(Date.now() + 3600 * 1000);
 
     await user.update({
       atr_reset_token: resetToken,
       atr_reset_expiry: resetExpiry
     });
 
-    // Preparar y enviar el email con el enlace de recuperación
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    const mailOptions = {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    
+    await transporter.sendMail({
       from: `"Clínica Estética Rosales" <${process.env.EMAIL_USER}>`,
       to: user.atr_correo_electronico,
       subject: 'Recuperación de Contraseña',
-      html: `
-        <h2>Solicitud de recuperación de contraseña</h2>
-        <p>Hemos recibido una solicitud para restablecer tu contraseña.</p>
-        <p>Haz clic en el siguiente enlace:</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-        <p>Este enlace expirará en 1 hora.</p>
-        <p>Si no solicitaste este cambio, ignora este mensaje.</p>
-      `
-    };
-
-    transporter.sendMail(mailOptions, (error) => {
-      if (error) {
-        console.error('Error enviando email de recuperación:', error);
-        return res.status(500).json({ message: 'Error enviando email de recuperación' });
-      }
-      return res.json({ message: 'Correo de recuperación enviado correctamente.' });
+      html: `<p>Haz clic aquí para restablecer tu contraseña: <a href="${resetUrl}">${resetUrl}</a></p>`
     });
 
+    res.json({ message: 'Correo de recuperación enviado correctamente.' });
   } catch (err) {
     console.error('Error en forgotPassword:', err);
-    return res.status(500).json({ message: 'Error interno del servidor.' });
+    res.status(500).json({ message: 'Error interno del servidor.' });
   }
 };
 
-const resetPassword = async (req, res) => {
+exports.resetPassword = async (req, res) => {
   const { token, newPassword, confirmPassword } = req.body;
-  
   try {
-    // Validar token y tiempo
     const user = await User.findOne({
       where: {
-        resetToken: token,
-        resetExpiry: { [Sequelize.Op.gt]: new Date() }
+        atr_reset_token: token,
+        atr_reset_expiry: { [Op.gt]: new Date() }
       }
     });
-    
     if (!user) {
-      return res.status(400).json({ 
-        error: 'Token inválido o expirado' 
-      });
+      return res.status(400).json({ error: 'Token inválido o expirado' });
     }
-    
-    // Validar que las contraseñas coincidan
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({ 
-        error: 'Las contraseñas no coinciden' 
-      });
+      return res.status(400).json({ error: 'Las contraseñas no coinciden' });
     }
     
-    // Validar formato de contraseña
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({
-        error: 'La contraseña debe contener mayúsculas, minúsculas, números y caracteres especiales'
+      return res.status(400).json({ 
+        error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial' 
       });
     }
-
-    // Actualizar contraseña
-    user.password = newPassword;
-    user.resetToken = null;
-    user.resetExpiry = null;
-    await user.save();
     
-    res.json({ 
-      message: 'Contraseña restablecida exitosamente' 
+    const passwordHistory = await HistContrasena.findAll({
+      where: { atr_id_usuario: user.atr_id_usuario },
+      order: [['atr_fecha_creacion', 'DESC']],
+      limit: 5
     });
     
+    for (const oldPassword of passwordHistory) {
+      const isSame = await bcrypt.compare(newPassword, oldPassword.atr_contrasena);
+      if (isSame) {
+        return res.status(400).json({ 
+          error: 'No puedes reutilizar contraseñas anteriores' 
+        });
+      }
+    }
+    
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
+    const hashedNew = await bcrypt.hash(newPassword, saltRounds);
+
+    await user.update({
+      atr_contrasena: hashedNew,
+      atr_reset_token: null,
+      atr_reset_expiry: null
+    });
+    
+    await HistContrasena.create({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_contrasena: hashedNew
+    });
+
+    res.json({ message: 'Contraseña restablecida exitosamente' });
   } catch (error) {
     console.error('Error restableciendo contraseña:', error);
-    res.status(500).json({ 
-      error: 'Error en el servidor' 
-    });
+    res.status(500).json({ error: 'Error en el servidor durante el restablecimiento' });
   }
 };
 
-const getUserProfile = async (req, res) => {
+exports.getUserProfile = async (req, res) => {
   try {
-    // El middleware de autenticación ya adjuntó el usuario a req.user
-    const user = req.user;
-    
-    // Omitir información sensible
-    const userResponse = user.toJSON();
-    delete userResponse.password;
-    delete userResponse.failedAttempts;
-    delete userResponse.lockedUntil;
-    delete userResponse.verificationToken;
-    delete userResponse.tokenExpiry;
-    delete userResponse.resetToken;
-    delete userResponse.resetExpiry;
-
-    res.json(userResponse);
+    const safe = req.user.toJSON();
+    delete safe.atr_contrasena;
+    delete safe.atr_intentos_fallidos;
+    delete safe.atr_reset_token;
+    delete safe.atr_reset_expiry;
+    res.json(safe);
   } catch (error) {
     console.error('Error obteniendo perfil:', error);
     res.status(500).json({ error: 'Error obteniendo perfil de usuario' });
   }
-};
-
-module.exports = { 
-  register, 
-  verifyEmail,
-  login, 
-  changePassword,
-  forgotPassword,
-  resetPassword,
-  getUserProfile 
 };

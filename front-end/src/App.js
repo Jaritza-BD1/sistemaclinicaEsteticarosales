@@ -1,7 +1,4 @@
-// src/App.js
-// ===============================
-// FRONTEND - ./App.jsx actualizado sin errores eslint
-// ===============================
+// src App.js
 import React from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -15,9 +12,11 @@ import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import ChangePassword from './Components/auth/change-password';
+import ForgotPassword from './Components/auth/ForgotPassword';
+import EmailVerification from './Components/twoFactor/Verify2FA';
 
 // Configuración global de axios
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children, requiredRole = null }) => {
@@ -74,10 +73,17 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          {/* Nueva ruta para recuperación de contraseña */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+
           <Route path="/change-password" element={
             <ProtectedRoute>
               <ChangePassword />
             </ProtectedRoute>
+          } />
+
+          <Route path="/verify-email" element={
+              <EmailVerification />
           } />
 
           {/* Redirección por defecto para rutas autenticadas */}
