@@ -2,9 +2,10 @@
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
-const { User } = require('../Models/User');
+const User = require('../Models/User');
 const { BackupCode } = require('../Models/BackupCode');
 const { generateToken } = require('../helpers/tokenHelper');
+const BitacoraHelper = require('../helpers/bitacoraHelper');
 
 // Generar secreto 2FA y QR
 exports.generate2FASecret = async (req, res) => {
@@ -29,6 +30,14 @@ exports.generate2FASecret = async (req, res) => {
 
     // Generar códigos de respaldo (10 códigos de 10 caracteres)
     const backupCodes = await generateBackupCodes(user.atr_id_usuario);
+
+    await BitacoraHelper.registrarEvento({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_id_objetos: 2, // ID del objeto/pantalla de seguridad/2FA
+      atr_accion: '2FA Generado',
+      atr_descripcion: 'El usuario inició la configuración de 2FA',
+      ip_origen: req.ip
+    });
 
     res.json({ 
       qrCode, 
@@ -59,11 +68,20 @@ exports.verify2FAToken = async (req, res) => {
     if (!verified) {
       return res.status(400).json({ error: 'Código 2FA inválido' });
     }
-    
-    // Activar 2FA
-    await user.update({ atr_2fa_enabled: true });
-    
-    res.json({ message: 'Autenticación en dos pasos habilitada correctamente.' });
+    // Activar 2FA y marcar como verificado, pendiente de aprobación
+    await user.update({ 
+      atr_2fa_enabled: true,
+      atr_is_verified: true,
+      atr_estado_usuario: 'PENDIENTE_APROBACION'
+    });
+    await BitacoraHelper.registrarEvento({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_id_objetos: 2,
+      atr_accion: '2FA Activado',
+      atr_descripcion: 'El usuario activó la autenticación en dos pasos',
+      ip_origen: req.ip
+    });
+    res.json({ message: 'Autenticación en dos pasos habilitada correctamente. Espera la aprobación de un administrador.' });
   } catch (error) {
     console.error('Error verificando token 2FA:', error);
     res.status(500).json({ error: 'Error en el servidor' });
@@ -86,6 +104,14 @@ exports.disable2FA = async (req, res) => {
       where: { atr_usuario: user.atr_id_usuario } 
     });
     
+    await BitacoraHelper.registrarEvento({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_id_objetos: 2,
+      atr_accion: '2FA Desactivado',
+      atr_descripcion: 'El usuario desactivó la autenticación en dos pasos',
+      ip_origen: req.ip
+    });
+
     res.json({ message: 'Autenticación en dos pasos deshabilitada' });
   } catch (error) {
     console.error('Error deshabilitando 2FA:', error);

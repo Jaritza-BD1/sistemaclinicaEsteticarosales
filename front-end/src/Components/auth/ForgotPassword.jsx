@@ -1,8 +1,7 @@
 // Frontend/src/components/ForgotPassword.jsx
 import React, { useState } from 'react';
 import '../../asset/Style/ForgotPassword.css';
-import '../../services/authService';
-
+import api from '../../services/api';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -29,23 +28,19 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/auth/forgot-password`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim() }),
-        }
-      );
-      const data = await res.json();
-
-      if (res.ok) {
-        setStatus({ type: 'success', message: data.message });
-      } else {
-        setStatus({ type: 'error', message: data.message });
-      }
-    } catch {
-      setStatus({ type: 'error', message: 'Error de red o del servidor.' });
+      const response = await api.post('/auth/forgot-password', { 
+        email: email.trim() 
+      });
+      
+      setStatus({ 
+        type: 'success', 
+        message: response.data.message || 'Instrucciones enviadas a tu correo' 
+      });
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          'Error de red o del servidor.';
+      setStatus({ type: 'error', message: errorMessage });
     } finally {
       setLoading(false);
     }

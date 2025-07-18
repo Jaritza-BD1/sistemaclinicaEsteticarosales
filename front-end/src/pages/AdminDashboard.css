@@ -1,0 +1,46 @@
+/* AdminDashboard.css */
+
+.admin-dashboard {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-dashboard .sidebar-wrapper {
+  flex: 0 0 240px;        /* ancho fijo de la barra lateral */
+  height: 100%;
+  overflow: auto;
+}
+
+.admin-dashboard .content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Top bar está fija arriba dentro del content-wrapper */
+.admin-dashboard .topbar-wrapper {
+  flex: 0 0 64px;         /* altura fija del top bar */
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* El cuerpo principal se desplaza si excede altura */
+.admin-dashboard .main-content {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+/* Botones de vista */
+.view-switcher {
+  margin-bottom: 1rem;
+}
+.view-switcher .btn {
+  margin-right: 0.5rem;
+}
+
+.subview-switcher .btn {
+  margin-right: 0.5rem;
+}

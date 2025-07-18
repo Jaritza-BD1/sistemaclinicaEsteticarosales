@@ -1,7 +1,11 @@
 // helpers/errorHelper.js
-const { sequelize } = require('../Config/db');
+const sequelize = require('../Config/db');
 const fs = require('fs');
 const path = require('path');
+
+function formatDateToMySQL(date) {
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+}
 
 class ErrorHelper {
     /**
@@ -13,7 +17,7 @@ class ErrorHelper {
      * @param {number} [errorDetails.userId] - ID de usuario relacionado
      */
     static async logError(errorMessage, errorDetails = {}) {
-        const timestamp = new Date().toISOString();
+        const timestamp = formatDateToMySQL(new Date());
         const logEntry = this._formatLogEntry(timestamp, errorMessage, errorDetails);
         
         try {

@@ -7,6 +7,7 @@ import './SignUp.css';
 const SignUp = () => {
   const [formData, setFormData] = useState({
     username: '',
+    name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -19,15 +20,18 @@ const SignUp = () => {
   // Validaciones
   const validate = () => {
     const newErrors = {};
-    const { username, email, password, confirmPassword } = formData;
+    const { username, name, email, password, confirmPassword } = formData;
 
-    // Validación de usuario (mayúsculas y sin espacios)
+    // Validación de usuario (mayúsculas, números, 4-15 caracteres)
     if (!username.trim()) {
       newErrors.username = 'Usuario requerido';
-    } else if (username !== username.toUpperCase()) {
-      newErrors.username = 'Debe estar en MAYÚSCULAS';
-    } else if (/\s/.test(username)) {
-      newErrors.username = 'No se permiten espacios';
+    } else if (!/^[A-Z0-9]{4,15}$/.test(username)) {
+      newErrors.username = '4-15 caracteres, solo MAYÚSCULAS y números';
+    }
+
+    // Validación de nombre
+    if (!name.trim()) {
+      newErrors.name = 'Nombre requerido';
     }
 
     // Validación de email
@@ -42,12 +46,14 @@ const SignUp = () => {
       newErrors.password = 'Contraseña requerida';
     } else if (password.length < 8) {
       newErrors.password = 'Mínimo 8 caracteres';
+    } else if (!/(?=.*[a-z])/.test(password)) {
+      newErrors.password = 'Debe contener minúscula';
     } else if (!/(?=.*[A-Z])/.test(password)) {
-      newErrors.password = 'Requiere mayúscula';
+      newErrors.password = 'Debe contener mayúscula';
     } else if (!/(?=.*\d)/.test(password)) {
-      newErrors.password = 'Requiere número';
+      newErrors.password = 'Debe contener número';
     } else if (!/(?=.*[!@#$%^&*])/.test(password)) {
-      newErrors.password = 'Requiere carácter especial';
+      newErrors.password = 'Debe contener carácter especial';
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
@@ -118,6 +124,73 @@ const SignUp = () => {
       ...formData,
       [name]: value
     });
+    // Validar en tiempo real solo el campo modificado
+    setErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+      // Validar solo el campo cambiado
+      switch (name) {
+        case 'username':
+          if (!value.trim()) {
+            newErrors.username = 'Usuario requerido';
+          } else if (!/^[A-Z0-9]{4,15}$/.test(value)) {
+            newErrors.username = '4-15 caracteres, solo MAYÚSCULAS y números';
+          } else {
+            delete newErrors.username;
+          }
+          break;
+        case 'name':
+          if (!value.trim()) {
+            newErrors.name = 'Nombre requerido';
+          } else {
+            delete newErrors.name;
+          }
+          break;
+        case 'email':
+          if (!value) {
+            newErrors.email = 'Email requerido';
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            newErrors.email = 'Email no válido';
+          } else {
+            delete newErrors.email;
+          }
+          break;
+        case 'password': {
+          if (!value) {
+            newErrors.password = 'Contraseña requerida';
+          } else if (value.length < 8) {
+            newErrors.password = 'Mínimo 8 caracteres';
+          } else if (!/(?=.*[a-z])/.test(value)) {
+            newErrors.password = 'Debe contener minúscula';
+          } else if (!/(?=.*[A-Z])/.test(value)) {
+            newErrors.password = 'Debe contener mayúscula';
+          } else if (!/(?=.*\d)/.test(value)) {
+            newErrors.password = 'Debe contener número';
+          } else if (!/(?=.*[!@#$%^&*])/.test(value)) {
+            newErrors.password = 'Debe contener carácter especial';
+          } else if (formData.confirmPassword && value !== formData.confirmPassword) {
+            newErrors.confirmPassword = 'Las contraseñas no coinciden';
+          } else {
+            delete newErrors.password;
+            if (formData.confirmPassword) {
+              if (value === formData.confirmPassword) {
+                delete newErrors.confirmPassword;
+              }
+            }
+          }
+          break;
+        }
+        case 'confirmPassword':
+          if (value !== formData.password) {
+            newErrors.confirmPassword = 'Las contraseñas no coinciden';
+          } else {
+            delete newErrors.confirmPassword;
+          }
+          break;
+        default:
+          break;
+      }
+      return newErrors;
+    });
   };
 
   return (
@@ -140,8 +213,22 @@ const SignUp = () => {
               onChange={handleChange}
               className={errors.username ? 'error' : ''}
               placeholder="EJEMPLO123"
+              maxLength={15}
             />
             {errors.username && <span className="error-text">{errors.username}</span>}
+          </div>
+
+          <div className="form-group">
+            <label>Nombre*</label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className={errors.name ? 'error' : ''}
+              placeholder="Nombre completo"
+            />
+            {errors.name && <span className="error-text">{errors.name}</span>}
           </div>
 
           <div className="form-group">
@@ -165,7 +252,7 @@ const SignUp = () => {
               value={formData.password}
               onChange={handleChange}
               className={errors.password ? 'error' : ''}
-              placeholder="Mínimo 8 caracteres con mayúscula, número y símbolo"
+              placeholder="Mínimo 8 caracteres, mayúscula, minúscula, número y símbolo"
             />
             {errors.password && <span className="error-text">{errors.password}</span>}
           </div>

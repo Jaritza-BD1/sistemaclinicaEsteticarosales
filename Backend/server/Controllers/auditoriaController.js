@@ -8,11 +8,11 @@ async function login(req, res, next) {
         
         // Registrar en bitácora
         await BitacoraHelper.registrarEvento({
-            usuarioId: user.id,
-            objetoId: 1, // ID del objeto "Login"
-            accion: 'Ingreso',
-            descripcion: 'Inicio de sesión exitoso',
-            ip: req.ip
+            atr_id_usuario: user.id,
+            atr_id_objetos: 1, // ID del objeto "Login"
+            atr_accion: 'Ingreso',
+            atr_descripcion: 'Inicio de sesión exitoso',
+            ip_origen: req.ip
         });
         
         next();

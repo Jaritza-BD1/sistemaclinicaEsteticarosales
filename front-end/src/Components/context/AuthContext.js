@@ -1,4 +1,4 @@
-// src/Components/context/AuthContext.js
+// front-end/src/Components/context/AuthContext.js
 import React, { 
   createContext, 
   useContext, 
@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useMemo 
 } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 
 const AuthContext = createContext();
 
@@ -31,8 +31,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('firstLogin');
     
-    delete axios.defaults.headers.common['Authorization'];
-    
     setAuthState({
       user: null,
       token: null,
@@ -43,15 +41,6 @@ export const AuthProvider = ({ children }) => {
     
     window.location.href = '/login';
   }, []);
-
-  // Configurar headers de axios
-  useEffect(() => {
-    if (authState.token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authState.token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [authState.token]);
 
   // 2. Función de login optimizada (depende de logout)
   const login = useCallback((jwt, firstLogin = false) => {
@@ -76,7 +65,8 @@ export const AuthProvider = ({ children }) => {
     if (!authState.token) return;
     
     try {
-      const response = await axios.get('/api/auth/me');
+      // ✅ CORREGIDO: Usar /auth/profile en lugar de /auth/me
+      const response = await api.get('/auth/profile');
       const userData = response.data;
       
       setAuthState(prev => ({
@@ -87,9 +77,9 @@ export const AuthProvider = ({ children }) => {
       }));
     } catch (error) {
       console.error('Failed to fetch user data:', error);
-      logout(); // Ahora logout está definido
+      logout();
     }
-  }, [authState.token, logout]); // Dependencia correcta
+  }, [authState.token, logout]);
 
   // 4. Verificar token y cargar datos del usuario
   useEffect(() => {
@@ -99,7 +89,7 @@ export const AuthProvider = ({ children }) => {
           await fetchUserData();
         } catch (error) {
           console.error('Token validation failed:', error);
-          logout(); // Ahora logout está definido
+          logout();
         }
       } else if (!authState.token) {
         setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -109,7 +99,12 @@ export const AuthProvider = ({ children }) => {
     validateToken();
   }, [authState.token, authState.user, fetchUserData, logout]);
 
-  // 5. Otras funciones
+  // 5. Función isAuthenticated
+  const isAuthenticated = useCallback(() => {
+    return !!authState.token && !!authState.user;
+  }, [authState.token, authState.user]);
+
+  // 6. Otras funciones
   const completeFirstLogin = useCallback(() => {
     localStorage.setItem('firstLogin', 'false');
     setAuthState(prev => ({
@@ -134,7 +129,7 @@ export const AuthProvider = ({ children }) => {
     if (!authState.token) return false;
     
     try {
-      const response = await axios.get('/api/auth/verify-token');
+      const response = await api.get('/auth/verify-token');
       return response.data.valid;
     } catch (error) {
       console.error('Active verification failed:', error);
@@ -146,7 +141,7 @@ export const AuthProvider = ({ children }) => {
   const contextValue = useMemo(() => ({
     user: authState.user,
     token: authState.token,
-    isAuthenticated: authState.isAuthenticated,
+    isAuthenticated,
     isLoading: authState.isLoading,
     firstLogin: authState.firstLogin,
     login,
@@ -158,7 +153,7 @@ export const AuthProvider = ({ children }) => {
   }), [
     authState.user,
     authState.token,
-    authState.isAuthenticated,
+    isAuthenticated,
     authState.isLoading,
     authState.firstLogin,
     login,

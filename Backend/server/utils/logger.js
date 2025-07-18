@@ -1,42 +1,80 @@
 // utils/logger.js
-const { createLogger, format, transports } = require('winston');
+const winston = require('winston');
 const path = require('path');
+const { createLogger, format, transports } = require('winston');
 
-// Crea el directorio de logs si no existe
-require('fs').mkdirSync('logs', { recursive: true });
-
+// File: server/utils/logger.js
 module.exports = createLogger({
-  level: 'debug', // Nivel mínimo de logs a registrar
-  format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    format.errors({ stack: true }), // Incluye stack traces en errores
-    format.splat(), // Para interpolación de strings
-    format.printf(({ timestamp, level, message }) => {
-      return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
-    })
-  ),
+  level: 'info',
+  format: format.combine(format.timestamp(), format.json()),
   transports: [
-    // Consola (formato legible con colores)
-    new transports.Console({
-      format: format.combine(
-        format.colorize(),
-        format.printf(({ timestamp, level, message }) => {
-          return `[${timestamp}] [${level}] ${message}`;
-        })
-      ),
-    }),
-    // Archivo para logs de Sequelize (formato JSON estructurado)
-    new transports.File({
-      filename: path.join('logs', 'sequelize.log'),
-      format: format.combine(
-        format.json() // Guarda logs en formato JSON
-      ),
-      level: 'debug', // Nivel para archivos
-    }),
-    // Archivo general para errores
-    new transports.File({
-      filename: path.join('logs', 'error.log'),
-      level: 'error',
-    }),
-  ],
+    new transports.Console(),
+    new transports.File({ filename: 'logs/app.log' })
+  ]
 });
+
+// Configuración de formatos
+const logFormat = winston.format.combine(
+  winston.format.timestamp({
+    format: 'YYYY-MM-DD HH:mm:ss'
+  }),
+  winston.format.errors({ stack: true }),
+  winston.format.json()
+);
+
+const consoleFormat = winston.format.combine(
+  winston.format.colorize(),
+  winston.format.timestamp({
+    format: 'YYYY-MM-DD HH:mm:ss'
+  }),
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    return `${timestamp} [${level}]: ${message} ${Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ''}`;
+  })
+);
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: logFormat,
+  defaultMeta: { service: 'clinica-estetica-api' },
+  transports: [
+    // Archivo de errores
+    new winston.transports.File({ 
+      filename: path.join(__dirname, '../logs/error.log'), 
+      level: 'error',
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    }),
+    // Archivo combinado
+    new winston.transports.File({ 
+      filename: path.join(__dirname, '../logs/combined.log'),
+      maxsize: 5242880, // 5MB
+      maxFiles: 5
+    })
+  ]
+});
+
+// Agregar transporte de consola en desarrollo
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: consoleFormat
+  }));
+}
+
+// Métodos de conveniencia
+logger.startup = (message) => logger.info(`🚀 ${message}`);
+logger.db = (message) => logger.info(`🗄️ ${message}`);
+logger.auth = (message, meta = {}) => logger.info(`🔐 ${message}`, meta);
+logger.api = (message, meta = {}) => logger.info(`🌐 ${message}`, meta);
+logger.error = (message, error = null) => {
+  if (error) {
+    logger.log('error', message, {
+      error: error.message,
+      stack: error.stack,
+      ...error
+    });
+  } else {
+    logger.log('error', message);
+  }
+};
+
+module.exports = logger;

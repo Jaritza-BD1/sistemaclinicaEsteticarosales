@@ -1,6 +1,5 @@
 // src App.js
 import React from 'react';
-import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './Components/context/AuthContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -13,10 +12,11 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import ChangePassword from './Components/auth/change-password';
 import ForgotPassword from './Components/auth/ForgotPassword';
+import ResetPassword from './Components/auth/ResetPassword';
 import EmailVerification from './Components/twoFactor/Verify2FA';
+import CitasRoutes from './routes/CitasRoutes';
+import EmailVerified from './pages/EmailVerified';
 
-// Configuración global de axios
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children, requiredRole = null }) => {
@@ -76,19 +76,36 @@ export default function App() {
           {/* Nueva ruta para recuperación de contraseña */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
+
+          {/*Nueva ruta para reset de contraseña */}
+          <Route path="/reset-password" element={<ResetPassword />} />  
+
+
+          {/*Nueva ruta para cambio de contraseña */}
           <Route path="/change-password" element={
             <ProtectedRoute>
               <ChangePassword />
             </ProtectedRoute>
           } />
 
+
           <Route path="/verify-email" element={
               <EmailVerification />
           } />
 
+          <Route path="/email-verified" element={<EmailVerified />} />
+
+          <Route path="/citas/*" element={
+            <ProtectedRoute>
+              <CitasRoutes />
+            </ProtectedRoute>
+          } />
+
+
           {/* Redirección por defecto para rutas autenticadas */}
           <Route path="/auth-redirect" element={<AuthRedirectHandler />} />
-
+          
+          
           {/* Manejo de errores */}
           <Route path="/not-found" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/not-found" replace />} />

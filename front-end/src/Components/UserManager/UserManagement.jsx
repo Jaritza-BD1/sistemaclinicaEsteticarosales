@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../services/api';
 import {
   Table,
   Button,
@@ -19,6 +19,7 @@ const UserManagement = () => {
 
   const [showCreate, setShowCreate] = useState(false);
   const [newUsername, setNewUsername] = useState('');
+  const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [autoGenerate, setAutoGenerate] = useState(false);
@@ -33,7 +34,7 @@ const UserManagement = () => {
     setLoadingUsers(true);
     setError('');
     try {
-      const res = await axios.get('/api/admin/users');
+      const res = await api.get('/admin/users');
       setUsers(res.data.data);
     } catch {
       setError('No se pudieron cargar los usuarios');
@@ -51,12 +52,15 @@ const UserManagement = () => {
     setCreateError('');
     try {
       const payload = {
-        username: newUsername,
-        email: newEmail,
+        atr_usuario: newUsername,
+        atr_nombre_usuario: newName,
+        atr_correo_electronico: newEmail,
         autoGenerate,
-        password: autoGenerate ? undefined : newPassword,
       };
-      const res = await axios.post('/api/admin/users', payload);
+      if (!autoGenerate) {
+        payload.atr_contrasena = newPassword;
+      }
+      const res = await api.post('/admin/users', payload);
       setCreatedPassword(res.data.plainPassword);
       // Refresh list after creation
       await fetchUsers();
@@ -71,7 +75,7 @@ const UserManagement = () => {
     if (user?.role !== 'admin') return;
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      await axios.patch(`/api/admin/users/${id}/block`);
+      await api.patch(`/admin/users/${id}/block`);
       await fetchUsers();
     } catch {
       setError('Error al bloquear');
@@ -84,7 +88,7 @@ const UserManagement = () => {
     if (user?.role !== 'admin') return;
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const res = await axios.patch(`/api/admin/users/${id}/reset-password`);
+      const res = await api.patch(`/api/admin/users/${id}/reset-password`);
       setResetResult({ id, password: res.data.nuevaContraseña });
       await fetchUsers();
     } catch {
@@ -98,6 +102,7 @@ const UserManagement = () => {
   const handleModalClose = () => {
     setShowCreate(false);
     setNewUsername('');
+    setNewName('');
     setNewEmail('');
     setNewPassword('');
     setAutoGenerate(false);
@@ -134,30 +139,30 @@ const UserManagement = () => {
           </thead>
           <tbody>
             {users.map(u => (
-              <tr key={u.id}>
-                <td>{u.id}</td>
-                <td>{u.username}</td>
-                <td>{u.email}</td>
-                <td>{u.status}</td>
-                <td>{u.password_expires_at ? new Date(u.password_expires_at).toLocaleDateString() : '-'}</td>
+              <tr key={u.atr_id_usuario}>
+                <td>{u.atr_id_usuario}</td>
+                <td>{u.atr_usuario}</td>
+                <td>{u.atr_correo_electronico}</td>
+                <td>{u.atr_estado_usuario}</td>
+                <td>{u.atr_fecha_vencimiento ? new Date(u.atr_fecha_vencimiento).toLocaleDateString() : '-'}</td>
                 <td className="d-flex gap-2">
                   <Button
                     size="sm"
                     variant="warning"
-                    disabled={actionLoading[u.id]}
-                    onClick={() => handleBlock(u.id)}
+                    disabled={actionLoading[u.atr_id_usuario]}
+                    onClick={() => handleBlock(u.atr_id_usuario)}
                   >
-                    {actionLoading[u.id] ? <Spinner size="sm" animation="border" /> : 'Bloquear'}
+                    {actionLoading[u.atr_id_usuario] ? <Spinner size="sm" animation="border" /> : 'Bloquear'}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={actionLoading[u.id]}
-                    onClick={() => handleReset(u.id)}
+                    disabled={actionLoading[u.atr_id_usuario]}
+                    onClick={() => handleReset(u.atr_id_usuario)}
                   >
-                    {actionLoading[u.id] ? <Spinner size="sm" animation="border" /> : 'Resetear'}
+                    {actionLoading[u.atr_id_usuario] ? <Spinner size="sm" animation="border" /> : 'Resetear'}
                   </Button>
-                  {resetResult?.id === u.id && (
+                  {resetResult?.id === u.atr_id_usuario && (
                     <small className="ms-2 text-success">
                       Nueva: {resetResult.password}
                     </small>
@@ -191,6 +196,15 @@ const UserManagement = () => {
               <Form.Control
                 value={newUsername}
                 onChange={e => setNewUsername(e.target.value)}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Nombre Completo</Form.Label>
+              <Form.Control
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                required
               />
             </Form.Group>
             <Form.Group className="mb-2">

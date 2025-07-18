@@ -1,12 +1,13 @@
 // src/Components/auth/AuthForm.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { BsEye, BsEyeSlash } from 'react-icons/bs';
+import api from '../../services/api';
 import { useAuth } from '../context/AuthContext';
 import './AuthForm.css';
 import '../../asset/Style/ForgotPassword.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import Setup2FA from '../twoFactor/Setup2FA';
+import Verify2FA from '../twoFactor/Verify2FA'; // <-- NUEVO
 
 const AuthForm = () => {
   const { login } = useAuth();
@@ -15,11 +16,12 @@ const AuthForm = () => {
   // Estados principales
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    name: '',
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    atr_nombre_usuario: '',
+    atr_usuario: '',
+    atr_correo_electronico: '',
+    atr_contrasena: '',
+    confirmPassword: '',
+    atr_2fa_enabled: false,
   });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
@@ -28,305 +30,203 @@ const AuthForm = () => {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [maxLoginAttempts, setMaxLoginAttempts] = useState(3);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  
-  // Estados para 2FA
+  const [show2FASetup, setShow2FASetup] = useState(false);
+
+  // Estados para 2FA en login
   const [twoFARequired, setTwoFARequired] = useState(false);
   const [userIdFor2FA, setUserIdFor2FA] = useState(null);
+  const [userEmailFor2FA, setUserEmailFor2FA] = useState(''); // <-- NUEVO
   const [twoFAToken, setTwoFAToken] = useState('');
   const [twoFAError, setTwoFAError] = useState('');
 
-  // Obtener parámetros del sistema
+  // Mostrar/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Carga del parámetro ADMIN_INTENTOS_INVALIDOS
   useEffect(() => {
-    const fetchParams = async () => {
+    (async () => {
       try {
-        const response = await axios.get(`${API_URL}/params/ADMIN_INTENTOS_INVALIDOS`);
-        setMaxLoginAttempts(parseInt(response.data.atr_valor) || 3);
-      } catch (error) {
-        console.error('Error obteniendo parámetros:', error);
+        const res = await api.get('/params/ADMIN_INTENTOS_INVALIDOS');
+        setMaxLoginAttempts(parseInt(res.data.value, 10) || 3);
+      } catch (err) {
+        console.error('Error al cargar parámetros:', err);
       }
-    };
-    
-    fetchParams();
+    })();
   }, []);
 
-  // Función para prevenir copiar/pegar
-  const preventCopyPaste = (e) => {
+  // Prevención de copiar/pegar en campos sensibles
+  const preventCopyPaste = e => {
     e.preventDefault();
     return false;
   };
 
-  const handleChange = ({ target: { name, value } }) => {
-    // Aplicar restricciones
-    if (name === 'name') {
-      value = value.replace(/\s/g, '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
+  // Manejo de cambios en inputs
+  const handleChange = ({ target: { name, value, type, checked } }) => {
+    let v = type === 'checkbox' ? checked : value;
+    // Normalizaciones por campo
+    if (name === 'atr_nombre_usuario') {
+      v = v.replace(/\s/g, '').slice(0, 100);
     }
-    
-    if (name === 'username') {
-      // FORZAR MAYÚSCULAS Y SOLO CARACTERES PERMITIDOS
-      value = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+    if (name === 'atr_usuario') {
+      v = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 50);
     }
-    
-    if (name === 'email') {
-      value = value.replace(/[^a-zA-Z0-9@._-]/g, '');
+    if (name === 'atr_correo_electronico') {
+      v = v.slice(0, 100);
     }
-    
-    if (name === 'password') {
-      // PERMITIR SOLO CARACTERES VÁLIDOS
-      value = value.replace(/[^a-zA-Z0-9!@#$%^&*]/g, '');
+    if (name === 'atr_contrasena' || name === 'confirmPassword') {
+      v = v.replace(/\s/g, '').slice(0, 255);
     }
-    
-    if (name === 'confirmPassword') {
-      value = value.replace(/[^a-zA-Z0-9!@#$%^&*]/g, '');
-    }
-    
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Limpiar error específico al modificar
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
-    }
+
+    setFormData(f => ({ ...f, [name]: v }));
+    if (errors[name]) setErrors(e => ({ ...e, [name]: null }));
   };
 
+  // Validaciones
   const validate = () => {
-    const newErrors = {};
-    const { username, email, password, confirmPassword, name } = formData;
+    const e = {};
+    const {
+      atr_nombre_usuario,
+      atr_usuario,
+      atr_correo_electronico,
+      atr_contrasena,
+      confirmPassword,
+    } = formData;
 
     if (!isLogin) {
-      // Validación de nombre (solo letras y números)
-      if (!name || !name.trim()) newErrors.name = 'Nombre requerido';
-      else if (name.length < 2) newErrors.name = 'Mínimo 2 caracteres';
-      else if (name.length > 15) newErrors.name = 'Máximo 15 caracteres';
-      else if (!/^[a-zA-Z0-9]+$/.test(name)) 
-        newErrors.name = 'Solo letras y números';
+      if (!atr_nombre_usuario) e.atr_nombre_usuario = 'Nombre requerido';
+      else if (atr_nombre_usuario.length < 2)
+        e.atr_nombre_usuario = 'Mínimo 2 caracteres';
     }
 
-    // Validación de usuario
-    if (!username || !username.trim()) newErrors.username = 'Usuario requerido';
-    else if (username.length < 4) newErrors.username = 'Mínimo 4 caracteres';
-    else if (username.length > 15) newErrors.username = 'Máximo 15 caracteres';
-    else if (!/^[A-Z0-9]+$/.test(username)) 
-      newErrors.username = 'Solo mayúsculas y números';
+    if (!atr_usuario) e.atr_usuario = 'Usuario requerido';
+    else if (atr_usuario.length < 4)
+      e.atr_usuario = 'Mínimo 4 caracteres';
 
-    // Validación de email (solo registro)
     if (!isLogin) {
-      if (!email || !email.trim()) newErrors.email = 'Email requerido';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-        newErrors.email = 'Email no válido';
-      else if (email.length > 50) newErrors.email = 'Máximo 50 caracteres';
+      if (!atr_correo_electronico)
+        e.atr_correo_electronico = 'Correo requerido';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(atr_correo_electronico))
+        e.atr_correo_electronico = 'Correo inválido';
     }
 
-    // VALIDACIÓN DE CONTRASEÑA ALINEADA CON BACKEND
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
-    
-    if (!password || !password.trim()) {
-      newErrors.password = 'Contraseña requerida';
-    } else if (/\s/.test(password)) {
-      newErrors.password = 'No se permiten espacios';
-    } else if (!passwordRegex.test(password)) {
-      newErrors.password = 'Debe contener minúscula, mayúscula, número y carácter especial (!@#$%^&*)';
-    } else if (password.length > 200) {
-      newErrors.password = 'Máximo 200 caracteres';
-    }
+    // Contraseña: al menos 8 con mayúscula, minúscula, número y símbolo
+    const pwdRe =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+    if (!atr_contrasena) e.atr_contrasena = 'Contraseña requerida';
+    else if (!pwdRe.test(atr_contrasena))
+      e.atr_contrasena =
+        'Minúscula, Mayúscula, Número y símbolo (!@#$%^&*)';
+    if (!isLogin && atr_contrasena !== confirmPassword)
+      e.confirmPassword = 'Las contraseñas no coinciden';
 
-    // Validación de confirmación de contraseña
-    if (!isLogin && password !== confirmPassword)
-      newErrors.confirmPassword = 'Las contraseñas no coinciden';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(e);
+    return !Object.keys(e).length;
   };
 
-  const handleSubmit = async (e) => {
+  // Manejo del envío (login o registro)
+  const handleSubmit = async e => {
     e.preventDefault();
     setApiError('');
     setTwoFAError('');
-    
+
     if (!validate()) return;
-    
+
     if (isLogin && loginAttempts >= maxLoginAttempts) {
-      setApiError(`Cuenta bloqueada. Contacte al administrador.`);
+      setApiError('Usuario bloqueado. Contactar administrador.');
       setIsLocked(true);
       return;
     }
 
     setIsSubmitting(true);
-    
     try {
       if (isLogin) {
-        // Lógica de LOGIN - CORREGIDO
-        const payload = {
-          username: formData.username,
-          password: formData.password
-        };
+        // LOGIN
+        const { data } = await api.post('/auth/login', {
+          username: formData.atr_usuario,
+          password: formData.atr_contrasena,
+        });
 
-        const { data } = await axios.post(
-          `${API_URL}/auth/login`, 
-          payload,
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-
-        // Manejar primer ingreso
         if (data.firstLogin) {
-          navigate('/change-password', { 
-            state: { 
-              firstLogin: true,
-              resetToken: data.resetToken 
-            } 
+          navigate('/change-password', {
+            state: { firstLogin: true, resetToken: data.resetToken },
           });
           return;
         }
-
-        // Manejar 2FA
         if (data.twoFARequired) {
           setTwoFARequired(true);
           setUserIdFor2FA(data.userId);
+          setUserEmailFor2FA(data.email || ''); // <-- GUARDAR EMAIL
           return;
         }
 
-        // Guardar datos de sesión
         localStorage.setItem('token', data.token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-        
-        // Actualizar contexto y redirigir
+        api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
         login(data.token);
         navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
-        
       } else {
-        // Lógica de REGISTRO - CORREGIDO
-        const payload = {
-          username: formData.username,
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword
-        };
-
-        await axios.post(
-          `${API_URL}/auth/register`, 
-          payload,
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-        
-        // Mostrar mensaje de éxito
-        setRegistrationSuccess(true);
+        // REGISTRO
+        await api.post('/auth/register', {
+          username: formData.atr_usuario, 
+          name: formData.atr_nombre_usuario,
+          email: formData.atr_correo_electronico,
+          password: formData.atr_contrasena,
+        });
+        setRegistrationSuccess(true); // Mostrar mensaje de éxito
+        // setShow2FASetup(true); // <-- ELIMINADO: ya no se muestra el setup de 2FA tras registro
       }
-    } catch (error) {
-      handleAuthError(error);
+    } catch (err) {
+      // Manejo de errores HTTP
+      if (err.response) {
+        const { status, data } = err.response;
+        if (status === 401) {
+          setLoginAttempts(attempts => attempts + 1);
+          setApiError(
+            `Credenciales incorrectas. Restan ${
+              maxLoginAttempts - (loginAttempts + 1)
+            } intentos`
+          );
+        } else if (status === 403) {
+          setIsLocked(true);
+          setApiError('Usuario bloqueado.');
+        } else if (status === 409) {
+          setApiError('El usuario ya existe.');
+        } else {
+          setApiError(data.message || 'Error en el servidor');
+        }
+      } else {
+        setApiError('Error de conexión');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Manejar verificación de 2FA - CORREGIDO
-  const handle2FAVerification = async () => {
+  // Verificación 2FA
+  const handle2FAVerify = async () => {
     if (!twoFAToken) {
-      setTwoFAError('Ingrese el código de verificación');
+      setTwoFAError('Código requerido');
       return;
     }
-    
     setIsSubmitting(true);
-    setTwoFAError('');
-    
     try {
-      const response = await axios.post(
-        `${API_URL}/auth/2fa/verify-login`,
-        { 
-          userId: userIdFor2FA, 
-          token: twoFAToken 
-        }
-      );
-      
-      const data = response.data;
-      
-      // Guardar datos de sesión
+      const { data } = await api.post('/auth/2fa/verify-login', {
+        userId: userIdFor2FA,
+        token: twoFAToken,
+      });
       localStorage.setItem('token', data.token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      
-      // Actualizar contexto y redirigir
       login(data.token);
       navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
-      
-    } catch (error) {
-      console.error('Error en verificación 2FA:', error);
-      
-      if (error.response) {
-        const { status, data } = error.response;
-        
-        if (status === 400) {
-          setTwoFAError(data.error || 'Código inválido');
-        } else if (status === 401) {
-          setTwoFAError('Código expirado o inválido');
-        } else {
-          setTwoFAError('Error en el servidor');
-        }
-      } else {
-        setTwoFAError('Error de conexión');
-      }
+    } catch {
+      setTwoFAError('Código inválido o expirado');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleAuthError = (error) => {
-    if (error.response) {
-      const { status, data } = error.response;
-      
-      switch (status) {
-        case 400:
-          // MANEJO DETALLADO DE ERRORES DE VALIDACIÓN
-          if (data.errors && Array.isArray(data.errors)) {
-            const fieldErrors = {};
-            data.errors.forEach(err => {
-              if (err.path) {
-                fieldErrors[err.path] = err.msg;
-              }
-            });
-            
-            if (Object.keys(fieldErrors).length > 0) {
-              setErrors(fieldErrors);
-              setApiError('Corrige los errores en el formulario');
-              break;
-            }
-          }
-          setApiError(data.error || data.message || 'Datos inválidos');
-          break;
-          
-        case 401:
-          if (data.error === 'Verifica tu email primero') {
-            setApiError('Verifica tu email primero');
-          } else if (data.error === 'Cuenta pendiente de aprobación') {
-            setApiError('Cuenta pendiente de aprobación');
-          } else {
-            const attemptsLeft = maxLoginAttempts - (loginAttempts + 1);
-            setLoginAttempts(prev => prev + 1);
-            setApiError(`Credenciales incorrectas. Intentos restantes: ${attemptsLeft}`);
-          }
-          break;
-          
-        case 403:
-          setIsLocked(true);
-          setApiError('Cuenta bloqueada. Contacte al administrador');
-          break;
-          
-        case 409:
-          setApiError('El usuario ya existe');
-          break;
-          
-        case 429:
-          setApiError('Demasiados intentos. Intente más tarde');
-          break;
-          
-        default:
-          setApiError(data?.error || data?.message || 'Error en el servidor');
-      }
-    } else {
-      setApiError(error.message || 'Error de conexión');
-    }
-  };
-
+  // Alternar entre login y registro
   const toggleAuthMode = () => {
-    setIsLogin(prev => !prev);
-    setFormData({ name: '', username: '', email: '', password: '', confirmPassword: '' });
+    setIsLogin(v => !v);
     setErrors({});
     setApiError('');
     setIsLocked(false);
@@ -335,8 +235,11 @@ const AuthForm = () => {
     setTwoFARequired(false);
     setTwoFAToken('');
     setTwoFAError('');
+    setShowPassword(false);
+    setShowConfirm(false);
   };
 
+  // Vistas intermedias: éxito registro o 2FA
   if (registrationSuccess) {
     return (
       <div className="auth-page">
@@ -346,73 +249,42 @@ const AuthForm = () => {
             <h1 className="clinic-name">Estética Rosales</h1>
             <p className="clinic-specialty">Medicina Estética Integral</p>
           </div>
-
           <div className="success-message">
             <h2>¡Registro Exitoso!</h2>
-            <p>Tu cuenta ha sido creada correctamente.</p>
-            <p>Un administrador revisará tu solicitud y te notificará cuando puedas acceder.</p>
-            <button 
-              onClick={toggleAuthMode}
-              className="auth-button"
-            >
+            <p>Por favor, verifica tu correo electrónico y espera a que un administrador apruebe tu cuenta antes de poder acceder al sistema.</p>
+            <button onClick={toggleAuthMode} className="auth-button">
               Volver al Login
             </button>
           </div>
+          <div className="footer">
+            © 2023 Centro Médico Dra. Alejandra Rosales | Todos los derechos reservados
+          </div>
         </div>
+        <div className="wave" />
       </div>
     );
   }
 
   if (twoFARequired) {
     return (
-      <div className="auth-page">
-        <div className="auth-container">
-          <div className="clinic-header">
-            <div className="clinic-logo">ER</div>
-            <h1 className="clinic-name">Estética Rosales</h1>
-            <p className="clinic-specialty">Medicina Estética Integral</p>
-          </div>
-
-          <div className="auth-form">
-            <h2>Verificación en Dos Pasos</h2>
-            <p>Ingresa el código de tu aplicación de autenticación</p>
-            
-            <div className="form-group">
-              <input
-                type="text"
-                placeholder="Código de verificación"
-                value={twoFAToken}
-                onChange={(e) => setTwoFAToken(e.target.value)}
-                maxLength={6}
-                className={twoFAError ? 'error' : ''}
-              />
-              {twoFAError && <span className="error-message">{twoFAError}</span>}
-            </div>
-
-            <button 
-              onClick={handle2FAVerification}
-              disabled={isSubmitting}
-              className="auth-button"
-            >
-              {isSubmitting ? 'Verificando...' : 'Verificar'}
-            </button>
-
-            <button 
-              onClick={() => {
-                setTwoFARequired(false);
-                setTwoFAToken('');
-                setTwoFAError('');
-              }}
-              className="auth-button secondary"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
+      <Verify2FA
+        userId={userIdFor2FA}
+        userEmail={userEmailFor2FA}
+        onSuccess={async (data) => {
+          localStorage.setItem('token', data.token);
+          login(data.token);
+          navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
+        }}
+      />
     );
   }
 
+  // Renderizado condicional para el flujo de registro + 2FA obligatorio
+  if (show2FASetup) {
+    return <Setup2FA onSuccess={() => setShow2FASetup(false)} />;
+  }
+
+  // Vista principal login/registro
   return (
     <div className="auth-page">
       <div className="auth-container">
@@ -421,133 +293,152 @@ const AuthForm = () => {
           <h1 className="clinic-name">Estética Rosales</h1>
           <p className="clinic-specialty">Medicina Estética Integral</p>
         </div>
-
         <div className="auth-form">
           <h2>{isLogin ? 'Iniciar Sesión' : 'Registro'}</h2>
-          
-          {apiError && (
-            <div className="error-message global-error">
-              {apiError}
-            </div>
-          )}
+
+          {apiError && <div className="error-message global-error">{apiError}</div>}
 
           <form onSubmit={handleSubmit}>
             {!isLogin && (
               <div className="form-group">
                 <input
+                  name="atr_nombre_usuario"
                   type="text"
-                  name="name"
                   placeholder="Nombre"
-                  value={formData.name}
+                  value={formData.atr_nombre_usuario}
                   onChange={handleChange}
                   onCopy={preventCopyPaste}
                   onPaste={preventCopyPaste}
-                  className={errors.name ? 'error' : ''}
-                  disabled={isSubmitting}
+                  className={errors.atr_nombre_usuario ? 'error' : ''}
                 />
-                {errors.name && <span className="error-message">{errors.name}</span>}
+                {errors.atr_nombre_usuario && (
+                  <span className="error-message">{errors.atr_nombre_usuario}</span>
+                )}
               </div>
             )}
 
             <div className="form-group">
               <input
+                name="atr_usuario"
                 type="text"
-                name="username"
                 placeholder="Usuario"
-                value={formData.username}
+                value={formData.atr_usuario}
                 onChange={handleChange}
                 onCopy={preventCopyPaste}
                 onPaste={preventCopyPaste}
-                className={errors.username ? 'error' : ''}
-                disabled={isSubmitting}
+                className={errors.atr_usuario ? 'error' : ''}
               />
-              {errors.username && <span className="error-message">{errors.username}</span>}
+              {errors.atr_usuario && (
+                <span className="error-message">{errors.atr_usuario}</span>
+              )}
             </div>
 
             {!isLogin && (
               <div className="form-group">
                 <input
+                  name="atr_correo_electronico"
                   type="email"
-                  name="email"
-                  placeholder="Email"
-                  value={formData.email}
+                  placeholder="Correo Electrónico"
+                  value={formData.atr_correo_electronico}
                   onChange={handleChange}
-                  onCopy={preventCopyPaste}
-                  onPaste={preventCopyPaste}
-                  className={errors.email ? 'error' : ''}
-                  disabled={isSubmitting}
+                  className={errors.atr_correo_electronico ? 'error' : ''}
                 />
-                {errors.email && <span className="error-message">{errors.email}</span>}
+                {errors.atr_correo_electronico && (
+                  <span className="error-message">
+                    {errors.atr_correo_electronico}
+                  </span>
+                )}
               </div>
             )}
 
             <div className="form-group">
               <input
-                type="password"
-                name="password"
+                name="atr_contrasena"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Contraseña"
-                value={formData.password}
+                value={formData.atr_contrasena}
                 onChange={handleChange}
-                onCopy={preventCopyPaste}
-                onPaste={preventCopyPaste}
-                className={errors.password ? 'error' : ''}
-                disabled={isSubmitting}
               />
-              {errors.password && <span className="error-message">{errors.password}</span>}
+              <span className="eye-icon" onClick={() => setShowPassword(v => !v)}>
+                {showPassword ? <BsEyeSlash /> : <BsEye />}
+              </span>
+              {errors.atr_contrasena && (
+                <span className="error-message">{errors.atr_contrasena}</span>
+              )}
             </div>
 
             {!isLogin && (
               <div className="form-group">
                 <input
-                  type="password"
                   name="confirmPassword"
+                  type={showConfirm ? 'text' : 'password'}
                   placeholder="Confirmar Contraseña"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  onCopy={preventCopyPaste}
-                  onPaste={preventCopyPaste}
-                  className={errors.confirmPassword ? 'error' : ''}
-                  disabled={isSubmitting}
                 />
-                {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
+                <span className="eye-icon" onClick={() => setShowConfirm(v => !v)}>
+                  {showConfirm ? <BsEyeSlash /> : <BsEye />}
+                </span>
+                {errors.confirmPassword && (
+                  <span className="error-message">{errors.confirmPassword}</span>
+                )}
               </div>
             )}
 
-            <button 
-              type="submit" 
+            {!isLogin && (
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    name="atr_2fa_enabled"
+                    type="checkbox"
+                    checked={formData.atr_2fa_enabled}
+                    onChange={handleChange}
+                  />
+                  Habilitar 2FA
+                </label>
+              </div>
+            )}
+
+            <button
+              type="submit"
               disabled={isSubmitting || isLocked}
               className="auth-button"
             >
-              {isSubmitting 
-                ? (isLogin ? 'Iniciando...' : 'Registrando...') 
-                : (isLogin ? 'Iniciar Sesión' : 'Registrarse')
-              }
+              {isSubmitting
+                ? isLogin
+                  ? 'Iniciando...'
+                  : 'Registrando...'
+                : isLogin
+                ? 'Iniciar Sesión'
+                : 'Registrarse'}
             </button>
           </form>
+        </div>
 
-          <div className="auth-links">
-            <button 
-              onClick={toggleAuthMode}
+        <div className="auth-links">
+          <button onClick={toggleAuthMode} className="link-button">
+            {isLogin
+              ? '¿No tienes cuenta? Regístrate'
+              : '¿Ya tienes cuenta? Inicia sesión'}
+          </button>
+          {isLogin && (
+            <button
+              onClick={() => navigate('/forgot-password')}
               className="link-button"
-              disabled={isSubmitting}
             >
-              {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+              ¿Olvidaste tu contraseña?
             </button>
-            
-            {isLogin && (
-              <button 
-                onClick={() => navigate('/forgot-password')}
-                className="link-button"
-                disabled={isSubmitting}
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
-            )}
-          </div>
+          )}
+        </div>
+
+        <div className="footer">
+          © 2023 Centro Médico Dra. Alejandra Rosales | Todos los derechos reservados
         </div>
       </div>
+      <div className="wave" />
     </div>
   );
 };
 
 export default AuthForm;
+

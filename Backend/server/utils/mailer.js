@@ -145,10 +145,33 @@ async function send2FABackupCodesEmail(email, codes) {
   }
 }
 
+// Notificación de cambio de contraseña
+async function sendPasswordChangeEmail(email, nombre) {
+  try {
+    await transporter.sendMail({
+      from: `"Clínica Estética Rosales" <${process.env.SMTP_USER || 'clinicaesteticarosales@gmail.com'}>`,
+      to: email,
+      subject: 'Contraseña actualizada',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">¡Hola, ${nombre}!</h2>
+          <p>Te notificamos que tu contraseña ha sido cambiada exitosamente.</p>
+          <p>Si no realizaste este cambio, por favor contacta al soporte de inmediato.</p>
+        </div>
+      `
+    });
+    console.log(`Notificación de cambio de contraseña enviada a: ${email}`);
+  } catch (error) {
+    console.error('Error enviando notificación de cambio de contraseña:', error);
+    throw error;
+  }
+}
+
 // Exportar todas las funciones
 module.exports = { 
   sendResetEmail,
   sendVerificationEmail,
   sendApprovalEmail,
-  send2FABackupCodesEmail
+  send2FABackupCodesEmail,
+  sendPasswordChangeEmail
 };

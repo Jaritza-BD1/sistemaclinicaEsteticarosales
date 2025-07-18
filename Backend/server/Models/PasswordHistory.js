@@ -8,10 +8,14 @@ const PasswordHistory = sequelize.define('tbl_ms_hist_contrasena', {
     autoIncrement: true,
     field: 'atr_id_hist'
   },
-  atr_usuario: {
+  atr_id_usuario: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'atr_usuario'
+    field: 'atr_id_usuario',
+    references: {
+      model: 'tbl_ms_usuario',
+      key: 'atr_id_usuario'
+    }
   },
   atr_contrasena: {
     type: DataTypes.STRING(255),

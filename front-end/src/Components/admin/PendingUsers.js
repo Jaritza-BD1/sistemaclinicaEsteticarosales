@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../Service/api';
+import api from '../../services/api';
 
 const PendingUsers = () => {
   const [users, setUsers] = useState([]);

@@ -1,118 +1,116 @@
 // src/Components/auth/ChangePassword.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { BsEye, BsEyeSlash } from 'react-icons/bs';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-import * as S from './change-password-Style';
+import api from '../../services/api';
+import './ChangePassword.css';
 
-const ChangePassword = () => {
-  const { user, token, completeFirstLogin, logout } = useAuth();
+export default function ChangePassword() {
+  
+  const { user, completeFirstLogin, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
+  // Estados de formulario
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
-  
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFirstLogin, setIsFirstLogin] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
-  // Determinar si es primer ingreso
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ¿Primer ingreso?
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
   useEffect(() => {
     if (location.state?.firstLogin || user?.atr_primer_ingreso) {
       setIsFirstLogin(true);
     }
   }, [location, user]);
 
-  const validate = () => {
-    const newErrors = {};
-    
-    if (!isFirstLogin && !formData.currentPassword) {
-      newErrors.currentPassword = 'Contraseña actual requerida';
-    }
-    
-    if (!formData.newPassword) {
-      newErrors.newPassword = 'Nueva contraseña requerida';
-    } else {
-      if (formData.newPassword.length < 8) {
-        newErrors.newPassword = 'Mínimo 8 caracteres';
-      }
-      if (!/(?=.*[a-z])/.test(formData.newPassword)) {
-        newErrors.newPassword = 'Debe contener minúscula';
-      }
-      if (!/(?=.*[A-Z])/.test(formData.newPassword)) {
-        newErrors.newPassword = 'Debe contener mayúscula';
-      }
-      if (!/(?=.*\d)/.test(formData.newPassword)) {
-        newErrors.newPassword = 'Debe contener número';
-      }
-      if (!/(?=.*[!@#$%^&*])/.test(formData.newPassword)) {
-        newErrors.newPassword = 'Debe contener carácter especial';
-      }
-      if (/\s/.test(formData.newPassword)) {
-        newErrors.newPassword = 'No se permiten espacios';
-      }
-    }
-    
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirma tu nueva contraseña';
-    } else if (formData.newPassword !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  // Mostrar / ocultar cada campo
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  const handleChange = (e) => {
+  // Manejo de inputs
+  const handleChange = e => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Limpiar error al modificar
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
-    }
-    
-    if (apiError) setApiError('');
+    setFormData(f => ({ ...f, [name]: value.replace(/\s/g, '') }));
+    setErrors(errs => ({ ...errs, [name]: null }));
+    setApiError('');
   };
 
-  const handleSubmit = async (e) => {
+  // Validaciones
+  const validate = () => {
+    const errs = {};
+    const { currentPassword, newPassword, confirmPassword } = formData;
+
+    if (!isFirstLogin && !currentPassword) {
+      errs.currentPassword = 'Contraseña actual requerida';
+    }
+    if (!newPassword) {
+      errs.newPassword = 'Nueva contraseña requerida';
+    } else {
+      if (newPassword.length < 8) errs.newPassword = 'Mínimo 8 caracteres';
+      if (!/[a-z]/.test(newPassword))
+        errs.newPassword = 'Debe contener minúscula';
+      if (!/[A-Z]/.test(newPassword))
+        errs.newPassword = 'Debe contener mayúscula';
+      if (!/\d/.test(newPassword)) errs.newPassword = 'Debe contener número';
+      if (!/[!@#$%^&*]/.test(newPassword))
+        errs.newPassword = 'Debe contener carácter especial';
+    }
+    if (!confirmPassword) {
+      errs.confirmPassword = 'Confirma tu nueva contraseña';
+    } else if (newPassword !== confirmPassword) {
+      errs.confirmPassword = 'Las contraseñas no coinciden';
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  // Grabar historial de contraseñas (tabla tbl_ms_hist_contrasena)
+  const recordPasswordHistory = async password => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    await api.post('/hist-contrasena', {
+      atr_usuario: user.atr_usuario,        // id del usuario
+      atr_contrasena: password,             // contraseña cifrada o en texto
+      atr_creado_por: user.atr_usuario,     // mismo usuario que crea
+      atr_fecha_creacion: today,            // fecha actual
+      // atr_modificado_por / atr_fecha_modificacion
+      // pueden omitirse en primer registro
+    });
+  };
+
+  // Envío del formulario
+  const handleSubmit = async e => {
     e.preventDefault();
-    
     if (!validate()) return;
-    
     setIsSubmitting(true);
     setApiError('');
-    
     try {
       const payload = {
         newPassword: formData.newPassword,
-        ...(!isFirstLogin && { currentPassword: formData.currentPassword })
+        confirmPassword: formData.confirmPassword,
+        ...(isFirstLogin
+          ? {}
+          : { currentPassword: formData.currentPassword }),
       };
-      
-      const response = await axios.post(
-        '/api/auth/change-password', 
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      
-      if (response.status === 200) {
-        setSuccessMessage('Contraseña actualizada exitosamente');
-        
+      const res = await api.post('/auth/change-password', payload);
+      if (res.status === 200) {
+        // 1) registrar en tbl_ms_hist_contrasena
+        await recordPasswordHistory(formData.newPassword);
+
+        // 2) mostrar éxito y redirigir
+        setSuccessMessage('Contraseña actualizada con éxito');
         if (isFirstLogin) {
           completeFirstLogin();
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 2000);
+          setTimeout(() => navigate('/dashboard'), 2000);
         } else {
           setTimeout(() => {
             logout();
@@ -120,17 +118,13 @@ const ChangePassword = () => {
           }, 2000);
         }
       }
-    } catch (error) {
-      if (error.response) {
-        const { status, data } = error.response;
-        
-        if (status === 401) {
-          setApiError('Contraseña actual incorrecta');
-        } else if (status === 400) {
+    } catch (err) {
+      if (err.response) {
+        const { status, data } = err.response;
+        if (status === 401) setApiError('Contraseña actual incorrecta');
+        else if (status === 400)
           setApiError(data.error || 'Datos inválidos');
-        } else {
-          setApiError('Error en el servidor. Intenta nuevamente.');
-        }
+        else setApiError('Error en el servidor. Intenta de nuevo.');
       } else {
         setApiError('Error de conexión. Verifica tu internet.');
       }
@@ -140,127 +134,119 @@ const ChangePassword = () => {
   };
 
   return (
-    <S.Container>
-      <S.Card>
-        <S.Header>
-          <S.Logo>ER</S.Logo>
-          <S.Title>Estética Rosales</S.Title>
-          <S.Subtitle>Medicina Estética Integral</S.Subtitle>
-        </S.Header>
-        
-        <S.FormContainer>
-          <S.FormTitle>
+    <div className="auth-page">
+      <div className="auth-container">
+
+        {/* Header */}
+        <div className="clinic-header">
+          <div className="clinic-logo">ER</div>
+          <h1 className="clinic-name">Estética Rosales</h1>
+          <p className="clinic-specialty">Medicina Estética Integral</p>
+        </div>
+
+        {/* Form */}
+        <div className="auth-form">
+          <h3>
             {isFirstLogin ? 'Configura tu contraseña' : 'Cambiar contraseña'}
-          </S.FormTitle>
-          
-          <S.FormDescription>
-            {isFirstLogin 
-              ? 'Por seguridad, debes cambiar tu contraseña antes de continuar'
-              : 'Ingresa tu contraseña actual y la nueva contraseña'}
-          </S.FormDescription>
-          
+          </h3>
+          <p className="form-description">
+            {isFirstLogin
+              ? 'Por seguridad, establece tu nueva contraseña.'
+              : 'Introduce tu contraseña actual y luego la nueva.'}
+          </p>
+
           {successMessage && (
-            <S.SuccessMessage>{successMessage}</S.SuccessMessage>
+            <div className="alert alert-success">{successMessage}</div>
           )}
-          
           {apiError && (
-            <S.ErrorMessage>{apiError}</S.ErrorMessage>
+            <div className="alert alert-danger">{apiError}</div>
           )}
-          
-          <S.Form onSubmit={handleSubmit}>
+
+          <form onSubmit={handleSubmit} noValidate>
             {!isFirstLogin && (
-              <S.FormGroup>
-                <S.Label>Contraseña actual</S.Label>
-                <S.Input
-                  type="password"
+              <div className="form-group">
+                <input
+                  type={showCurrent ? 'text' : 'password'}
                   name="currentPassword"
+                  placeholder="Contraseña actual"
                   value={formData.currentPassword}
                   onChange={handleChange}
-                  $hasError={!!errors.currentPassword}
-                  placeholder="Tu contraseña actual"
                 />
+                <span
+                  className="eye-icon"
+                  onClick={() => setShowCurrent(v => !v)}
+                >
+                  {showCurrent ? <BsEyeSlash /> : <BsEye />}
+                </span>
                 {errors.currentPassword && (
-                  <S.ErrorText>{errors.currentPassword}</S.ErrorText>
+                  <span className="error-message">
+                    {errors.currentPassword}
+                  </span>
                 )}
-              </S.FormGroup>
+              </div>
             )}
-            
-            <S.FormGroup>
-              <S.Label>Nueva contraseña</S.Label>
-              <S.Input
-                type="password"
+
+            <div className="form-group">
+              <input
+                type={showNew ? 'text' : 'password'}
                 name="newPassword"
+                placeholder="Nueva contraseña"
                 value={formData.newPassword}
                 onChange={handleChange}
-                $hasError={!!errors.newPassword}
-                placeholder="Mínimo 8 caracteres"
               />
+              <span
+                className="eye-icon"
+                onClick={() => setShowNew(v => !v)}
+              >
+                {showNew ? <BsEyeSlash /> : <BsEye />}
+              </span>
               {errors.newPassword && (
-                <S.ErrorText>{errors.newPassword}</S.ErrorText>
+                <span className="error-message">{errors.newPassword}</span>
               )}
-            </S.FormGroup>
-            
-            <S.FormGroup>
-              <S.Label>Confirmar nueva contraseña</S.Label>
-              <S.Input
-                type="password"
+            </div>
+
+            <div className="form-group">
+              <input
+                type={showConfirm ? 'text' : 'password'}
                 name="confirmPassword"
+                placeholder="Confirmar contraseña"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                $hasError={!!errors.confirmPassword}
-                placeholder="Repite tu nueva contraseña"
               />
+              <span
+                className="eye-icon"
+                onClick={() => setShowConfirm(v => !v)}
+              >
+                {showConfirm ? <BsEyeSlash /> : <BsEye />}
+              </span>
               {errors.confirmPassword && (
-                <S.ErrorText>{errors.confirmPassword}</S.ErrorText>
+                <span className="error-message">
+                  {errors.confirmPassword}
+                </span>
               )}
-            </S.FormGroup>
-            
-            <S.PasswordRequirements>
-              <h4>La contraseña debe contener:</h4>
-              <ul>
-                <li className={formData.newPassword.length >= 8 ? 'valid' : ''}>
-                  Mínimo 8 caracteres
-                </li>
-                <li className={/(?=.*[a-z])/.test(formData.newPassword) ? 'valid' : ''}>
-                  1 minúscula
-                </li>
-                <li className={/(?=.*[A-Z])/.test(formData.newPassword) ? 'valid' : ''}>
-                  1 mayúscula
-                </li>
-                <li className={/(?=.*\d)/.test(formData.newPassword) ? 'valid' : ''}>
-                  1 número
-                </li>
-                <li className={/(?=.*[!@#$%^&*])/.test(formData.newPassword) ? 'valid' : ''}>
-                  1 carácter especial
-                </li>
-                <li className={!/\s/.test(formData.newPassword) ? 'valid' : 'invalid'}>
-                  Sin espacios
-                </li>
-              </ul>
-            </S.PasswordRequirements>
-            
-            <S.Button 
-              type="submit" 
+            </div>
+
+            <button
+              type="submit"
+              className="auth-button"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Procesando...' : 'Cambiar contraseña'}
-            </S.Button>
-            
-            {!isFirstLogin && (
-              <S.CancelButton type="button" onClick={() => navigate('/dashboard')}>
-                Cancelar
-              </S.CancelButton>
-            )}
-          </S.Form>
-        </S.FormContainer>
-        
-        <S.Footer>
-          <p>© {new Date().getFullYear()} Clínica Estética Rosales</p>
-          <p>Todos los derechos reservados</p>
-        </S.Footer>
-      </S.Card>
-    </S.Container>
-  );
-};
+              {isSubmitting
+                ? 'Actualizando...'
+                : 'Actualizar Contraseña'}
+            </button>
+          </form>
+        </div>
 
-export default ChangePassword;
+        {/* Footer */}
+        <div className="footer">
+          © {new Date().getFullYear()} Centro Médico Dra. Alejandra Rosales | Todos
+          los derechos reservados
+        </div>
+      </div>
+
+      {/* Onda decorativa */}
+      <div className="wave" />
+    </div>
+  );
+}

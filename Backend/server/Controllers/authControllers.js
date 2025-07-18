@@ -8,8 +8,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const { sendResetEmail, sendVerificationEmail } = require('../utils/mailer');
+const { sendResetEmail, sendVerificationEmail, sendPasswordChangeEmail } = require('../utils/mailer');
 const { generateTempPassword, generateToken } = require('../helpers/tokenHelper');
+const BitacoraHelper = require('../helpers/bitacoraHelper');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -226,7 +227,14 @@ exports.login = async (req, res) => {
     delete safe.atr_intentos_fallidos;
     delete safe.atr_reset_token;
     delete safe.atr_reset_expiry;
-
+    // Registrar en bitácora el ingreso exitoso
+    await BitacoraHelper.registrarEvento({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_id_objetos: 1, // ID del objeto/pantalla de login
+      atr_accion: 'Ingreso',
+      atr_descripcion: 'Inicio de sesión exitoso',
+      ip_origen: req.ip
+    });
     res.json({ token, user: safe, message: 'Inicio de sesión exitoso' });
   } catch (error) {
     console.error('Error en login:', error);
@@ -295,6 +303,8 @@ exports.changePassword = async (req, res) => {
       atr_id_usuario: user.atr_id_usuario,
       atr_contrasena: hashedNew
     });
+
+    await sendPasswordChangeEmail(user.atr_correo_electronico, user.atr_nombre_usuario);
 
     res.json({ message: 'Contraseña actualizada exitosamente' });
   } catch (error) {
@@ -412,6 +422,8 @@ exports.resetPassword = async (req, res) => {
       atr_id_usuario: user.atr_id_usuario,
       atr_contrasena: hashedNew
     });
+
+    await sendPasswordChangeEmail(user.atr_correo_electronico, user.atr_nombre_usuario);
 
     res.json({ message: 'Contraseña restablecida exitosamente' });
   } catch (error) {

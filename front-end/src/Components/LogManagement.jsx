@@ -8,7 +8,7 @@ import './log-management.css';
 const LogManagement = () => {
   const { user, token } = useAuth();
   const [logs, setLogs] = useState([]);
-  const [filters, setFilters] = useState({ username: '', action: '', from: '', to: '' });
+  const [filters, setFilters] = useState({ atr_id_usuario: '', atr_accion: '', from: '', to: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -43,7 +43,7 @@ const LogManagement = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ username: '', action: '', from: '', to: '' });
+    setFilters({ atr_id_usuario: '', atr_accion: '', from: '', to: '' });
   };
 
   const handleDelete = async (id) => {
@@ -53,7 +53,7 @@ const LogManagement = () => {
       await axios.delete(`/api/admin/logs/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setLogs(prev => prev.filter(l => l.id !== id));
+      setLogs(prev => prev.filter(l => l.atr_id_bitacora !== id));
     } catch {
       setError('Error al eliminar registro');
     }
@@ -66,18 +66,18 @@ const LogManagement = () => {
       <Form className="mb-3">
         <Row className="align-items-end">
           <Col md={3}>
-            <Form.Label>Usuario</Form.Label>
+            <Form.Label>ID Usuario</Form.Label>
             <Form.Control
-              name="username"
-              value={filters.username}
+              name="atr_id_usuario"
+              value={filters.atr_id_usuario}
               onChange={handleChange}
             />
           </Col>
           <Col md={3}>
             <Form.Label>Acción</Form.Label>
             <Form.Control
-              name="action"
-              value={filters.action}
+              name="atr_accion"
+              value={filters.atr_accion}
               onChange={handleChange}
             />
           </Col>
@@ -118,26 +118,28 @@ const LogManagement = () => {
         <Table striped bordered hover>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Usuario</th>
+              <th>ID Bitácora</th>
+              <th>ID Usuario</th>
               <th>Acción</th>
               <th>Fecha</th>
+              <th>Descripción</th>
               {user?.role === 'admin' && <th>Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {logs.map(log => (
-              <tr key={log.id}>
-                <td>{log.id}</td>
-                <td>{log.username}</td>
-                <td>{log.action}</td>
-                <td>{new Date(log.createdAt).toLocaleString()}</td>
+              <tr key={log.atr_id_bitacora}>
+                <td>{log.atr_id_bitacora}</td>
+                <td>{log.atr_id_usuario}</td>
+                <td>{log.atr_accion}</td>
+                <td>{log.atr_fecha ? new Date(log.atr_fecha).toLocaleDateString() : ''}</td>
+                <td>{log.atr_descripcion}</td>
                 {user?.role === 'admin' && (
                   <td>
                     <Button
                       size="sm"
                       variant="outline-danger"
-                      onClick={() => handleDelete(log.id)}
+                      onClick={() => handleDelete(log.atr_id_bitacora)}
                     >
                       Eliminar
                     </Button>

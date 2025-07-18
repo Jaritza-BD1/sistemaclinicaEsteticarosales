@@ -1,0 +1,92 @@
+[2025-07-18T02:25:49.789Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[DB-ERROR] [2025-07-18T02:25:49.789Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[2025-07-18T02:27:29.842Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[DB-ERROR] [2025-07-18T02:27:29.842Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[2025-07-18T02:30:03.276Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[DB-ERROR] [2025-07-18T02:30:03.276Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[2025-07-18T03:06:29.108Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[DB-ERROR] [2025-07-18T03:06:29.108Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[2025-07-18T03:07:20.601Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[DB-ERROR] [2025-07-18T03:07:20.601Z] ERROR: Error al registrar en bitácora: notNull Violation: tbl_ms_bitacora.atr_id_usuario cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_id_objetos cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_accion cannot be null,
+notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
+
+[2025-07-18T03:13:40.214Z] ERROR: Error al registrar en bitácora: Cannot add or update a child row: a foreign key constraint fails (`clinica`.`tbl_ms_bitacora`, CONSTRAINT `tbl_ms_bitacora_ibfk_2` FOREIGN KEY (`atr_id_objetos`) REFERENCES `tbl_objetos` (`atr_id_objetos`))
+
+[DB-ERROR] [2025-07-18T03:13:40.214Z] ERROR: Error al registrar en bitácora: Cannot add or update a child row: a foreign key constraint fails (`clinica`.`tbl_ms_bitacora`, CONSTRAINT `tbl_ms_bitacora_ibfk_2` FOREIGN KEY (`atr_id_objetos`) REFERENCES `tbl_objetos` (`atr_id_objetos`))
+
+[2025-07-18 05:07:07] ERROR: Error al consultar bitácora: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''10'' at line 1
+
+[2025-07-18 05:07:07] ERROR: Error al consultar bitácora: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''10'' at line 1
+
+[2025-07-18 05:19:10] ERROR: Error al consultar bitácora: Assignment to constant variable.
+
+[2025-07-18 05:19:10] ERROR: Error al consultar bitácora: Assignment to constant variable.
+
+[2025-07-18 05:24:49] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:24:50] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:25:06] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:25:14] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:25:14] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:25:21] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:25:23] ERROR: Error al consultar bitácora: Table 'clinica.bitacora' doesn't exist
+
+[2025-07-18 05:31:01] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'order clause'
+
+[2025-07-18 05:31:01] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'order clause'
+
+[2025-07-18 05:31:29] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'order clause'
+
+[2025-07-18 05:31:29] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'order clause'
+
+[2025-07-18 05:35:33] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'where clause'
+
+[2025-07-18 05:35:41] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'where clause'
+
+[2025-07-18 05:35:41] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'where clause'
+
+[2025-07-18 05:35:46] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'where clause'
+

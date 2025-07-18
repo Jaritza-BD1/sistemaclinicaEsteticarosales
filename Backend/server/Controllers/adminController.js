@@ -26,12 +26,12 @@ async function listUsers(req, res, next) {
     const offset = (page - 1) * limit;
 
     const where = search
-      ? { username: { [Op.like]: `%${search}%` } }
+      ? { atr_usuario: { [Op.like]: `%${search}%` } }
       : {};
 
     const { rows, count } = await User.findAndCountAll({
       where,
-      order: [['createdAt','DESC']],
+      order: [['atr_fecha_creacion','DESC']],
       offset, limit
     });
 
@@ -53,31 +53,39 @@ async function listUsers(req, res, next) {
 // POST /api/admin/users
 async function createUser(req, res, next) {
   try {
-    const { username, email, password, autoGenerate } = req.body;
+    const { username, name, email, password, autoGenerate } = req.body;
+
+    // Validar que todos los campos requeridos estén presentes
+    if (!username || !name || !email) {
+      return res.status(400).json({ error: 'Usuario, nombre y email son obligatorios' });
+    }
 
     if (!/@[^@]+\.[^@]+$/.test(email)) {
       return res.status(400).json({ error: 'Email inválido' });
     }
 
     const rawPwd = autoGenerate ? generarContraseña() : password;
-    const hash   = await bcrypt.hash(rawPwd, 12);
+    const hash = await bcrypt.hash(rawPwd, 12);
 
     const expiresAt = new Date(
       Date.now() + (parseInt(process.env.ADMIN_DIAS_VIGENCIA, 10) || 30) * 86400000
     );
 
     const user = await User.create({
-      username,
-      email,
-      password: hash,
-      password_expires_at: expiresAt,
-      last_password_change: new Date()
+      atr_usuario: username.toUpperCase(),
+      atr_nombre_usuario: name,
+      atr_correo_electronico: email.toLowerCase(),
+      atr_contrasena: hash,
+      atr_fecha_vencimiento: expiresAt,
+      atr_estado_usuario: 'ACTIVO',
+      atr_primer_ingreso: true,
+      atr_id_rol: 2
     });
 
     await PasswordHistory.create({
-      ID_USUARIO: user.id,
-      CONTRASENA: hash,
-      CREADO_POR: req.user.username
+      atr_id_usuario: user.atr_id_usuario,
+      atr_contrasena: hash,
+      atr_creado_por: req.user.atr_usuario
     });
 
     res.status(201).json({
@@ -96,7 +104,7 @@ async function createUser(req, res, next) {
 async function blockUser(req, res, next) {
   try {
     const { id } = req.params;
-    await User.update({ status: 'blocked' }, { where: { id } });
+    await User.update({ atr_estado_usuario: 'BLOQUEADO' }, { where: { atr_id_usuario: id } });
     res.json({ success: true, message: 'Usuario bloqueado' });
   } catch (err) {
     console.error('Error bloqueando usuario:', err);
@@ -113,17 +121,17 @@ async function resetUserPassword(req, res, next) {
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     const nuevaPlain = generarContraseña();
-    const hash       = await bcrypt.hash(nuevaPlain, 12);
+    const hash = await bcrypt.hash(nuevaPlain, 12);
 
     await user.update({
-      password: hash,
-      last_password_change: new Date()
+      atr_contrasena: hash,
+      atr_primer_ingreso: true
     });
 
     await PasswordHistory.create({
-      ID_USUARIO: user.id,
-      CONTRASENA: hash,
-      CREADO_POR: req.user.username
+      atr_id_usuario: user.atr_id_usuario,
+      atr_contrasena: hash,
+      atr_creado_por: req.user.atr_usuario
     });
 
     res.json({
@@ -145,18 +153,25 @@ async function listLogs(req, res, next) {
     const where = {};
 
     if (usuario) {
-      where.idUsuario = usuario;
+      where.atr_id_usuario = usuario;
     }
     if (from || to) {
-      where.fecha = {};
-      if (from) where.fecha[Op.gte] = new Date(from);
-      if (to)   where.fecha[Op.lte] = new Date(to);
+      where.atr_fecha = {};
+      if (from) where.atr_fecha[Op.gte] = new Date(from);
+      if (to)   where.atr_fecha[Op.lte] = new Date(to);
     }
 
     const logs = await Bitacora.findAll({
       where,
-      order: [['fecha','DESC']],
-      attributes: ['id','fecha','idUsuario','idObjeto','accion','descripcion']
+      order: [['atr_fecha','DESC']],
+      attributes: [
+        ['atr_id_bitacora', 'id'],
+        ['atr_fecha', 'fecha'],
+        ['atr_id_usuario', 'idUsuario'],
+        ['atr_id_objetos', 'idObjeto'],
+        ['atr_accion', 'accion'],
+        ['atr_descripcion', 'descripcion']
+      ]
     });
 
     res.json(logs);
@@ -171,7 +186,7 @@ async function listLogs(req, res, next) {
 async function deleteLogEntry(req, res, next) {
   try {
     const { id } = req.params;
-    await Bitacora.destroy({ where: { id } });
+    await Bitacora.destroy({ where: { atr_id_bitacora: id } });
     res.json({ success: true, message: 'Registro eliminado' });
   } catch (err) {
     console.error('Error eliminando log:', err);
