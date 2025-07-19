@@ -167,11 +167,48 @@ async function sendPasswordChangeEmail(email, nombre) {
   }
 }
 
+// Envío de código 2FA por email
+async function send2FAEmailCode(email, code, nombre) {
+  try {
+    await transporter.sendMail({
+      from: `"Clínica Estética Rosales" <${process.env.SMTP_USER || 'clinicaesteticarosales@gmail.com'}>`,
+      to: email,
+      subject: 'Código de verificación 2FA - Clínica Estética Rosales',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">¡Hola, ${nombre}!</h2>
+          <p>Has solicitado un código de verificación para completar tu inicio de sesión.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; display: inline-block;">
+              <h3 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${code}</h3>
+            </div>
+          </div>
+          <p><strong>Importante:</strong></p>
+          <ul>
+            <li>Este código expira en 10 minutos</li>
+            <li>No compartas este código con nadie</li>
+            <li>Si no solicitaste este código, ignora este email</li>
+          </ul>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 12px;">
+            Este es un correo automático, por favor no respondas a este mensaje.
+          </p>
+        </div>
+      `
+    });
+    console.log(`Código 2FA enviado por email a: ${email}`);
+  } catch (error) {
+    console.error('Error enviando código 2FA por email:', error);
+    throw error;
+  }
+}
+
 // Exportar todas las funciones
 module.exports = { 
   sendResetEmail,
   sendVerificationEmail,
   sendApprovalEmail,
   send2FABackupCodesEmail,
-  sendPasswordChangeEmail
+  sendPasswordChangeEmail,
+  send2FAEmailCode
 };

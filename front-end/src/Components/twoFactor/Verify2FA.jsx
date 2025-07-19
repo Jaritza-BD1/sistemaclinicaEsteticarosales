@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';  // Ruta corregida
 
 const Verify2FA = ({ userId, onSuccess, userEmail }) => {
+  console.log('=== VERIFY2FA COMPONENT RENDERED ===');
+  console.log('Verify2FA: Received props:', { userId, userEmail });
+  console.log('Verify2FA: userId type:', typeof userId);
+  console.log('Verify2FA: userId value:', userId);
+  
   const [token, setToken] = useState('');
   const [backupCode, setBackupCode] = useState('');
   const [error, setError] = useState('');
@@ -9,7 +14,6 @@ const Verify2FA = ({ userId, onSuccess, userEmail }) => {
   const [resendDisabled, setResendDisabled] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
   const [activeTab, setActiveTab] = useState('app');
-  const [showAnimation, setShowAnimation] = useState(true);
 
   // Temporizador para reenvío de código
   useEffect(() => {
@@ -23,21 +27,32 @@ const Verify2FA = ({ userId, onSuccess, userEmail }) => {
     return () => clearTimeout(timer);
   }, [resendDisabled, resendTimer]);
 
-  // Animación de entrada
-  useEffect(() => {
-    const timer = setTimeout(() => setShowAnimation(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+
 
   const handleTokenSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    
+    if (!userId) {
+      setError('Error: ID de usuario no disponible');
+      setIsLoading(false);
+      return;
+    }
+    
+    const payload = { userId: parseInt(userId), token };
+    console.log('Verify2FA: Sending payload:', payload);
+    
     try {
-      const response = await api.post('/auth/2fa/verify-login', { userId, token });
+      const response = await api.post('/auth/2fa/verify-login', payload);
       onSuccess(response.data);
     } catch (err) {
-      setError('Código inválido. Por favor, inténtalo de nuevo.');
+      console.log('Verify2FA: Error response:', err.response?.data);
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Código inválido. Por favor, inténtalo de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -48,10 +63,17 @@ const Verify2FA = ({ userId, onSuccess, userEmail }) => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await api.post('/auth/2fa/verify-login', { userId, token: backupCode });
+      const response = await api.post('/auth/2fa/verify-login', { 
+        userId: parseInt(userId), 
+        token: backupCode 
+      });
       onSuccess(response.data);
     } catch (err) {
-      setError('Código de respaldo inválido. Por favor, verifica.');
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Código de respaldo inválido. Por favor, verifica.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -60,10 +82,25 @@ const Verify2FA = ({ userId, onSuccess, userEmail }) => {
   const handleResendCode = async () => {
     setResendDisabled(true);
     setError('');
+    
+    if (!userId) {
+      setError('Error: ID de usuario no disponible');
+      setResendDisabled(false);
+      return;
+    }
+    
+    const payload = { userId: parseInt(userId) };
+    console.log('Verify2FA: Resending code with payload:', payload);
+    
     try {
-      await api.post('/auth/2fa/resend-code', { userId });
+      await api.post('/auth/2fa/resend-code', payload);
     } catch (err) {
-      setError('Error al reenviar el código. Inténtalo de nuevo.');
+      console.log('Verify2FA: Resend code error:', err.response?.data);
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Error al reenviar el código. Inténtalo de nuevo.');
+      }
     }
   };
 
@@ -72,10 +109,17 @@ const Verify2FA = ({ userId, onSuccess, userEmail }) => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await api.post('/auth/2fa/verify-email-code', { userId, token });
+      const response = await api.post('/auth/2fa/verify-email-code', { 
+        userId: parseInt(userId), 
+        token 
+      });
       onSuccess(response.data);
     } catch (err) {
-      setError('Código inválido. Por favor, inténtalo de nuevo.');
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Código inválido. Por favor, inténtalo de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }

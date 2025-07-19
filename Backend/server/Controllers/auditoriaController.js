@@ -1,5 +1,5 @@
 // En tus controladores o servicios
-const BitacoraHelper = require('../helpers/bitacoraHelper');
+const BitacoraService = require('../services/bitacoraService');
 
 // Ejemplo en un middleware de autenticación
 async function login(req, res, next) {
@@ -7,7 +7,7 @@ async function login(req, res, next) {
         // Lógica de autenticación...
         
         // Registrar en bitácora
-        await BitacoraHelper.registrarEvento({
+        await BitacoraService.registrarEvento({
             atr_id_usuario: user.id,
             atr_id_objetos: 1, // ID del objeto "Login"
             atr_accion: 'Ingreso',

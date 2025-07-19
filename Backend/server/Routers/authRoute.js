@@ -123,7 +123,36 @@ router.delete('/2fa/disable', authenticate, twoFAController.disable2FA);
 router.get('/2fa/new-backup-codes', authenticate, twoFAController.generateNewBackupCodes);
 
 // Ruta de verificación durante login (no requiere autenticación previa)
-router.post('/2fa/verify-login', twoFAController.verifyLogin2FA);
+router.post(
+  '/2fa/verify-login',
+  [
+    body('userId').isInt({ min: 1 }).withMessage('ID de usuario requerido y debe ser entero'),
+    body('token').notEmpty().withMessage('Token requerido')
+  ],
+  validateRequest,
+  twoFAController.verifyLogin2FA
+);
+
+// Ruta para reenviar código 2FA por email (no requiere autenticación previa)
+router.post(
+  '/2fa/resend-code',
+  [
+    body('userId').isInt({ min: 1 }).withMessage('ID de usuario requerido y debe ser entero')
+  ],
+  validateRequest,
+  twoFAController.resend2FACode
+);
+
+// Ruta para verificar código 2FA enviado por email (no requiere autenticación previa)
+router.post(
+  '/2fa/verify-email-code',
+  [
+    body('userId').isInt({ min: 1 }).withMessage('ID de usuario requerido y debe ser entero'),
+    body('token').notEmpty().withMessage('Token requerido')
+  ],
+  validateRequest,
+  twoFAController.verifyEmail2FACode
+);
 
 
 module.exports = router;

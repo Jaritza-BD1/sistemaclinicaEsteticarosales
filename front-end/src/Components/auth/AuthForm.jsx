@@ -9,6 +9,8 @@ import '../../asset/Style/ForgotPassword.css';
 import Setup2FA from '../twoFactor/Setup2FA';
 import Verify2FA from '../twoFactor/Verify2FA'; // <-- NUEVO
 
+const maxLoginAttempts = 3;
+
 const AuthForm = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -28,7 +30,6 @@ const AuthForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
-  const [maxLoginAttempts, setMaxLoginAttempts] = useState(3);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
 
@@ -36,24 +37,23 @@ const AuthForm = () => {
   const [twoFARequired, setTwoFARequired] = useState(false);
   const [userIdFor2FA, setUserIdFor2FA] = useState(null);
   const [userEmailFor2FA, setUserEmailFor2FA] = useState(''); // <-- NUEVO
-  const [twoFAToken, setTwoFAToken] = useState('');
-  const [twoFAError, setTwoFAError] = useState('');
+
+  // Debug: Monitorear cambios en userIdFor2FA
+  useEffect(() => {
+    console.log('AuthForm: userIdFor2FA changed to:', userIdFor2FA);
+  }, [userIdFor2FA]);
 
   // Mostrar/ocultar contraseña
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  // Carga del parámetro ADMIN_INTENTOS_INVALIDOS
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.get('/params/ADMIN_INTENTOS_INVALIDOS');
-        setMaxLoginAttempts(parseInt(res.data.value, 10) || 3);
-      } catch (err) {
-        console.error('Error al cargar parámetros:', err);
-      }
-    })();
-  }, []);
+  // Estados para requisitos de contraseña
+  const [pwdCriteria, setPwdCriteria] = useState({
+    length: false,
+    lowercase: false,
+    uppercase: false,
+    number: false,
+    symbol: false,
+  });
 
   // Prevención de copiar/pegar en campos sensibles
   const preventCopyPaste = e => {
@@ -77,7 +77,16 @@ const AuthForm = () => {
     if (name === 'atr_contrasena' || name === 'confirmPassword') {
       v = v.replace(/\s/g, '').slice(0, 255);
     }
-
+    // Actualizar criterios de contraseña en tiempo real
+    if (name === 'atr_contrasena') {
+      setPwdCriteria({
+        length: v.length >= 8,
+        lowercase: /[a-z]/.test(v),
+        uppercase: /[A-Z]/.test(v),
+        number: /\d/.test(v),
+        symbol: /[@$!%*?&]/.test(v),
+      });
+    }
     setFormData(f => ({ ...f, [name]: v }));
     if (errors[name]) setErrors(e => ({ ...e, [name]: null }));
   };
@@ -112,11 +121,11 @@ const AuthForm = () => {
 
     // Contraseña: al menos 8 con mayúscula, minúscula, número y símbolo
     const pwdRe =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!atr_contrasena) e.atr_contrasena = 'Contraseña requerida';
     else if (!pwdRe.test(atr_contrasena))
       e.atr_contrasena =
-        'Minúscula, Mayúscula, Número y símbolo (!@#$%^&*)';
+        'Minúscula, Mayúscula, Número y símbolo (@$!%*?&)';
     if (!isLogin && atr_contrasena !== confirmPassword)
       e.confirmPassword = 'Las contraseñas no coinciden';
 
@@ -128,7 +137,6 @@ const AuthForm = () => {
   const handleSubmit = async e => {
     e.preventDefault();
     setApiError('');
-    setTwoFAError('');
 
     if (!validate()) return;
 
@@ -154,8 +162,11 @@ const AuthForm = () => {
           return;
         }
         if (data.twoFARequired) {
+          console.log('Frontend: 2FA required, received data:', data);
+          console.log('Frontend: userId type:', typeof data.userId, 'value:', data.userId);
           setTwoFARequired(true);
           setUserIdFor2FA(data.userId);
+          console.log('AuthForm: Set userIdFor2FA to:', data.userId);
           setUserEmailFor2FA(data.email || ''); // <-- GUARDAR EMAIL
           return;
         }
@@ -171,6 +182,7 @@ const AuthForm = () => {
           name: formData.atr_nombre_usuario,
           email: formData.atr_correo_electronico,
           password: formData.atr_contrasena,
+          confirmPassword: formData.confirmPassword,
         });
         setRegistrationSuccess(true); // Mostrar mensaje de éxito
         // setShow2FASetup(true); // <-- ELIMINADO: ya no se muestra el setup de 2FA tras registro
@@ -203,27 +215,6 @@ const AuthForm = () => {
   };
 
   // Verificación 2FA
-  const handle2FAVerify = async () => {
-    if (!twoFAToken) {
-      setTwoFAError('Código requerido');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const { data } = await api.post('/auth/2fa/verify-login', {
-        userId: userIdFor2FA,
-        token: twoFAToken,
-      });
-      localStorage.setItem('token', data.token);
-      login(data.token);
-      navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
-    } catch {
-      setTwoFAError('Código inválido o expirado');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Alternar entre login y registro
   const toggleAuthMode = () => {
     setIsLogin(v => !v);
@@ -233,8 +224,7 @@ const AuthForm = () => {
     setLoginAttempts(0);
     setRegistrationSuccess(false);
     setTwoFARequired(false);
-    setTwoFAToken('');
-    setTwoFAError('');
+    setUserEmailFor2FA(''); // <-- LIMPIAR EMAIL
     setShowPassword(false);
     setShowConfirm(false);
   };
@@ -266,6 +256,10 @@ const AuthForm = () => {
   }
 
   if (twoFARequired) {
+    console.log('=== AUTHFORM RENDERING VERIFY2FA ===');
+    console.log('AuthForm: Rendering Verify2FA with userId:', userIdFor2FA);
+    console.log('AuthForm: userIdFor2FA type:', typeof userIdFor2FA);
+    console.log('AuthForm: userEmailFor2FA:', userEmailFor2FA);
     return (
       <Verify2FA
         userId={userIdFor2FA}
@@ -358,6 +352,7 @@ const AuthForm = () => {
                 placeholder="Contraseña"
                 value={formData.atr_contrasena}
                 onChange={handleChange}
+                className={errors.atr_contrasena ? 'error' : ''}
               />
               <span className="eye-icon" onClick={() => setShowPassword(v => !v)}>
                 {showPassword ? <BsEyeSlash /> : <BsEye />}
@@ -366,6 +361,26 @@ const AuthForm = () => {
                 <span className="error-message">{errors.atr_contrasena}</span>
               )}
             </div>
+            {/* Requisitos de contraseña visuales */}
+            {!isLogin && (
+              <ul className="password-criteria-list">
+                <li className={pwdCriteria.length ? 'valid' : 'invalid'}>
+                  Mínimo 8 caracteres
+                </li>
+                <li className={pwdCriteria.lowercase ? 'valid' : 'invalid'}>
+                  Al menos una minúscula
+                </li>
+                <li className={pwdCriteria.uppercase ? 'valid' : 'invalid'}>
+                  Al menos una mayúscula
+                </li>
+                <li className={pwdCriteria.number ? 'valid' : 'invalid'}>
+                  Al menos un número
+                </li>
+                <li className={pwdCriteria.symbol ? 'valid' : 'invalid'}>
+                  Al menos un símbolo (@$!%*?&)
+                </li>
+              </ul>
+            )}
 
             {!isLogin && (
               <div className="form-group">

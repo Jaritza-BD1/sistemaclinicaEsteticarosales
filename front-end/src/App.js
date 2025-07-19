@@ -16,6 +16,7 @@ import ResetPassword from './Components/auth/ResetPassword';
 import EmailVerification from './Components/twoFactor/Verify2FA';
 import CitasRoutes from './routes/CitasRoutes';
 import EmailVerified from './pages/EmailVerified';
+import ProfilePage from './pages/ProfilePage';
 
 
 // Componente para rutas protegidas
@@ -88,6 +89,14 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          {/* Ruta del perfil, idealmente protegida */}
+          <Route
+            path="/perfil/editar"
+            element={
+              <ProtectedRoute>  
+                <ProfilePage />
+              </ProtectedRoute>
+            }/>
 
           <Route path="/verify-email" element={
               <EmailVerification />

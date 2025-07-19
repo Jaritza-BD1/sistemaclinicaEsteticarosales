@@ -139,6 +139,19 @@ const User = sequelize.define('tbl_ms_usuario', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     field: 'atr_2fa_enabled'
+  },
+  atr_email_2fa_code: {
+    type: DataTypes.STRING(6),
+    field: 'atr_email_2fa_code'
+  },
+  atr_email_2fa_expiry: {
+    type: DataTypes.DATE,
+    field: 'atr_email_2fa_expiry'
+  },
+  atr_avatar: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'atr_avatar',
   }
 }, {
   tableName: 'tbl_ms_usuario',

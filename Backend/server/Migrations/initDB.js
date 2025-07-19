@@ -58,8 +58,14 @@ async function runMigrations() {
         atr_reset_expiry DATETIME,
         atr_verification_token VARCHAR(255),
         atr_token_expiry DATETIME,
-        atr_intentos_fallidos INT DEFAULT 0
+        atr_intentos_fallidos INT DEFAULT 0,
+        atr_avatar VARCHAR(255)
       ) ENGINE=InnoDB;
+    `);
+
+    // Agregar columna de avatar si no existe
+    await connection.query(`
+      ALTER TABLE tbl_ms_usuario ADD COLUMN IF NOT EXISTS atr_avatar VARCHAR(255) NULL;
     `);
 
   

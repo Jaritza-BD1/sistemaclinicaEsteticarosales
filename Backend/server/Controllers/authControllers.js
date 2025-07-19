@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { sendResetEmail, sendVerificationEmail, sendPasswordChangeEmail } = require('../utils/mailer');
 const { generateTempPassword, generateToken } = require('../helpers/tokenHelper');
-const BitacoraHelper = require('../helpers/bitacoraHelper');
+const BitacoraService = require('../services/bitacoraService');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -210,7 +210,14 @@ exports.login = async (req, res) => {
     }
 
     if (user.atr_2fa_enabled) {
-      return res.json({ twoFARequired: true, userId: user.atr_id_usuario });
+      console.log('Login: 2FA required for user:', { 
+        userId: user.atr_id_usuario, 
+        username: user.atr_usuario 
+      });
+      const response = { twoFARequired: true, userId: user.atr_id_usuario };
+      console.log('Login: Sending response:', response);
+      console.log('Login: Response type check - userId type:', typeof user.atr_id_usuario);
+      return res.json(response);
     }
 
     const token = jwt.sign(
@@ -228,7 +235,7 @@ exports.login = async (req, res) => {
     delete safe.atr_reset_token;
     delete safe.atr_reset_expiry;
     // Registrar en bitácora el ingreso exitoso
-    await BitacoraHelper.registrarEvento({
+    await BitacoraService.registrarEvento({
       atr_id_usuario: user.atr_id_usuario,
       atr_id_objetos: 1, // ID del objeto/pantalla de login
       atr_accion: 'Ingreso',

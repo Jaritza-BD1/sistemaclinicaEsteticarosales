@@ -1,17 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import api from '../../services/api'; // Usar el servicio centralizado
+import { fetchBitacora } from '../../services/bitacoraService';
 import './bitacora-consulta.css'; // Asume que crearemos este archivo CSS para estilos
 // import { format } from 'date-fns'; // Si necesitas un formato de fecha más específico en el frontend
 // Importa tu contexto de autenticación si necesitas el ID del usuario para algo más allá de los filtros
 // import { useAuth } from '../../context/AuthContext'; 
+import { useNavigate } from 'react-router-dom';
 
 // Asume que tu backend se ejecuta en http://localhost:3000 o la URL que corresponda
 
+function exportToCSV(data, filename = 'bitacora.csv') {
+    if (!data || !data.length) return;
+    const header = Object.keys(data[0]);
+    const csvRows = [header.join(',')];
+    for (const row of data) {
+        csvRows.push(header.map(field => '"' + String(row[field]).replace(/"/g, '""') + '"').join(','));
+    }
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
 const BitacoraConsulta = () => {
+    const navigate = useNavigate();
     // Estados para los filtros
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
     const [idUsuarioFiltro, setIdUsuarioFiltro] = useState(''); // Cambiado a ID para coincidir con el backend
+    const [nombreUsuarioFiltro, setNombreUsuarioFiltro] = useState('');
+    const [usuarioSugerencias, setUsuarioSugerencias] = useState([]);
+    const [objetoFiltro, setObjetoFiltro] = useState('');
+    const [objetoSugerencias, setObjetoSugerencias] = useState([]);
     const [accionFiltro, setAccionFiltro] = useState('');
     const [eventos, setEventos] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -20,6 +43,40 @@ const BitacoraConsulta = () => {
     // Estados para paginación
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10; // Coincide con el límite que se enviará al backend
+
+    // Autocompletar usuarios
+    const fetchUsuarios = async (nombre) => {
+        if (!nombre) return setUsuarioSugerencias([]);
+        try {
+            const res = await fetch(`/api/usuarios?search=${encodeURIComponent(nombre)}`);
+            const data = await res.json();
+            setUsuarioSugerencias(data || []);
+        } catch {
+            setUsuarioSugerencias([]);
+        }
+    };
+    // Autocompletar objetos
+    const fetchObjetos = async (nombre) => {
+        if (!nombre) return setObjetoSugerencias([]);
+        try {
+            const res = await fetch(`/api/objetos?search=${encodeURIComponent(nombre)}`);
+            const data = await res.json();
+            setObjetoSugerencias(data || []);
+        } catch {
+            setObjetoSugerencias([]);
+        }
+    };
+
+    // useEffect para autocompletar usuario
+    useEffect(() => {
+        if (nombreUsuarioFiltro) fetchUsuarios(nombreUsuarioFiltro);
+        else setUsuarioSugerencias([]);
+    }, [nombreUsuarioFiltro]);
+    // useEffect para autocompletar objeto
+    useEffect(() => {
+        if (objetoFiltro) fetchObjetos(objetoFiltro);
+        else setObjetoSugerencias([]);
+    }, [objetoFiltro]);
 
     // useEffect para cargar la bitácora al montar el componente o cuando cambie la página
     const cargarBitacora = useCallback(async (page = 1) => {
@@ -51,10 +108,11 @@ const BitacoraConsulta = () => {
         if (fechaInicio) queryParams.fechaInicio = fechaInicio;
         if (fechaFin) queryParams.fechaFin = fechaFin;
         if (idUsuarioFiltro) queryParams.atr_id_usuario = idUsuarioFiltro;
+        if (objetoFiltro) queryParams.atr_id_objetos = objetoFiltro;
         if (accionFiltro) queryParams.atr_accion = accionFiltro;
 
         try {
-            const response = await api.get('/bitacora/consultar', { params: queryParams });
+            const response = await fetchBitacora(queryParams);
             if (response.data.success) {
                 setEventos(response.data.data);
             } else {
@@ -66,7 +124,7 @@ const BitacoraConsulta = () => {
         } finally {
             setLoading(false);
         }
-    }, [fechaInicio, fechaFin, idUsuarioFiltro, accionFiltro, itemsPerPage]);
+    }, [fechaInicio, fechaFin, idUsuarioFiltro, objetoFiltro, accionFiltro, itemsPerPage]);
 
     useEffect(() => {
         cargarBitacora(currentPage);
@@ -86,46 +144,60 @@ const BitacoraConsulta = () => {
     };
 
     const handleExportarClick = () => {
-        alert('Funcionalidad de exportación aún no implementada.');
-        // Aquí iría la lógica para llamar a una API de exportación o generar un archivo CSV/Excel en el frontend
+        exportToCSV(eventos, 'bitacora.csv');
     };
 
     return (
         <div className="bitacora-container">
+            <div className="bitacora-nav">
+                <button onClick={() => navigate('/admin/bitacora/consulta')}>Consulta</button>
+                <button onClick={() => navigate('/admin/bitacora/estadisticas')}>Estadísticas</button>
+            </div>
             <h1>Consulta de Bitácora del Sistema</h1>
 
             <div className="filter-section">
-                <label htmlFor="fechaInicio">Fecha Inicial:</label>
+                <label htmlFor="nombreUsuarioFiltro">Usuario:</label>
                 <input
-                    type="date"
-                    id="fechaInicio"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
+                    type="text"
+                    id="nombreUsuarioFiltro"
+                    placeholder="Buscar usuario..."
+                    value={nombreUsuarioFiltro}
+                    onChange={e => setNombreUsuarioFiltro(e.target.value)}
+                    autoComplete="off"
                 />
-
+                {usuarioSugerencias.length > 0 && (
+                    <ul className="autocomplete-list">
+                        {usuarioSugerencias.map(u => (
+                            <li key={u.id} onClick={() => { setIdUsuarioFiltro(u.id); setNombreUsuarioFiltro(u.nombre); setUsuarioSugerencias([]); }}>
+                                {u.nombre}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <label htmlFor="objetoFiltro" className="ml-20">Objeto:</label>
+                <input
+                    type="text"
+                    id="objetoFiltro"
+                    placeholder="Buscar objeto..."
+                    value={objetoFiltro}
+                    onChange={e => setObjetoFiltro(e.target.value)}
+                    autoComplete="off"
+                />
+                {objetoSugerencias.length > 0 && (
+                    <ul className="autocomplete-list">
+                        {objetoSugerencias.map(o => (
+                            <li key={o.id} onClick={() => { setObjetoFiltro(o.id); setObjetoSugerencias([]); }}>
+                                {o.nombre}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <label htmlFor="fechaInicio" className="ml-20">Fecha Inicial:</label>
+                <input type="date" id="fechaInicio" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
                 <label htmlFor="fechaFin" className="ml-20">Fecha Final:</label>
-                <input
-                    type="date"
-                    id="fechaFin"
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                />
-
-                <label htmlFor="idUsuarioFiltro" className="ml-20">ID Usuario:</label>
-                <input
-                    type="number" // Cambiado a number para ID
-                    id="idUsuarioFiltro"
-                    placeholder="ID de Usuario"
-                    value={idUsuarioFiltro}
-                    onChange={(e) => setIdUsuarioFiltro(e.target.value)}
-                />
-
+                <input type="date" id="fechaFin" value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
                 <label htmlFor="accionFiltro" className="ml-20">Acción:</label>
-                <select
-                    id="accionFiltro"
-                    value={accionFiltro}
-                    onChange={(e) => setAccionFiltro(e.target.value)}
-                >
+                <select id="accionFiltro" value={accionFiltro} onChange={e => setAccionFiltro(e.target.value)}>
                     <option value="">Todas</option>
                     <option value="Ingreso">Ingreso</option>
                     <option value="Nuevo">Nuevo</option>
@@ -133,7 +205,6 @@ const BitacoraConsulta = () => {
                     <option value="Delete">Delete</option>
                     <option value="Consulta">Consulta</option>
                 </select>
-
                 <button onClick={handleConsultarClick}>Consultar</button>
                 <button className="export-button" onClick={handleExportarClick}>Exportar</button>
             </div>

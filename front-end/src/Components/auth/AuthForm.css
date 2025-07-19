@@ -17,8 +17,8 @@ body, .auth-page {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   width: 100%;
-  max-width: 380px;
-  padding: 2rem;
+  max-width: 340px;
+  padding: 1.2rem 1rem 1.5rem 1rem;
   position: relative;
   z-index: 1;
   text-align: center;
@@ -59,13 +59,13 @@ body, .auth-page {
 /* 5. Cada campo con espacio uniforme */
 .form-group {
   position: relative;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 /* 5.1. Inputs */
 .form-group input {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 2.2rem 0.75rem 1rem;
   border: 1px solid #DDD;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -81,11 +81,13 @@ body, .auth-page {
 /* 5.2. Icono ojo */
 .eye-icon {
   position: absolute;
-  top: 50%; right: 0.75rem;
+  top: 50%; right: 0.9rem;
   transform: translateY(-50%);
   cursor: pointer;
   color: #888;
   transition: color 0.2s;
+  font-size: 1.15em;
+  z-index: 2;
 }
 
 .eye-icon:hover {
@@ -178,6 +180,37 @@ body, .auth-page {
   color: #e74c3c;
 }
 
+/* 11. Lista de requisitos de contraseña */
+.password-criteria-list {
+  list-style: none;
+  padding: 0 0 0 8px;
+  margin: 0.3rem 0 0 0;
+  text-align: left;
+  font-size: 0.85em;
+}
+.password-criteria-list li {
+  margin-bottom: 2px;
+  padding-left: 1.2em;
+  position: relative;
+  color: #b00020;
+  transition: color 0.2s;
+}
+.password-criteria-list li.valid {
+  color: #2ecc40;
+}
+.password-criteria-list li.invalid::before {
+  content: '✗';
+  color: #e74c3c;
+  position: absolute;
+  left: 0;
+}
+.password-criteria-list li.valid::before {
+  content: '✓';
+  color: #2ecc40;
+  position: absolute;
+  left: 0;
+}
+
 /* 10. Ocultar label accesible si lo necesitas */
 .visually-hidden {
   position: absolute;
@@ -186,6 +219,29 @@ body, .auth-page {
   overflow: hidden;
   clip: rect(0,0,0,0);
   white-space: nowrap; border: 0;
+}
+
+@media (max-width: 400px) {
+  .auth-container {
+    max-width: 98vw;
+    padding: 0.7rem 0.2rem 1rem 0.2rem;
+  }
+  .form-group input {
+    font-size: 0.95em;
+    padding: 0.7rem 2.2rem 0.7rem 0.7rem;
+  }
+  .auth-form h2 {
+    font-size: 1.1rem;
+  }
+  .clinic-logo {
+    width: 56px;
+    height: 56px;
+    font-size: 1.1rem;
+  }
+  .footer {
+    font-size: 0.7rem;
+    padding-top: 0.5rem;
+  }
 }
 
 

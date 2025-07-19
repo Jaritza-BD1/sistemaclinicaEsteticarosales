@@ -252,3 +252,96 @@ Si estás migrando desde la versión anterior:
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles. 
+
+# Bitácora API
+
+## Endpoints
+
+### 1. Registrar evento en la bitácora
+- **POST** `/bitacora/registrar`
+- **Body:**
+  - `accion` (string, requerido): Acción realizada (ej: 'Ingreso', 'Update', 'Delete', etc.)
+  - `descripcion` (string, requerido): Descripción del evento
+  - `idUsuario` (int, requerido): ID del usuario que realiza la acción
+  - `idObjeto` (int, requerido): ID del objeto/pantalla
+- **Ejemplo:**
+```json
+{
+  "accion": "Ingreso",
+  "descripcion": "Inicio de sesión exitoso",
+  "idUsuario": 1,
+  "idObjeto": 2
+}
+```
+- **Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": { "idRegistro": 123 },
+  "message": "Evento de bitácora registrado exitosamente."
+}
+```
+
+### 2. Consultar eventos de la bitácora
+- **GET** `/bitacora/consultar`
+- **Query params (opcionales):**
+  - `atr_id_usuario` (int): Filtrar por usuario
+  - `atr_id_objetos` (int): Filtrar por objeto
+  - `atr_accion` (string): Filtrar por acción
+  - `fechaInicio` (YYYY-MM-DD): Fecha inicial
+  - `fechaFin` (YYYY-MM-DD): Fecha final
+  - `limit` (int): Límite de resultados (default: 100)
+  - `offset` (int): Offset para paginación
+- **Ejemplo:**
+```
+GET /bitacora/consultar?atr_id_usuario=1&fechaInicio=2024-01-01&fechaFin=2024-01-31
+```
+- **Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "atr_id_bitacora": 123,
+      "atr_fecha": "2024-01-01",
+      "atr_id_usuario": 1,
+      "atr_id_objetos": 2,
+      "atr_accion": "Ingreso",
+      "atr_descripcion": "Inicio de sesión exitoso",
+      "ip_origen": "127.0.0.1"
+    }
+  ],
+  "message": "Consulta de bitácora realizada exitosamente."
+}
+```
+
+### 3. Consultar estadísticas de la bitácora
+- **GET** `/bitacora/estadisticas`
+- **Query params (opcionales):**
+  - `fechaInicio` (YYYY-MM-DD): Fecha inicial
+  - `fechaFin` (YYYY-MM-DD): Fecha final
+- **Ejemplo:**
+```
+GET /bitacora/estadisticas?fechaInicio=2024-01-01&fechaFin=2024-01-31
+```
+- **Respuesta exitosa:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "atr_id_usuario": 1,
+      "total_eventos": 10,
+      "ingresos": 5,
+      "actualizaciones": 3,
+      "eliminaciones": 2
+    }
+  ],
+  "message": "Consulta de estadísticas realizada exitosamente."
+}
+```
+
+---
+
+- Todas las rutas requieren autenticación (Bearer token).
+- Los errores de validación y de servidor se devuelven en formato `{ success: false, message: ... }`. 

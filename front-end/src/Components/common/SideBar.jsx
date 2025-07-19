@@ -51,6 +51,9 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
   const [openConfig, setOpenConfig] = React.useState(false);
   // Nuevos estados para Mantenimiento y Tratamiento
   const [openMantenimiento, setOpenMantenimiento] = React.useState(false);
+  const [openBitacora, setOpenBitacora] = React.useState(false);
+  const [openAdministracion, setOpenAdministracion] = React.useState(false);
+  const [openErrores, setOpenErrores] = React.useState(false);
   
 
 
@@ -64,6 +67,9 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
   const toggleConfig = () => setOpenConfig(!openConfig);
   // Nuevas funciones para Mantenimiento y Tratamiento
   const toggleMantenimiento = () => setOpenMantenimiento(!openMantenimiento);
+  const toggleBitacora = () => setOpenBitacora(!openBitacora);
+  const toggleAdministracion = () => setOpenAdministracion(!openAdministracion);
+  const toggleErrores = () => setOpenErrores(!openErrores);
  
 
 
@@ -416,30 +422,79 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
             </ListItemButton>
             <Collapse in={openMantenimiento} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
-                <ListItemButton
-                  component={NavLink}
-                  to="/mantenimiento/sistema" // Asume esta ruta
-                  selected={pathname === '/mantenimiento/sistema'}
-                  sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-                  onClick={handleDrawerToggle}
-                >
-                  <ListItemIcon>
-                    <SettingsIcon sx={{ color: 'inherit' }} />
-                  </ListItemIcon>
-                  <ListItemText primary="Sistema" />
+                {/* Gestión de Usuarios */}
+                <ListItemButton onClick={toggleUsuarios} sx={{ pl: 4 }}>
+                  <ListItemIcon><PeopleIcon /></ListItemIcon>
+                  <ListItemText primary="Gestión de Usuarios" />
+                  {openUsuarios ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 </ListItemButton>
-                <ListItemButton
-                  component={NavLink}
-                  to="/mantenimiento/catalogos" // Asume esta ruta
-                  selected={pathname === '/mantenimiento/catalogos'}
-                  sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-                  onClick={handleDrawerToggle}
-                >
-                  <ListItemIcon>
-                    <FormatListBulletedIcon sx={{ color: 'inherit' }} />
-                  </ListItemIcon>
-                  <ListItemText primary="Catálogos" />
+                <Collapse in={openUsuarios} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton component={NavLink} to="/admin/usuarios/crear" sx={{ pl: 8 }}>
+                      <ListItemText primary="Crear Usuario" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/usuarios/ver" sx={{ pl: 8 }}>
+                      <ListItemText primary="Ver usuarios" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/usuarios/pendientes" sx={{ pl: 8 }}>
+                      <ListItemText primary="Usuarios pendientes de aprobación" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+                {/* Bitácora */}
+                <ListItemButton onClick={toggleBitacora} sx={{ pl: 4 }}>
+                  <ListItemIcon><HistoryIcon /></ListItemIcon>
+                  <ListItemText primary="Bitácora" />
+                  {openBitacora ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                 </ListItemButton>
+                <Collapse in={openBitacora} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton component={NavLink} to="/admin/bitacora/registrar" sx={{ pl: 8 }}>
+                      <ListItemText primary="Gestión de Bitácora" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/bitacora/consulta" sx={{ pl: 8 }}>
+                      <ListItemText primary="Consulta" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/bitacora/estadisticas" sx={{ pl: 8 }}>
+                      <ListItemText primary="Estadísticas" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+                {/* Administración */}
+                <ListItemButton onClick={toggleAdministracion} sx={{ pl: 4 }}>
+                  <ListItemIcon><SettingsIcon /></ListItemIcon>
+                  <ListItemText primary="Administración" />
+                  {openAdministracion ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </ListItemButton>
+                <Collapse in={openAdministracion} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton component={NavLink} to="/admin/bd" sx={{ pl: 8 }}>
+                      <ListItemText primary="Base de Datos" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/backup" sx={{ pl: 8 }}>
+                      <ListItemText primary="Backup" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+                {/* Errores */}
+                <ListItemButton onClick={toggleErrores} sx={{ pl: 4 }}>
+                  <ListItemIcon><AssignmentIcon /></ListItemIcon>
+                  <ListItemText primary="Errores" />
+                  {openErrores ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </ListItemButton>
+                <Collapse in={openErrores} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton component={NavLink} to="/admin/errores/ingresar" sx={{ pl: 8 }}>
+                      <ListItemText primary="Ingresar error" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/errores/tipos" sx={{ pl: 8 }}>
+                      <ListItemText primary="Tipos de errores" />
+                    </ListItemButton>
+                    <ListItemButton component={NavLink} to="/admin/errores/lista" sx={{ pl: 8 }}>
+                      <ListItemText primary="Ver lista de errores" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
               </List>
             </Collapse>
 
