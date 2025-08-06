@@ -119,15 +119,31 @@ export default function ChangePassword() {
         }
       }
     } catch (err) {
-      if (err.response) {
-        const { status, data } = err.response;
-        if (status === 401) setApiError('Contraseña actual incorrecta');
-        else if (status === 400)
-          setApiError(data.error || 'Datos inválidos');
-        else setApiError('Error en el servidor. Intenta de nuevo.');
-      } else {
-        setApiError('Error de conexión. Verifica tu internet.');
+      // Manejar diferentes tipos de error
+      let errorMessage = 'Error desconocido';
+      
+      if (err && typeof err === 'object') {
+        if (err.response) {
+          const { status, data } = err.response;
+          if (status === 401) {
+            errorMessage = 'Contraseña actual incorrecta';
+          } else if (status === 400) {
+            errorMessage = data.error || 'Datos inválidos';
+          } else {
+            errorMessage = 'Error en el servidor. Intenta de nuevo.';
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        } else if (err.error) {
+          errorMessage = err.error;
+        } else if (err.toString) {
+          errorMessage = err.toString();
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
       }
+      
+      setApiError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -159,7 +175,9 @@ export default function ChangePassword() {
             <div className="alert alert-success">{successMessage}</div>
           )}
           {apiError && (
-            <div className="alert alert-danger">{apiError}</div>
+            <div className="alert alert-danger">
+              {typeof apiError === 'string' ? apiError : 'Error desconocido'}
+            </div>
           )}
 
           <form onSubmit={handleSubmit} noValidate>

@@ -1,0 +1,553 @@
+/* ========================================
+   ESTILOS PARA FORMULARIO DE REGISTRO DE PACIENTES
+   ======================================== */
+
+.patient-form-container {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  font-family: var(--font-family-primary);
+}
+
+/* ========================================
+   HEADER DEL FORMULARIO
+   ======================================== */
+
+.form-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-xl) 0;
+}
+
+.form-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-3xl);
+}
+
+.form-subtitle {
+  color: var(--text-secondary);
+  font-size: var(--font-size-lg);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ========================================
+   PAPEL PRINCIPAL
+   ======================================== */
+
+.form-paper {
+  background: var(--white-pure);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--rose-100);
+  padding: var(--spacing-2xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* ========================================
+   STEPPER Y PROGRESO
+   ======================================== */
+
+.form-stepper {
+  margin-bottom: var(--spacing-xl);
+}
+
+.mobile-progress {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--rose-50);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--rose-200);
+}
+
+.progress-text {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-sm);
+  text-align: center;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--rose-200);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--gradient-rose);
+  border-radius: var(--border-radius-full);
+  transition: width 0.3s ease;
+}
+
+/* ========================================
+   CONTENIDO DEL FORMULARIO
+   ======================================== */
+
+.form-content {
+  margin-bottom: var(--spacing-xl);
+}
+
+.form-card {
+  background: var(--white-pure);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--rose-100);
+  transition: var(--transition-normal);
+}
+
+.form-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.step-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.step-icon {
+  color: var(--rose-500);
+  font-size: 1.5rem;
+}
+
+.step-divider {
+  margin: var(--spacing-lg) 0;
+  border-color: var(--rose-200);
+}
+
+/* ========================================
+   CAMPOS DE FORMULARIO
+   ======================================== */
+
+.form-field {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-field .MuiOutlinedInput-root {
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-normal);
+}
+
+.form-field .MuiOutlinedInput-root:hover {
+  border-color: var(--rose-300);
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused {
+  border-color: var(--rose-500);
+}
+
+.form-field .MuiInputLabel-root {
+  color: var(--rose-500);
+  font-weight: var(--font-weight-medium);
+}
+
+.form-field .MuiInputLabel-root.Mui-focused {
+  color: var(--rose-500);
+}
+
+.generate-btn {
+  color: var(--rose-500);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-transform: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  min-width: auto;
+}
+
+.generate-btn:hover {
+  background: var(--rose-50);
+  color: var(--rose-600);
+}
+
+/* ========================================
+   SECCIONES DINÁMICAS
+   ======================================== */
+
+.dynamic-section {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--rose-50);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--rose-200);
+}
+
+.section-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.section-icon {
+  color: var(--rose-500);
+  font-size: 1.25rem;
+}
+
+.dynamic-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.dynamic-field .form-field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.remove-btn {
+  color: var(--error);
+  background: var(--white-pure);
+  border: 1px solid var(--rose-200);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  min-width: 40px;
+  height: 40px;
+  margin-top: var(--spacing-sm);
+}
+
+.remove-btn:hover {
+  background: var(--error-light);
+  color: var(--white-pure);
+  border-color: var(--error);
+}
+
+.add-btn {
+  color: var(--rose-500);
+  background: var(--white-pure);
+  border: 2px dashed var(--rose-300);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-weight: var(--font-weight-medium);
+  text-transform: none;
+  transition: var(--transition-normal);
+  width: 100%;
+  margin-top: var(--spacing-md);
+}
+
+.add-btn:hover {
+  background: var(--rose-50);
+  border-color: var(--rose-400);
+  color: var(--rose-600);
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   SECCIÓN DE CONFIRMACIÓN
+   ======================================== */
+
+.confirmation-section {
+  padding: var(--spacing-lg);
+}
+
+.confirmation-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.data-group {
+  background: var(--rose-50);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--rose-200);
+  margin-bottom: var(--spacing-md);
+}
+
+.data-label {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-base);
+}
+
+.data-item {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.data-item strong {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-xl);
+}
+
+.confirmation-chip {
+  background: var(--success-light);
+  color: var(--success);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* ========================================
+   ACCIONES DEL FORMULARIO
+   ======================================== */
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--rose-200);
+}
+
+.back-btn {
+  color: var(--rose-500);
+  border-color: var(--rose-300);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--border-radius-md);
+  text-transform: none;
+  transition: var(--transition-normal);
+}
+
+.back-btn:hover {
+  background: var(--rose-50);
+  border-color: var(--rose-400);
+  color: var(--rose-600);
+}
+
+.next-btn {
+  background: var(--gradient-rose);
+  color: var(--white-pure);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--border-radius-md);
+  text-transform: none;
+  box-shadow: var(--shadow-rose);
+  transition: var(--transition-normal);
+}
+
+.next-btn:hover {
+  background: var(--gradient-rose);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ========================================
+   NOTIFICACIONES
+   ======================================== */
+
+.notification-alert {
+  border-radius: var(--border-radius-md);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ========================================
+   RESPONSIVIDAD
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .patient-form-container {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+  
+  .form-paper {
+    padding: var(--spacing-lg);
+  }
+  
+  .form-title {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .form-subtitle {
+    font-size: var(--font-size-base);
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-form-container {
+    padding: var(--spacing-md);
+  }
+  
+  .form-paper {
+    padding: var(--spacing-md);
+  }
+  
+  .form-title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .form-subtitle {
+    font-size: var(--font-size-sm);
+  }
+  
+  .dynamic-field {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .remove-btn {
+    align-self: flex-end;
+    margin-top: 0;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .back-btn,
+  .next-btn {
+    width: 100%;
+  }
+  
+  .step-title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .section-title {
+    font-size: var(--font-size-base);
+  }
+}
+
+@media (max-width: 480px) {
+  .patient-form-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .form-paper {
+    padding: var(--spacing-sm);
+  }
+  
+  .form-title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .form-subtitle {
+    font-size: var(--font-size-xs);
+  }
+  
+  .dynamic-section {
+    padding: var(--spacing-md);
+  }
+  
+  .data-group {
+    padding: var(--spacing-md);
+  }
+  
+  .step-title {
+    font-size: var(--font-size-base);
+  }
+  
+  .section-title {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* ========================================
+   ANIMACIONES
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.form-card:nth-child(2) { animation-delay: 0.1s; }
+.form-card:nth-child(3) { animation-delay: 0.2s; }
+.form-card:nth-child(4) { animation-delay: 0.3s; }
+
+/* ========================================
+   ESTADOS DE HOVER Y FOCUS
+   ======================================== */
+
+.form-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--rose-300);
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--rose-500);
+  border-width: 2px;
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused .MuiInputLabel-root {
+  color: var(--rose-500);
+}
+
+/* ========================================
+   ESTILOS ESPECÍFICOS PARA MATERIAL-UI
+   ======================================== */
+
+.MuiStepLabel-root .MuiStepLabel-label {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.MuiStepLabel-root.Mui-active .MuiStepLabel-label {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+}
+
+.MuiStepLabel-root.Mui-completed .MuiStepLabel-label {
+  color: var(--success);
+  font-weight: var(--font-weight-semibold);
+}
+
+.MuiStepIcon-root {
+  color: var(--rose-200);
+}
+
+.MuiStepIcon-root.Mui-active {
+  color: var(--rose-500);
+}
+
+.MuiStepIcon-root.Mui-completed {
+  color: var(--success);
+}
+
+/* ========================================
+   MEJORAS DE ACCESIBILIDAD
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .form-card,
+  .add-btn,
+  .next-btn,
+  .back-btn {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .form-title,
+  .step-title,
+  .section-title,
+  .data-label {
+    color: var(--rose-700);
+  }
+  
+  .form-field .MuiOutlinedInput-root {
+    border-width: 2px;
+  }
+} 

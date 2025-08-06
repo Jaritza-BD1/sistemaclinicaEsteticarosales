@@ -4,23 +4,26 @@ import DashboardHeader from '../Components/dashboard/DashboardHeader';
 import StatsSummary from '../Components/dashboard/StatsSummary';
 import RecentAppointments from '../Components/dashboard/RecentAppointments';
 import UpcomingSchedule from '../Components/dashboard/UpcomingSchedule';
+import { Grid, Box, Container } from '@mui/material';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  
+
   return (
-    <div className="dashboard-container">
-      <DashboardHeader user={user} />
-      
-      <div className="dashboard-content">
-        <StatsSummary />
-        
-        <div className="dashboard-grid">
+    <Container maxWidth="xl" sx={{ py: 2 }}>
+      <Box sx={{ mb: 4 }}>
+        <DashboardHeader user={user} />
+      </Box>
+      <StatsSummary />
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={8}>
           <RecentAppointments />
+        </Grid>
+        <Grid item xs={12} md={4}>
           <UpcomingSchedule />
-        </div>
-      </div>
-    </div>
+        </Grid>
+      </Grid>
+    </Container>
   );
 };
 

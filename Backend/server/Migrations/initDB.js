@@ -21,20 +21,87 @@ async function runMigrations() {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS tbl_ms_roles (
         atr_id_rol INT AUTO_INCREMENT PRIMARY KEY,
-        atr_nombre_rol VARCHAR(50) NOT NULL UNIQUE,
-        atr_descripcion_rol VARCHAR(255),
-        atr_estado_rol VARCHAR(20) DEFAULT 'Activo',
+        atr_rol VARCHAR(30) NOT NULL UNIQUE,
+        atr_descripcion VARCHAR(100),
+        atr_activo BOOLEAN DEFAULT TRUE,
+        atr_creado_por VARCHAR(15),
         atr_fecha_creacion DATE DEFAULT (CURRENT_DATE),
-        atr_fecha_modificacion DATE
+        atr_modificado_por VARCHAR(15),
+        atr_fecha_modificacion DATE DEFAULT (CURRENT_DATE),
+        atr_id_bitacora INT
       ) ENGINE=InnoDB;
     `);
 
     // Insertar roles básicos si no existen
     await connection.query(`
-      INSERT IGNORE INTO tbl_ms_roles (atr_id_rol, atr_nombre_rol, atr_descripcion_rol, atr_estado_rol)
+      INSERT IGNORE INTO tbl_ms_roles (atr_id_rol, atr_rol, atr_descripcion, atr_activo, atr_creado_por)
       VALUES 
-        (1, 'Administrador', 'Rol con acceso completo al sistema', 'Activo'),
-        (2, 'Usuario', 'Rol de usuario estándar con acceso limitado', 'Activo');
+        (1, 'ADMINISTRADOR', 'Rol con acceso completo al sistema', TRUE, 'SYSTEM'),
+        (2, 'USUARIO', 'Rol de usuario estándar con acceso limitado', TRUE, 'SYSTEM');
+    `);
+
+    // Crear tabla de objetos
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS tbl_objetos (
+        atr_id_objetos INT AUTO_INCREMENT PRIMARY KEY,
+        atr_objeto VARCHAR(100) NOT NULL UNIQUE,
+        atr_descripcion VARCHAR(100),
+        atr_tipo_objeto ENUM('PANTALLA', 'REPORTE', 'FUNCION', 'PROCESO'),
+        atr_url VARCHAR(255),
+        atr_activo BOOLEAN DEFAULT TRUE,
+        atr_creado_por VARCHAR(15),
+        atr_fecha_creacion DATE DEFAULT (CURRENT_DATE),
+        atr_modificado_por VARCHAR(15),
+        atr_fecha_modificacion DATE DEFAULT (CURRENT_DATE)
+      ) ENGINE=InnoDB;
+    `);
+
+    // Insertar objetos básicos si no existen
+    await connection.query(`
+      INSERT IGNORE INTO tbl_objetos (atr_id_objetos, atr_objeto, atr_descripcion, atr_tipo_objeto, atr_activo, atr_creado_por)
+      VALUES 
+        (1, 'GESTION_ROLES', 'Gestión de roles del sistema', 'PANTALLA', TRUE, 'SYSTEM'),
+        (2, 'GESTION_PERMISOS', 'Gestión de permisos del sistema', 'PANTALLA', TRUE, 'SYSTEM'),
+        (3, 'GESTION_USUARIOS', 'Gestión de usuarios del sistema', 'PANTALLA', TRUE, 'SYSTEM'),
+        (4, 'GESTION_CITAS', 'Gestión de citas médicas', 'PANTALLA', TRUE, 'SYSTEM'),
+        (5, 'GESTION_PACIENTES', 'Gestión de pacientes', 'PANTALLA', TRUE, 'SYSTEM'),
+        (6, 'GESTION_DOCTORES', 'Gestión de doctores', 'PANTALLA', TRUE, 'SYSTEM'),
+        (7, 'REPORTES', 'Generación de reportes', 'REPORTE', TRUE, 'SYSTEM'),
+        (8, 'BITACORA', 'Consulta de bitácora del sistema', 'PANTALLA', TRUE, 'SYSTEM');
+    `);
+
+    // Crear tabla de permisos
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS tbl_permisos (
+        atr_id_rol INT NOT NULL,
+        atr_id_objeto INT NOT NULL,
+        atr_permiso_insercion BOOLEAN DEFAULT FALSE,
+        atr_permiso_eliminacion BOOLEAN DEFAULT FALSE,
+        atr_permiso_actualizacion BOOLEAN DEFAULT FALSE,
+        atr_permiso_consultar BOOLEAN DEFAULT FALSE,
+        atr_activo BOOLEAN DEFAULT TRUE,
+        atr_creado_por VARCHAR(15),
+        atr_fecha_creacion DATE DEFAULT (CURRENT_DATE),
+        atr_modificado_por VARCHAR(15),
+        atr_fecha_modificacion DATE DEFAULT (CURRENT_DATE),
+        PRIMARY KEY (atr_id_rol, atr_id_objeto),
+        FOREIGN KEY (atr_id_rol) REFERENCES tbl_ms_roles(atr_id_rol),
+        FOREIGN KEY (atr_id_objeto) REFERENCES tbl_objetos(atr_id_objetos)
+      ) ENGINE=InnoDB;
+    `);
+
+    // Insertar permisos básicos para el administrador
+    await connection.query(`
+      INSERT IGNORE INTO tbl_permisos (atr_id_rol, atr_id_objeto, atr_permiso_insercion, atr_permiso_eliminacion, atr_permiso_actualizacion, atr_permiso_consultar, atr_activo, atr_creado_por)
+      VALUES 
+        (1, 1, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 2, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 3, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 4, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 5, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 6, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 7, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM'),
+        (1, 8, TRUE, TRUE, TRUE, TRUE, TRUE, 'SYSTEM');
     `);
 
     // Crear tabla de usuarios principal

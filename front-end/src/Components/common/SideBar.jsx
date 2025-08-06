@@ -13,33 +13,49 @@ import {
   Box,
   Avatar,
   Typography,
-  useTheme, // Importar useTheme para acceder a los colores del tema
+  useTheme,
+  useMediaQuery, // Importar useMediaQuery para responsividad
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext'; // Asegúrate de que la ruta sea correcta
+
+// Iconos de Material-UI
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday'; // Para Citas y un posible Calendario general
-import PeopleIcon from '@mui/icons-material/People'; // Para Pacientes y Gestionar Usuarios
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';//Para calendario y Citas
+import PeopleIcon from '@mui/icons-material/People'; // Para Pacientes y Usuarios
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices'; // Para Médicos
-import AssignmentIcon from '@mui/icons-material/Assignment'; // Para Exámenes, Bitácora
+import AssignmentIcon from '@mui/icons-material/Assignment'; // Para Exámenes
 import LocalPharmacyIcon from '@mui/icons-material/LocalPharmacy'; // Para Farmacia
-import SettingsIcon from '@mui/icons-material/Settings'; // Para Configuración y Mantenimiento
-import AccountCircleIcon from '@mui/icons-material/AccountCircle'; // Para el avatar del usuario
-import PersonAddIcon from '@mui/icons-material/PersonAdd'; // Para Registrar Usuario/Médico/Paciente
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import AddIcon from '@mui/icons-material/Add'; // Para "Agendar Cita", "Crear Examen Nuevo"
-import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'; // Para "Lista de X"
+import SettingsIcon from '@mui/icons-material/Settings'; // Para Configuración
+import AccountCircleIcon from '@mui/icons-material/AccountCircle'; // Para el avatar de usuario
+import PersonAddIcon from '@mui/icons-material/PersonAdd'; // Para Registrar
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'; // Icono para colapsar
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'; // Icono para expandir
+import AddIcon from '@mui/icons-material/Add'; // Para añadir
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'; // Para listas
 import HistoryIcon from '@mui/icons-material/History'; // Para Bitácora
-import HealingIcon from '@mui/icons-material/Healing'; // Para Tratamiento (o icono más adecuado)
-import BuildIcon from '@mui/icons-material/Build'; // Para Mantenimiento (o icono más adecuado)
+import HealingIcon from '@mui/icons-material/Healing'; // Para Tratamiento
+import BuildIcon from '@mui/icons-material/Build'; // Para Mantenimiento
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'; // Para Backup
+import BugReportIcon from '@mui/icons-material/BugReport'; // Para Errores
+import LockOpenIcon from '@mui/icons-material/LockOpen'; // Para Permisos (ejemplo)
 
 
-const drawerWidth = 260;
+const drawerWidth = 260; // Ancho del Sidebar
 
 const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
   const { user: fullUser, isAdmin } = useAuth();
   const { pathname } = useLocation();
-  const theme = useTheme(); // Acceder al tema para colores
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detecta si la pantalla es pequeña
+
+  // Define la paleta de colores rosa pastel suave directamente en el componente
+  // Idealmente, esto debería estar en tu `src/theme.js`
+  const pastelTheme = useTheme(); // Usar un tema temporal para colores aquí
+  pastelTheme.palette.primary.main = '#FCE4EC'; // Un rosa muy claro para el fondo principal del sidebar
+  pastelTheme.palette.primary.dark = '#F8BBD0'; // Un rosa ligeramente más profundo para el estado activo del item
+  pastelTheme.palette.secondary.main = '#E0B0C8'; // Un rosa suave y empolvado para la barra superior/encabezado del sidebar
+  pastelTheme.palette.primary.contrastText = '#4A235A'; // Un morado oscuro para el texto, asegurando legibilidad
+
 
   // Estados para controlar la expansión/colapso de los submenús
   const [openCitas, setOpenCitas] = React.useState(false);
@@ -47,14 +63,13 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
   const [openPacientes, setOpenPacientes] = React.useState(false);
   const [openExamenes, setOpenExamenes] = React.useState(false);
   const [openTratamiento, setOpenTratamiento] = React.useState(false);
-  const [openUsuarios, setOpenUsuarios] = React.useState(false);
-  const [openConfig, setOpenConfig] = React.useState(false);
-  // Nuevos estados para Mantenimiento y Tratamiento
-  const [openMantenimiento, setOpenMantenimiento] = React.useState(false);
-  const [openBitacora, setOpenBitacora] = React.useState(false);
-  const [openAdministracion, setOpenAdministracion] = React.useState(false);
-  const [openErrores, setOpenErrores] = React.useState(false);
-  
+  const [openAdministracion, setOpenAdministracion] = React.useState(false); // Nuevo menú principal de Administración
+  const [openBackup, setOpenBackup] = React.useState(false); // Sub-submenú de Backup
+  const [openBitacoraSub, setOpenBitacoraSub] = React.useState(false); // Sub-submenú de Bitácora
+  const [openUsuariosSub, setOpenUsuariosSub] = React.useState(false); // Sub-submenú de Usuarios
+  const [openMantenimientoSub, setOpenMantenimientoSub] = React.useState(false); // Sub-submenú de Mantenimiento
+  const [openErroresSub, setOpenErroresSub] = React.useState(false); // Sub-submenú de Errores
+  const [openConfigSub, setOpenConfigSub] = React.useState(false); // Sub-submenú de Configuración
 
 
   // Funciones para alternar la visibilidad de los submenús
@@ -63,15 +78,21 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
   const togglePacientes = () => setOpenPacientes(!openPacientes);
   const toggleExamenes = () => setOpenExamenes(!openExamenes);
   const toggleTratamiento = () => setOpenTratamiento(!openTratamiento);
-  const toggleUsuarios = () => setOpenUsuarios(!openUsuarios);
-  const toggleConfig = () => setOpenConfig(!openConfig);
-  // Nuevas funciones para Mantenimiento y Tratamiento
-  const toggleMantenimiento = () => setOpenMantenimiento(!openMantenimiento);
-  const toggleBitacora = () => setOpenBitacora(!openBitacora);
   const toggleAdministracion = () => setOpenAdministracion(!openAdministracion);
-  const toggleErrores = () => setOpenErrores(!openErrores);
- 
+  const toggleBackup = () => setOpenBackup(!openBackup);
+  const toggleBitacoraSub = () => setOpenBitacoraSub(!openBitacoraSub);
+  const toggleUsuariosSub = () => setOpenUsuariosSub(!openUsuariosSub);
+  const toggleMantenimientoSub = () => setOpenMantenimientoSub(!openMantenimientoSub);
+  const toggleErroresSub = () => setOpenErroresSub(!openErroresSub);
+  const toggleConfigSub = () => setOpenConfigSub(!openConfigSub);
 
+
+  // Función para cerrar el drawer en móviles
+  const handleItemClick = () => {
+    if (isMobile) {
+      handleDrawerToggle();
+    }
+  };
 
   // Contenido del Drawer (el mismo para la versión móvil y permanente)
   const drawer = (
@@ -81,12 +102,12 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
           alignItems: 'center',
           justifyContent: 'center', // Centra el contenido en el toolbar
           p: 2,
-          bgcolor: theme.palette.secondary.main, // Fondo del logo/título en sidebar
-          color: theme.palette.primary.contrastText // Color del texto
+          bgcolor: pastelTheme.palette.secondary.main, // Fondo del logo/título en sidebar
+          color: pastelTheme.palette.primary.contrastText // Color del texto
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Avatar sx={{ mr: 1, bgcolor: theme.palette.primary.main }}>
-            <DashboardIcon /> {/* O un icono de logo */}
+          <Avatar sx={{ mr: 1, bgcolor: pastelTheme.palette.primary.dark }}>
+            <DashboardIcon sx={{ color: pastelTheme.palette.primary.contrastText }} /> {/* Icono de logo */}
           </Avatar>
           <Typography variant="h6" noWrap component="div">
             Centro Médico
@@ -97,9 +118,9 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
 
       {/* Información del Usuario */}
       {fullUser && (
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', color: theme.palette.primary.contrastText }}>
-          <Avatar sx={{ width: 56, height: 56, mb: 1, bgcolor: theme.palette.secondary.main }}>
-            <AccountCircleIcon fontSize="large" />
+        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', color: pastelTheme.palette.primary.contrastText }}>
+          <Avatar sx={{ width: 56, height: 56, mb: 1, bgcolor: pastelTheme.palette.secondary.main }}>
+            <AccountCircleIcon fontSize="large" sx={{ color: pastelTheme.palette.primary.contrastText }} />
           </Avatar>
           <Typography variant="subtitle1" color="inherit">
             {fullUser.username || 'Usuario'}
@@ -111,17 +132,17 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
       )}
       <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.2)' }} />
 
-      <List sx={{ color: theme.palette.primary.contrastText }}> {/* Aplica color de texto a toda la lista */}
+      <List sx={{ color: pastelTheme.palette.primary.contrastText }}> {/* Aplica color de texto a toda la lista */}
         {/* Inicio / Dashboard */}
         <ListItemButton
           component={NavLink}
           to="/dashboard"
           selected={pathname === '/dashboard'}
-          sx={{ mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }} // Estilo para el item activo
-          onClick={handleDrawerToggle} // Cierra el drawer móvil al hacer clic
+          sx={{ mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }} // Estilo para el item activo
+          onClick={handleItemClick}
         >
           <ListItemIcon>
-            <DashboardIcon sx={{ color: 'inherit' }} /> {/* Hereda el color del padre */}
+            <DashboardIcon sx={{ color: 'inherit' }} />
           </ListItemIcon>
           <ListItemText primary="Inicio" />
         </ListItemButton>
@@ -140,8 +161,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/citas/agendar"
               selected={pathname === '/citas/agendar'}
-              sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <AddIcon sx={{ color: 'inherit' }} />
@@ -152,8 +173,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/citas/ver"
               selected={pathname === '/citas/ver'}
-              sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <FormatListBulletedIcon sx={{ color: 'inherit' }} />
@@ -177,8 +198,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/medicos/registrar"
               selected={pathname === '/medicos/registrar'}
-              sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <PersonAddIcon sx={{ color: 'inherit' }} />
@@ -189,8 +210,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/medicos/lista"
               selected={pathname === '/medicos/lista'}
-              sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <FormatListBulletedIcon sx={{ color: 'inherit' }} />
@@ -214,8 +235,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/pacientes/registrar"
               selected={pathname === '/pacientes/registrar'}
-              sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <PersonAddIcon sx={{ color: 'inherit' }} />
@@ -226,8 +247,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/pacientes/lista"
               selected={pathname === '/pacientes/lista'}
-              sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <FormatListBulletedIcon sx={{ color: 'inherit' }} />
@@ -251,8 +272,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/examenes/crear"
               selected={pathname === '/examenes/crear'}
-              sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <AddIcon sx={{ color: 'inherit' }} />
@@ -263,8 +284,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/examenes/lista"
               selected={pathname === '/examenes/lista'}
-              sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <FormatListBulletedIcon sx={{ color: 'inherit' }} />
@@ -275,8 +296,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
               component={NavLink}
               to="/examenes/resultados"
               selected={pathname === '/examenes/resultados'}
-              sx={{ pl: 4, '&.active': { bgcolor: 'primary.dark' } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <FormatListBulletedIcon sx={{ color: 'inherit' }} />
@@ -291,8 +312,8 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
           component={NavLink}
           to="/farmacia"
           selected={pathname === '/farmacia'}
-          sx={{ mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-          onClick={handleDrawerToggle}
+          sx={{ mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+          onClick={handleItemClick}
         >
           <ListItemIcon>
             <LocalPharmacyIcon sx={{ color: 'inherit' }} />
@@ -300,7 +321,7 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
           <ListItemText primary="Farmacia" />
         </ListItemButton>
 
-        {/* NUEVO: Tratamientos */}
+        {/* Tratamientos */}
         <ListItemButton onClick={toggleTratamiento} sx={{ mb: 0.5 }}>
           <ListItemIcon>
             <HealingIcon sx={{ color: 'inherit' }} />
@@ -312,10 +333,10 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
           <List component="div" disablePadding>
             <ListItemButton
               component={NavLink}
-              to="/tratamientos/registrar" // Asume esta ruta
+              to="/tratamientos/registrar"
               selected={pathname === '/tratamientos/registrar'}
-              sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <AddIcon sx={{ color: 'inherit' }} />
@@ -324,10 +345,10 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
             </ListItemButton>
             <ListItemButton
               component={NavLink}
-              to="/tratamientos/lista" // Asume esta ruta
+              to="/tratamientos/lista"
               selected={pathname === '/tratamientos/lista'}
-              sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-              onClick={handleDrawerToggle}
+              sx={{ pl: 4, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+              onClick={handleItemClick}
             >
               <ListItemIcon>
                 <FormatListBulletedIcon sx={{ color: 'inherit' }} />
@@ -337,15 +358,13 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
           </List>
         </Collapse>
 
-        {/* NUEVO: Calendario General (si es diferente a "Citas") */}
-        {/* Si "Citas" ya cubre tu necesidad de calendario, puedes omitir este.
-            Si es un calendario más general para recursos, disponibilidad, etc., úsalo. */}
+        {/* Calendario General */}
         <ListItemButton
           component={NavLink}
-          to="/calendario" // Asume esta ruta
+          to="/calendario"
           selected={pathname === '/calendario'}
-          sx={{ mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-          onClick={handleDrawerToggle}
+          sx={{ mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+          onClick={handleItemClick}
         >
           <ListItemIcon>
             <CalendarTodayIcon sx={{ color: 'inherit' }} />
@@ -353,174 +372,203 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
           <ListItemText primary="Calendario" />
         </ListItemButton>
 
-
-        {/* Sección de Administración (visible solo para administradores) */}
+        {/* Sección de ADMINISTRACIÓN (visible solo para administradores) */}
         {isAdmin && (
           <>
             <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.2)', my: 1 }} />
-            <Typography variant="overline" sx={{ ml: 2, mt: 2, color: 'rgba(255, 255, 255, 0.7)' }}>
-              Administración
-            </Typography>
-
-            {/* Usuarios (ya existe, pero reconfirmo la estructura) */}
-            <ListItemButton onClick={toggleUsuarios} sx={{ mb: 0.5 }}>
+            <ListItemButton onClick={toggleAdministracion} sx={{ mb: 0.5 }}>
               <ListItemIcon>
-                <PeopleIcon sx={{ color: 'inherit' }} />
+                <SettingsIcon sx={{ color: 'inherit' }} /> {/* Icono principal para Administración */}
               </ListItemIcon>
-              <ListItemText primary="Usuarios" />
-              {openUsuarios ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
+              <ListItemText primary="Administración" />
+              {openAdministracion ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
             </ListItemButton>
-            <Collapse in={openUsuarios} timeout="auto" unmountOnExit>
+            <Collapse in={openAdministracion} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
-                <ListItemButton
-                  component={NavLink}
-                  to="/usuarios/registrar"
-                  selected={pathname === '/usuarios/registrar'}
-                  sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-                  onClick={handleDrawerToggle}
-                >
+
+                {/* Sub-submenú: Backup */}
+                <ListItemButton onClick={toggleBackup} sx={{ pl: 4 }}>
                   <ListItemIcon>
-                    <PersonAddIcon sx={{ color: 'inherit' }} />
+                    <CloudUploadIcon sx={{ color: 'inherit' }} />
                   </ListItemIcon>
-                  <ListItemText primary="Registrar Usuario" />
+                  <ListItemText primary="Backup" />
+                  {openBackup ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
                 </ListItemButton>
-                <ListItemButton
-                  component={NavLink}
-                  to="/usuarios/gestionar"
-                  selected={pathname === '/usuarios/gestionar'}
-                  sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-                  onClick={handleDrawerToggle}
-                >
-                  <ListItemIcon>
-                    <PeopleIcon sx={{ color: 'inherit' }} />
-                  </ListItemIcon>
-                  <ListItemText primary="Gestionar Usuarios" />
-                </ListItemButton>
-                {/* Enlace a Bitácora del Sistema */}
-                <ListItemButton
-                  component={NavLink}
-                  to="/bitacora"
-                  selected={pathname === '/bitacora'}
-                  sx={{ pl: 4, '&.active': { bgcolor: theme.palette.primary.dark } }}
-                  onClick={handleDrawerToggle}
-                >
+                <Collapse in={openBackup} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton
+                      component={NavLink}
+                      to="/admin/backup/crear" // Asume esta ruta
+                      selected={pathname === '/admin/backup/crear'}
+                      sx={{ pl: 8, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Crear Backup" />
+                    </ListItemButton>
+                    <ListItemButton
+                      component={NavLink}
+                      to="/admin/backup/restaurar" // Asume esta ruta
+                      selected={pathname === '/admin/backup/restaurar'}
+                      sx={{ pl: 8, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Restaurar Backup" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+
+                {/* Sub-submenú: Bitácora */}
+                <ListItemButton onClick={toggleBitacoraSub} sx={{ pl: 4 }}>
                   <ListItemIcon>
                     <HistoryIcon sx={{ color: 'inherit' }} />
                   </ListItemIcon>
-                  <ListItemText primary="Bitácora del Sistema" />
-                </ListItemButton>
-              </List>
-            </Collapse>
-
-            {/* NUEVO: Mantenimiento */}
-            <ListItemButton onClick={toggleMantenimiento} sx={{ mb: 0.5 }}>
-              <ListItemIcon>
-                <BuildIcon sx={{ color: 'inherit' }} /> {/* Icono para Mantenimiento */}
-              </ListItemIcon>
-              <ListItemText primary="Mantenimiento" />
-              {openMantenimiento ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
-            </ListItemButton>
-            <Collapse in={openMantenimiento} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {/* Gestión de Usuarios */}
-                <ListItemButton onClick={toggleUsuarios} sx={{ pl: 4 }}>
-                  <ListItemIcon><PeopleIcon /></ListItemIcon>
-                  <ListItemText primary="Gestión de Usuarios" />
-                  {openUsuarios ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </ListItemButton>
-                <Collapse in={openUsuarios} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    <ListItemButton component={NavLink} to="/admin/usuarios/crear" sx={{ pl: 8 }}>
-                      <ListItemText primary="Crear Usuario" />
-                    </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/usuarios/ver" sx={{ pl: 8 }}>
-                      <ListItemText primary="Ver usuarios" />
-                    </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/usuarios/pendientes" sx={{ pl: 8 }}>
-                      <ListItemText primary="Usuarios pendientes de aprobación" />
-                    </ListItemButton>
-                  </List>
-                </Collapse>
-                {/* Bitácora */}
-                <ListItemButton onClick={toggleBitacora} sx={{ pl: 4 }}>
-                  <ListItemIcon><HistoryIcon /></ListItemIcon>
                   <ListItemText primary="Bitácora" />
-                  {openBitacora ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  {openBitacoraSub ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
                 </ListItemButton>
-                <Collapse in={openBitacora} timeout="auto" unmountOnExit>
+                <Collapse in={openBitacoraSub} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
-                    <ListItemButton component={NavLink} to="/admin/bitacora/registrar" sx={{ pl: 8 }}>
-                      <ListItemText primary="Gestión de Bitácora" />
+                    <ListItemButton
+                      component={NavLink}
+                      to="/bitacora" // Ruta principal de bitácora
+                      selected={pathname === '/bitacora'}
+                      sx={{ pl: 8, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Ver Bitácora" />
                     </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/bitacora/consulta" sx={{ pl: 8 }}>
-                      <ListItemText primary="Consulta" />
+                    {/* Puedes añadir más ítems específicos de bitácora si los tienes */}
+                  </List>
+                </Collapse>
+
+                {/* Sub-submenú: Usuarios */}
+                <ListItemButton onClick={toggleUsuariosSub} sx={{ pl: 4 }}>
+                  <ListItemIcon>
+                    <PeopleIcon sx={{ color: 'inherit' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Usuarios" />
+                  {openUsuariosSub ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
+                </ListItemButton>
+                <Collapse in={openUsuariosSub} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton
+                      component={NavLink}
+                      to="/usuarios/lista"
+                      selected={pathname === '/usuarios/lista'}
+                      sx={{ pl: 8, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Gestionar Usuarios" />
                     </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/bitacora/estadisticas" sx={{ pl: 8 }}>
-                      <ListItemText primary="Estadísticas" />
+                    <ListItemButton
+                      component={NavLink}
+                      to="/usuarios/gestionar"
+                      selected={pathname === '/usuarios/gestionar'}
+                      sx={{ pl: 8, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Registrar Usuario" />
                     </ListItemButton>
                   </List>
                 </Collapse>
-                {/* Administración */}
-                <ListItemButton onClick={toggleAdministracion} sx={{ pl: 4 }}>
-                  <ListItemIcon><SettingsIcon /></ListItemIcon>
-                  <ListItemText primary="Administración" />
-                  {openAdministracion ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+
+                {/* Sub-submenú: Mantenimiento */}
+                <ListItemButton onClick={toggleMantenimientoSub} sx={{ pl: 4 }}>
+                  <ListItemIcon>
+                    <BuildIcon sx={{ color: 'inherit' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Mantenimiento" />
+                  {openMantenimientoSub ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
                 </ListItemButton>
-                <Collapse in={openAdministracion} timeout="auto" unmountOnExit>
+                <Collapse in={openMantenimientoSub} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
-                    <ListItemButton component={NavLink} to="/admin/bd" sx={{ pl: 8 }}>
-                      <ListItemText primary="Base de Datos" />
+                    <ListItemButton
+                      component={NavLink}
+                      to="/mantenimiento/sistema"
+                      selected={pathname === '/mantenimiento/sistema'}
+                      sx={{ pl: 8, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Sistema" />
                     </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/backup" sx={{ pl: 8 }}>
-                      <ListItemText primary="Backup" />
+                    <ListItemButton
+                      component={NavLink}
+                      to="/mantenimiento/catalogos"
+                      selected={pathname === '/mantenimiento/catalogos'}
+                      sx={{ pl: 8, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Catálogos" />
                     </ListItemButton>
                   </List>
                 </Collapse>
-                {/* Errores */}
-                <ListItemButton onClick={toggleErrores} sx={{ pl: 4 }}>
-                  <ListItemIcon><AssignmentIcon /></ListItemIcon>
+                
+                {/* Sub-submenú: Errores */}
+                <ListItemButton onClick={toggleErroresSub} sx={{ pl: 4 }}>
+                  <ListItemIcon>
+                    <BugReportIcon sx={{ color: 'inherit' }} />
+                  </ListItemIcon>
                   <ListItemText primary="Errores" />
-                  {openErrores ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  {openErroresSub ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
                 </ListItemButton>
-                <Collapse in={openErrores} timeout="auto" unmountOnExit>
+                <Collapse in={openErroresSub} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
-                    <ListItemButton component={NavLink} to="/admin/errores/ingresar" sx={{ pl: 8 }}>
-                      <ListItemText primary="Ingresar error" />
+                    <ListItemButton
+                      component={NavLink}
+                      to="/admin/errores/ingresar" // Asume esta ruta
+                      selected={pathname === '/admin/errores/ingresar'}
+                      sx={{ pl: 8, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Registrar Error" />
                     </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/errores/tipos" sx={{ pl: 8 }}>
-                      <ListItemText primary="Tipos de errores" />
-                    </ListItemButton>
-                    <ListItemButton component={NavLink} to="/admin/errores/lista" sx={{ pl: 8 }}>
-                      <ListItemText primary="Ver lista de errores" />
+                    <ListItemButton
+                      component={NavLink}
+                      to="/admin/errores/lista" // Asume esta ruta
+                      selected={pathname === '/admin/errores/lista'}
+                      sx={{ pl: 8, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Ver Errores" />
                     </ListItemButton>
                   </List>
                 </Collapse>
-              </List>
-            </Collapse>
 
-
-            {/* Configuración (ya existe) */}
-            <ListItemButton onClick={toggleConfig} sx={{ mb: 0.5 }}>
-              <ListItemIcon>
-                <SettingsIcon sx={{ color: 'inherit' }} />
-              </ListItemIcon>
-              <ListItemText primary="Configuración" />
-              {openConfig ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
-            </ListItemButton>
-            <Collapse in={openConfig} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                <ListItemButton
-                  component={NavLink}
-                  to="/configuracion/parametros"
-                  selected={pathname === '/configuracion/parametros'}
-                  sx={{ pl: 4, mb: 0.5, '&.active': { bgcolor: theme.palette.primary.dark } }}
-                  onClick={handleDrawerToggle}
-                >
+                {/* Sub-submenú: Configuración (movida a Administración) */}
+                <ListItemButton onClick={toggleConfigSub} sx={{ pl: 4 }}>
                   <ListItemIcon>
                     <SettingsIcon sx={{ color: 'inherit' }} />
                   </ListItemIcon>
-                  <ListItemText primary="Parámetros del Sistema" />
+                  <ListItemText primary="Configuración" />
+                  {openConfigSub ? <ExpandLessIcon sx={{ color: 'inherit' }} /> : <ExpandMoreIcon sx={{ color: 'inherit' }} />}
                 </ListItemButton>
+                <Collapse in={openConfigSub} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton
+                      component={NavLink}
+                      to="/configuracion/parametros"
+                      selected={pathname === '/configuracion/parametros'}
+                      sx={{ pl: 8, mb: 0.5, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemText primary="Parámetros del Sistema" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+
+                {/* Puedes añadir más ítems específicos de administración aquí */}
+                <ListItemButton
+                      component={NavLink}
+                      to="/admin/permisos" // Asume esta ruta
+                      selected={pathname === '/admin/permisos'}
+                      sx={{ pl: 4, '&.active, &.Mui-selected': { bgcolor: pastelTheme.palette.primary.dark } }}
+                      onClick={handleItemClick}
+                    >
+                      <ListItemIcon>
+                        <LockOpenIcon sx={{ color: 'inherit' }} />
+                      </ListItemIcon>
+                      <ListItemText primary="Roles y Permisos" />
+                    </ListItemButton>
+
               </List>
             </Collapse>
           </>
@@ -533,9 +581,9 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
     <Box
       component="nav"
       sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      aria-label="mailbox folders"
+      aria-label="main navigation folders"
     >
-      {/* Drawer para pantallas pequeñas (temporal) */}
+      {/* Drawer para pantallas pequeñas (temporal y colapsable) */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -545,19 +593,29 @@ const SideBar = ({ mobileOpen, handleDrawerToggle }) => {
         }}
         sx={{
           display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+            bgcolor: pastelTheme.palette.primary.main, // Color de fondo del drawer
+            color: pastelTheme.palette.primary.contrastText, // Color del texto del drawer
+          },
         }}
       >
         {drawer}
       </Drawer>
-      {/* Drawer para pantallas grandes (permanente) */}
+      {/* Drawer para pantallas grandes (permanente y estático) */}
       <Drawer
         variant="permanent"
         sx={{
           display: { xs: 'none', sm: 'block' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+            bgcolor: pastelTheme.palette.primary.main,
+            color: pastelTheme.palette.primary.contrastText,
+          },
         }}
-        open
+        open // Siempre abierto en desktop
       >
         {drawer}
       </Drawer>

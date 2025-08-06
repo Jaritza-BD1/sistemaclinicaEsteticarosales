@@ -1,0 +1,440 @@
+/* roles-permissions.css - Diseño moderno similar a LogManagement */
+
+.roles-permissions-container {
+    padding: 0;
+    max-width: 100%;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.roles-permissions-container h1 {
+    color: #333;
+    margin-bottom: 30px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+/* Sección de filtros */
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-section label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+    font-size: 14px;
+}
+
+.filter-section input,
+.filter-section select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.filter-section input:focus,
+.filter-section select:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+
+.filter-button {
+    padding: 10px 20px;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.filter-button:hover {
+    background-color: #1565c0;
+}
+
+.clear-button {
+    padding: 10px 20px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.clear-button:hover {
+    background-color: #5a6268;
+}
+
+/* Mensaje de error */
+.error-message {
+    color: #d32f2f;
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    border-left: 4px solid #d32f2f;
+}
+
+/* Información de paginación */
+.pagination-info {
+    background-color: #e3f2fd;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+    border-left: 4px solid #1976d2;
+}
+
+.pagination-info p {
+    margin: 0;
+    color: #1976d2;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+/* Contenedor de carga */
+.loading-container {
+    text-align: center;
+    padding: 40px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #1976d2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+}
+
+/* Tabla de roles y permisos */
+.roles-permissions-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.roles-permissions-table th {
+    background-color: #1976d2;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.roles-permissions-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 14px;
+}
+
+.roles-permissions-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.roles-permissions-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Badges de permisos */
+.permission-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 2px;
+    display: inline-block;
+}
+
+.permission-badge.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.permission-badge.primary {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.permission-badge.warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.permission-badge.danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.permission-badge.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.permission-badge.secondary {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+/* Célula de descripción */
+.description-cell {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Botones de acción */
+.action-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+    margin: 0 2px;
+}
+
+.action-button.edit {
+    color: #1976d2;
+}
+
+.action-button.edit:hover {
+    background-color: #e3f2fd;
+}
+
+.action-button.delete {
+    color: #dc3545;
+}
+
+.action-button.delete:hover {
+    background-color: #f8d7da;
+}
+
+.action-button.security {
+    color: #28a745;
+}
+
+.action-button.security:hover {
+    background-color: #d4edda;
+}
+
+/* Paginación */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.pagination button {
+    padding: 8px 12px;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.3s ease;
+    min-width: 80px;
+}
+
+.pagination button:hover:not(:disabled) {
+    background-color: #1565c0;
+}
+
+.pagination button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.pagination .pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.pagination .page-info {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+    padding: 8px 16px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Mensaje de no datos */
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}
+
+.no-data-message h3 {
+    color: #6c757d;
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.no-data-message p {
+    color: #6c757d;
+    margin: 0;
+    font-size: 16px;
+}
+
+/* Header de sección */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.section-header h2 {
+    color: #333;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.section-header .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .filter-section {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .button-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .roles-permissions-table {
+        font-size: 12px;
+    }
+    
+    .roles-permissions-table th,
+    .roles-permissions-table td {
+        padding: 8px;
+    }
+    
+    .description-cell {
+        max-width: 150px;
+    }
+    
+    .pagination {
+        gap: 5px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .pagination button {
+        font-size: 12px;
+        padding: 6px 8px;
+        min-width: 60px;
+    }
+    
+    .pagination .page-info {
+        order: -1;
+        margin-bottom: 10px;
+        min-width: auto;
+    }
+    
+    .roles-permissions-container h1 {
+        font-size: 24px;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .section-header .header-actions {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .filter-section {
+        padding: 15px;
+    }
+    
+    .roles-permissions-table {
+        font-size: 11px;
+    }
+    
+    .roles-permissions-table th,
+    .roles-permissions-table td {
+        padding: 6px;
+    }
+    
+    .permission-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .pagination-info {
+        font-size: 12px;
+    }
+} 

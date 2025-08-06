@@ -26,7 +26,7 @@ const LogManagement = () => {
   }, []);
 
   if (loading) return <Spinner animation="border" />;
-  if (error) return <Alert variant="danger">{error}</Alert>;
+  if (error) return <Alert variant="danger">{typeof error === 'string' ? error : 'Error desconocido'}</Alert>;
 
   return (
     <Table striped bordered hover>

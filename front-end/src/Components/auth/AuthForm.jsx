@@ -171,10 +171,26 @@ const AuthForm = () => {
           return;
         }
 
-        localStorage.setItem('token', data.token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-        login(data.token);
-        navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
+        // Validar que el token existe y es válido antes de proceder
+        if (data.token && data.token.length <= 8192) {
+          // Limpiar tokens anteriores antes de guardar el nuevo
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('token');
+          
+          localStorage.setItem('token', data.token);
+          api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+          login(data.token);
+          
+          // Agregar delay para asegurar que el contexto se actualice
+          setTimeout(() => {
+            const targetPath = data.user.atr_id_rol === 1 ? '/admin' : '/dashboard';
+            console.log('🔄 Navegando a:', targetPath);
+            navigate(targetPath);
+          }, 100);
+        } else {
+          console.error('Token inválido recibido del servidor:', data.token);
+          setApiError('Error: Token de autenticación inválido');
+        }
       } else {
         // REGISTRO
         await api.post('/auth/register', {
@@ -265,9 +281,21 @@ const AuthForm = () => {
         userId={userIdFor2FA}
         userEmail={userEmailFor2FA}
         onSuccess={async (data) => {
-          localStorage.setItem('token', data.token);
-          login(data.token);
-          navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
+          // Validar que el token existe y es válido antes de proceder
+          if (data.token && data.token.length <= 8192) {
+            // Limpiar tokens anteriores antes de guardar el nuevo
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('token');
+            
+            localStorage.setItem('token', data.token);
+            login(data.token);
+            navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
+          } else {
+            console.error('Token inválido recibido del servidor en 2FA:', data.token);
+            setApiError('Error: Token de autenticación inválido');
+            setTwoFARequired(false);
+            setUserIdFor2FA(null);
+          }
         }}
       />
     );

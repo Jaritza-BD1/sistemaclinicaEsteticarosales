@@ -1,6 +1,52 @@
 const ResponseService = require('../services/responseService');
 const logger = require('../utils/logger');
 
+/**
+ * Clase personalizada para errores de la aplicación
+ */
+class CustomError extends Error {
+  constructor(message, statusCode, errorCode = null, details = null) {
+    super(message);
+    this.name = this.constructor.name;
+    this.statusCode = statusCode;
+    this.errorCode = errorCode;
+    this.details = details;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+/**
+ * Función para generar errores personalizados
+ * @param {string} errorCode - Código del error
+ * @param {string} message - Mensaje del error
+ * @param {Error} originalError - Error original (opcional)
+ * @returns {CustomError} Instancia del error personalizado
+ */
+const generateError = (errorCode, message, originalError = null) => {
+  const statusCodes = {
+    'BAD_REQUEST': 400,
+    'UNAUTHORIZED': 401,
+    'FORBIDDEN': 403,
+    'NOT_FOUND': 404,
+    'CONFLICT': 409,
+    'VALIDATION_ERROR': 422,
+    'INTERNAL_SERVER_ERROR': 500,
+    'SERVICE_UNAVAILABLE': 503
+  };
+
+  const statusCode = statusCodes[errorCode] || 500;
+  const error = new CustomError(message, statusCode, errorCode);
+  
+  if (originalError) {
+    error.details = {
+      originalMessage: originalError.message,
+      stack: originalError.stack
+    };
+  }
+
+  return error;
+};
+
 const errorHandler = (err, req, res, next) => {
   // Log del error
   logger.error('Unhandled error', {
@@ -65,4 +111,4 @@ const errorHandler = (err, req, res, next) => {
   return ResponseService.error(res, message, statusCode);
 };
 
-module.exports = errorHandler; 
+module.exports = { errorHandler, generateError, CustomError }; 

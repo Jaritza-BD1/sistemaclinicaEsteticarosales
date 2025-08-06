@@ -116,7 +116,8 @@ exports.verifyEmail = async (req, res) => {
     await user.update({
       atr_is_verified: true,
       atr_verification_token: null,
-      atr_token_expiry: null
+      atr_token_expiry: null,
+      atr_estado_usuario: 'PENDIENTE_APROBACION'
     });
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -127,6 +128,37 @@ exports.verifyEmail = async (req, res) => {
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     res.redirect(`${frontendUrl}/email-verified?success=false&error=${encodeURIComponent(error.message)}`);
+  }
+};
+
+exports.verifyEmailPost = async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: 'Token de verificación requerido' });
+  }
+  try {
+    const user = await User.findOne({
+      where: {
+        atr_verification_token: token,
+        atr_token_expiry: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Token inválido o expirado' });
+    }
+
+    await user.update({
+      atr_is_verified: true,
+      atr_verification_token: null,
+      atr_token_expiry: null,
+      atr_estado_usuario: 'PENDIENTE_APROBACION'
+    });
+
+    return res.json({ message: '¡Correo verificado! Espera la aprobación del administrador.' });
+  } catch (error) {
+    console.error('Error en verificación de email (POST):', error);
+    return res.status(500).json({ error: 'Error en el servidor durante la verificación.' });
   }
 };
 

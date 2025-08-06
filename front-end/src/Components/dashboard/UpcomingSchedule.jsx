@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card,ListGroup } from 'react-bootstrap';
+import { Card, CardContent, CardHeader, List, ListItem, ListItemText, Typography } from '@mui/material';
 import './dashboard.css';
 
 const UpcomingSchedule = () => {
@@ -11,22 +11,21 @@ const UpcomingSchedule = () => {
 
   return (
     <Card>
-      <Card.Header>
-        <h5>Próximas Citas</h5>
-      </Card.Header>
-      <Card.Body>
-        <ListGroup variant="flush">
+      <CardHeader title={<Typography variant="h6">Próximas Citas</Typography>} />
+      <CardContent>
+        <List>
           {schedule.map((item, index) => (
-            <ListGroup.Item key={index}>
-              <div className="d-flex justify-content-between">
-                <strong>{item.time}</strong>
-                <span>{item.patient}</span>
-              </div>
-              <div className="text-muted">{item.service}</div>
-            </ListGroup.Item>
+            <ListItem key={index} divider>
+              <ListItemText
+                primary={<>
+                  <strong>{item.time}</strong> <span style={{ marginLeft: 12 }}>{item.patient}</span>
+                </>}
+                secondary={item.service}
+              />
+            </ListItem>
           ))}
-        </ListGroup>
-      </Card.Body>
+        </List>
+      </CardContent>
     </Card>
   );
 };

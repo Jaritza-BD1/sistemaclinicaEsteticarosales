@@ -75,7 +75,7 @@ export default function ResetPassword() {
       <form className="reset-form" onSubmit={handleSubmit} autoComplete="off">
         <h2>Restablecer Contraseña</h2>
 
-        {error   && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">{typeof error === 'string' ? error : 'Error desconocido'}</div>}
         {success && <div className="success-message">{success}</div>}
 
         <div className="form-group">

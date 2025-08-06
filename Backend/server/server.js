@@ -5,24 +5,39 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const http = require('http');
 
 // Configuraciones
-const config = require('./config/environment');
-const corsOptions = require('./config/cors');
+const config = require('./Config/environment');
+const corsOptions = require('./Config/cors');
+
+
 
 // Middlewares
-const errorHandler = require('./middlewares/errorHandler');
+const { errorHandler } = require('./Middlewares/errorHandler');
 const ResponseService = require('./services/responseService');
+const calendarMiddleware = require('./Middlewares/calendarMiddleware');
 
 // Servicios
 const logger = require('./utils/logger');
 
 // Base de datos
-const sequelize = require('./config/database');
+const sequelize = require('./Config/db');
 
 // Rutas
 const authRoutes = require('./Routers/authRoute');
 const adminRoutes = require('./Routers/adminRoutes');
+const appointmentRoutes = require('./Routers/appointmentRoutes');
+const doctorRoutes = require('./Routers/doctorRoutes');
+const patientRoutes = require('./Routers/patientRoutes');
+const treatmentRoutes = require('./Routers/treatmentRoutes');
+const examRoutes = require('./Routers/examRoutes');
+const productRoutes = require('./Routers/productRoutes');
+const rolRoutes = require('./Routers/rolRoutes');
+const permisoRoutes = require('./Routers/permisoRoutes');
+const objetoRoutes = require('./Routers/objetoRoutes');
+const backupRoutes = require('./Routers/backupRoutes');
+const schedulerRoutes = require('./Routers/schedulerRoutes');
 
 const app = express();
 
@@ -45,9 +60,26 @@ app.use(helmet({
 }));
 
 // 3. MIDDLEWARE ADICIONAL ===================================================
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// Configuración para manejar headers grandes
+app.use((req, res, next) => {
+  // Aumentar el límite de listeners
+  req.setMaxListeners(0);
+  res.setMaxListeners(0);
+  
+  // Configurar límites de headers
+  if (req.headers['content-length'] && parseInt(req.headers['content-length']) > 10 * 1024 * 1024) {
+    return res.status(413).json({
+      success: false,
+      message: 'Payload demasiado grande'
+    });
+  }
+  
+  next();
+});
 
 // 4. RATE LIMITING ==========================================================
 const authLimiter = rateLimit({
@@ -62,8 +94,20 @@ const authLimiter = rateLimit({
 });
 
 // 5. RUTAS ==================================================================
+app.use(calendarMiddleware); // Inyecta los servicios antes de las rutas
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/treatments', treatmentRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/roles', rolRoutes);
+app.use('/api/permisos', permisoRoutes);
+app.use('/api/objetos', objetoRoutes);
+app.use('/api/admin/backup', backupRoutes);
+app.use('/api/admin/scheduler', schedulerRoutes);
 
 // Ruta de Bitacora
 const bitacoraRoutes = require('./Routers/BitacoraRoutes');
@@ -126,7 +170,8 @@ const PORT = config.port;
       }
     }
     
-    app.listen(PORT, () => {
+    const server = http.createServer({ maxHeaderSize: 16384 }, app);
+    server.listen(PORT, () => {
       logger.startup(`🚀 Servidor corriendo en http://localhost:${PORT}`);
       logger.startup(`📧 Frontend URL: ${config.frontend.url}`);
       logger.startup(`🔐 JWT Secret configurado: ${config.jwt.secret ? 'Sí' : 'No'}`);

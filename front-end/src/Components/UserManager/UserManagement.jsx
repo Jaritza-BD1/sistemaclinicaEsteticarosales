@@ -1,15 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
-import {
-  Table,
-  Button,
-  Modal,
-  Form,
-  Spinner,
-  Alert,
-} from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import './user-management.css';
+import ModalForm from '../common/ModalForm';
+import UserForm from './UserForm';
 
 const UserManagement = () => {
   const { user } = useAuth();
@@ -17,58 +11,66 @@ const UserManagement = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [error, setError] = useState('');
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [newUsername, setNewUsername] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [autoGenerate, setAutoGenerate] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [createdPassword, setCreatedPassword] = useState('');
-  const [createError, setCreateError] = useState('');
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const itemsPerPage = 10; // Número de registros por página
 
+  const [userModalOpen, setUserModalOpen] = useState(false);
   const [resetResult, setResetResult] = useState(null);
   const [actionLoading, setActionLoading] = useState({}); // { [id]: bool }
 
-  const fetchUsers = async () => {
+  const handleAddUser = () => {
+    setUserModalOpen(true);
+  };
+  
+  const handleCloseUser = () => setUserModalOpen(false);
+  
+  const handleUserSuccess = () => {
+    setUserModalOpen(false);
+    fetchUsers(currentPage);
+  };
+
+  // Fetch users with pagination
+  const fetchUsers = useCallback(async (page = 1) => {
     setLoadingUsers(true);
     setError('');
     try {
-      const res = await api.get('/admin/users');
-      setUsers(res.data.data);
-    } catch {
+      const params = {
+        page: page,
+        limit: itemsPerPage
+      };
+      
+      const res = await api.get('/admin/users', { params });
+      
+      if (res.data && res.data.data) {
+        setUsers(res.data.data || []);
+        setTotalPages(res.data.meta?.pages || 1);
+        setTotalRecords(res.data.meta?.total || 0);
+      } else {
+        setUsers([]);
+        setTotalPages(1);
+        setTotalRecords(0);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
       setError('No se pudieron cargar los usuarios');
+      setUsers([]);
+      setTotalPages(1);
+      setTotalRecords(0);
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, [itemsPerPage]);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(currentPage);
+  }, [fetchUsers, currentPage]);
 
-  const handleCreate = async () => {
-    setCreating(true);
-    setCreateError('');
-    try {
-      const payload = {
-        atr_usuario: newUsername,
-        atr_nombre_usuario: newName,
-        atr_correo_electronico: newEmail,
-        autoGenerate,
-      };
-      if (!autoGenerate) {
-        payload.atr_contrasena = newPassword;
-      }
-      const res = await api.post('/admin/users', payload);
-      setCreatedPassword(res.data.plainPassword);
-      // Refresh list after creation
-      await fetchUsers();
-    } catch (err) {
-      setCreateError(err.response?.data?.error || 'Error al crear');
-    } finally {
-      setCreating(false);
-    }
+  // Función para manejar cambios de página
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
   };
 
   const handleBlock = async (id) => {
@@ -76,9 +78,24 @@ const UserManagement = () => {
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
       await api.patch(`/admin/users/${id}/block`);
-      await fetchUsers();
-    } catch {
-      setError('Error al bloquear');
+      await fetchUsers(currentPage);
+    } catch (err) {
+      console.error('Error blocking user:', err);
+      setError('Error al bloquear usuario');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleUnblock = async (id) => {
+    if (user?.role !== 'admin') return;
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    try {
+      await api.patch(`/admin/users/${id}/unblock`);
+      await fetchUsers(currentPage);
+    } catch (err) {
+      console.error('Error unblocking user:', err);
+      setError('Error al desbloquear usuario');
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
@@ -88,168 +105,204 @@ const UserManagement = () => {
     if (user?.role !== 'admin') return;
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const res = await api.patch(`/api/admin/users/${id}/reset-password`);
+      const res = await api.put(`/admin/users/${id}/reset-password`);
       setResetResult({ id, password: res.data.nuevaContraseña });
-      await fetchUsers();
-    } catch {
-      setError('Error al resetear');
+      await fetchUsers(currentPage);
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      setError('Error al resetear contraseña');
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  // Reset form and alerts when modal closes
-  const handleModalClose = () => {
-    setShowCreate(false);
-    setNewUsername('');
-    setNewName('');
-    setNewEmail('');
-    setNewPassword('');
-    setAutoGenerate(false);
-    setCreateError('');
-    setCreatedPassword('');
+  const handleDelete = async (id) => {
+    if (user?.role !== 'admin') return;
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) return;
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    try {
+      await api.delete(`/admin/users/${id}`);
+      await fetchUsers(currentPage);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('Error al eliminar usuario');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
+    }
   };
 
   return (
-    <div className="user-management p-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3>Gestión de Usuarios</h3>
-        <Button onClick={() => setShowCreate(true)}>Crear Usuario</Button>
+    <div className="user-management-container">
+      <div className="user-management-header">
+        <h1>Gestión de Usuarios</h1>
+        <button onClick={handleAddUser} className="add-user-button">
+          ➕ Crear Usuario
+        </button>
       </div>
 
       {error && (
-        <Alert variant="danger" dismissible onClose={() => setError('')}>
-          {error}
-        </Alert>
+        <div className="error-message">
+                      {typeof error === 'string' ? error : 'Error desconocido'}
+        </div>
+      )}
+
+      {/* Información de paginación */}
+      {!loadingUsers && users.length > 0 && (
+        <div className="pagination-info">
+          <p>
+            Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalRecords)} de {totalRecords} usuarios
+          </p>
+        </div>
       )}
 
       {loadingUsers ? (
-        <Spinner animation="border" />
-      ) : (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Usuario</th>
-              <th>Email</th>
-              <th>Estado</th>
-              <th>Vence</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.atr_id_usuario}>
-                <td>{u.atr_id_usuario}</td>
-                <td>{u.atr_usuario}</td>
-                <td>{u.atr_correo_electronico}</td>
-                <td>{u.atr_estado_usuario}</td>
-                <td>{u.atr_fecha_vencimiento ? new Date(u.atr_fecha_vencimiento).toLocaleDateString() : '-'}</td>
-                <td className="d-flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="warning"
-                    disabled={actionLoading[u.atr_id_usuario]}
-                    onClick={() => handleBlock(u.atr_id_usuario)}
-                  >
-                    {actionLoading[u.atr_id_usuario] ? <Spinner size="sm" animation="border" /> : 'Bloquear'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={actionLoading[u.atr_id_usuario]}
-                    onClick={() => handleReset(u.atr_id_usuario)}
-                  >
-                    {actionLoading[u.atr_id_usuario] ? <Spinner size="sm" animation="border" /> : 'Resetear'}
-                  </Button>
-                  {resetResult?.id === u.atr_id_usuario && (
-                    <small className="ms-2 text-success">
-                      Nueva: {resetResult.password}
-                    </small>
-                  )}
-                </td>
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Cargando usuarios...</p>
+        </div>
+      ) : users.length > 0 ? (
+        <>
+          <table className="user-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Estado</th>
+                <th>Vence</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.atr_id_usuario}>
+                  <td>{u.atr_id_usuario}</td>
+                  <td>{u.atr_usuario}</td>
+                  <td>{u.atr_correo_electronico}</td>
+                  <td>
+                    <span className={`status-badge ${getStatusClass(u.atr_estado_usuario)}`}>
+                      {u.atr_estado_usuario}
+                    </span>
+                  </td>
+                  <td>{u.atr_fecha_vencimiento ? new Date(u.atr_fecha_vencimiento).toLocaleDateString('es-ES') : '-'}</td>
+                  <td className="actions-cell">
+                    <button
+                      className={`action-button block-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
+                      disabled={actionLoading[u.atr_id_usuario]}
+                      onClick={() => handleBlock(u.atr_id_usuario)}
+                      title="Bloquear usuario"
+                    >
+                      {actionLoading[u.atr_id_usuario] ? '⏳' : '🔒'}
+                    </button>
+                    
+                    {u.atr_estado_usuario === 'BLOQUEADO' && (
+                      <button
+                        className={`action-button unblock-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
+                        disabled={actionLoading[u.atr_id_usuario]}
+                        onClick={() => handleUnblock(u.atr_id_usuario)}
+                        title="Desbloquear usuario"
+                      >
+                        {actionLoading[u.atr_id_usuario] ? '⏳' : '🔓'}
+                      </button>
+                    )}
+                    
+                    <button
+                      className={`action-button reset-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
+                      disabled={actionLoading[u.atr_id_usuario]}
+                      onClick={() => handleReset(u.atr_id_usuario)}
+                      title="Resetear contraseña"
+                    >
+                      {actionLoading[u.atr_id_usuario] ? '⏳' : '🔄'}
+                    </button>
+                    
+                    <button
+                      className={`action-button delete-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
+                      disabled={actionLoading[u.atr_id_usuario]}
+                      onClick={() => handleDelete(u.atr_id_usuario)}
+                      title="Eliminar usuario"
+                    >
+                      {actionLoading[u.atr_id_usuario] ? '⏳' : '🗑️'}
+                    </button>
+                    
+                    {resetResult?.id === u.atr_id_usuario && (
+                      <div className="reset-result">
+                        Nueva: {resetResult.password}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Paginación mejorada */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button 
+                onClick={() => handlePageChange(1)} 
+                disabled={currentPage === 1}
+                className="pagination-btn"
+              >
+                ⏮️ Primera
+              </button>
+              <button 
+                onClick={() => handlePageChange(currentPage - 1)} 
+                disabled={currentPage === 1}
+                className="pagination-btn"
+              >
+                ◀️ Anterior
+              </button>
+              
+              <span className="page-info">
+                Página {currentPage} de {totalPages}
+              </span>
+              
+              <button 
+                onClick={() => handlePageChange(currentPage + 1)} 
+                disabled={currentPage === totalPages}
+                className="pagination-btn"
+              >
+                Siguiente ▶️
+              </button>
+              <button 
+                onClick={() => handlePageChange(totalPages)} 
+                disabled={currentPage === totalPages}
+                className="pagination-btn"
+              >
+                Última ⏭️
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="no-data-message">
+          <h3>No hay usuarios</h3>
+          <p>No se encontraron usuarios en el sistema.</p>
+        </div>
       )}
 
       {/* Crear Usuario Modal */}
-      <Modal show={showCreate} onHide={handleModalClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Crear Usuario</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {createError && (
-            <Alert variant="danger" dismissible onClose={() => setCreateError('')}>
-              {createError}
-            </Alert>
-          )}
-          {createdPassword && (
-            <Alert variant="success" dismissible onClose={() => setCreatedPassword('')}>
-              Contraseña generada: <strong>{createdPassword}</strong>
-            </Alert>
-          )}
-          <Form>
-            <Form.Group className="mb-2">
-              <Form.Label>Usuario</Form.Label>
-              <Form.Control
-                value={newUsername}
-                onChange={e => setNewUsername(e.target.value)}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Nombre Completo</Form.Label>
-              <Form.Control
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-2">
-              <Form.Label>Email</Form.Label>
-              <Form.Control
-                type="email"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group className="mb-2 d-flex align-items-center">
-              <Form.Check
-                type="checkbox"
-                label="Autogenerar contraseña"
-                checked={autoGenerate}
-                onChange={e => setAutoGenerate(e.target.checked)}
-              />
-            </Form.Group>
-            {!autoGenerate && (
-              <Form.Group className="mb-2">
-                <Form.Label>Contraseña</Form.Label>
-                <Form.Control
-                  type="password"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                />
-              </Form.Group>
-            )}
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleModalClose}>
-            Cancelar
-          </Button>
-          <Button
-            variant="primary"
-            disabled={creating}
-            onClick={handleCreate}
-          >
-            {creating ? <Spinner size="sm" animation="border" /> : 'Crear'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ModalForm open={userModalOpen} onClose={handleCloseUser} title="Crear Usuario">
+        <UserForm onSuccess={handleUserSuccess} />
+      </ModalForm>
     </div>
   );
+};
+
+// Función auxiliar para obtener la clase CSS del badge según el estado
+const getStatusClass = (status) => {
+  switch (status) {
+    case 'ACTIVO':
+      return 'success';
+    case 'BLOQUEADO':
+      return 'danger';
+    case 'PENDIENTE_APROBACION':
+      return 'warning';
+    case 'INACTIVO':
+      return 'secondary';
+    default:
+      return 'secondary';
+  }
 };
 
 export default UserManagement;

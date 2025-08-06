@@ -1,14 +1,22 @@
 // File: server/services/appointmentService.js
-const { Appointment } = require('../Models/Appointment');
-const {  EstadoCita } = require('../Models/EstadoCita');
-const { Recordatorio } = require('../Models/Recordatorio');
+const Appointment = require('../Models/Appointment');
+const EstadoCita = require('../Models/EstadoCita');
+const Recordatorio = require('../Models/Recordatorio');
 module.exports = {
   async create(data) {
     // lógica de solapamiento, disponibilidad
     return Appointment.create(data);
   },
   async list() {
-    return Appointment.findAll();
+    return Appointment.findAll({
+      include: [
+        {
+          model: require('../Models/Recordatorio'),
+          as: 'Recordatorio',
+          attributes: ['atr_fecha_hora_envio']
+        }
+      ]
+    });
   },
   async getById(id) {
     return Appointment.findByPk(id);

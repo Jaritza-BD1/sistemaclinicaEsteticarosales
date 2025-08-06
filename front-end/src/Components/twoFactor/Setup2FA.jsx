@@ -84,7 +84,7 @@ const Setup2FA = ({ onSuccess }) => {
         </div>
       </div>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: '#BA6E8F', marginBottom: 6 }}>Configurar 2FA</h2>
-      {error && <div style={{ marginBottom: 10, padding: 10, background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 7, color: '#B91C1C', fontWeight: 500, fontSize: 13 }}>{error}</div>}
+      {error && <div style={{ marginBottom: 10, padding: 10, background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 7, color: '#B91C1C', fontWeight: 500, fontSize: 13 }}>{typeof error === 'string' ? error : 'Error desconocido'}</div>}
       <div style={{ marginBottom: 18 }}>
         <p style={{ marginBottom: 8, color: '#333', fontSize: 14 }}>Escanea el código QR con Google Authenticator:</p>
         {qrCode && <img src={qrCode} alt="QR Code" style={{ display: 'block', margin: '0 auto 10px', width: 120, height: 120 }} />}

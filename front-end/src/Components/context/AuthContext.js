@@ -8,27 +8,46 @@ import React, {
   useMemo 
 } from 'react';
 import api from '../../services/api';
+import { getAuthToken, setAuthToken, clearAuthToken, cleanCorruptedTokens } from '../../utils/auth';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  // Limpiar tokens corruptos al inicio
+  useEffect(() => {
+    cleanCorruptedTokens();
+  }, []);
+
   // Estado optimizado con carga de datos segura
   const [authState, setAuthState] = useState(() => {
-    const token = localStorage.getItem('token');
-    const firstLogin = localStorage.getItem('firstLogin') === 'true';
-    
-    return {
-      user: null,
-      token,
-      firstLogin,
-      isAuthenticated: false,
-      isLoading: !!token
-    };
+    try {
+      const token = getAuthToken();
+      const firstLogin = localStorage.getItem('firstLogin') === 'true';
+      
+      return {
+        user: null,
+        token,
+        firstLogin,
+        isAuthenticated: false,
+        isLoading: !!token
+      };
+    } catch (error) {
+      console.error('Error inicializando AuthContext:', error);
+      // Si hay error, limpiar todo y empezar limpio
+      localStorage.clear();
+      return {
+        user: null,
+        token: null,
+        firstLogin: false,
+        isAuthenticated: false,
+        isLoading: false
+      };
+    }
   });
 
   // 1. Declarar logout PRIMERO - SOLUCIÓN CLAVE
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
+    clearAuthToken();
     localStorage.removeItem('firstLogin');
     
     setAuthState({
@@ -44,7 +63,7 @@ export const AuthProvider = ({ children }) => {
 
   // 2. Función de login optimizada (depende de logout)
   const login = useCallback((jwt, firstLogin = false) => {
-    localStorage.setItem('token', jwt);
+    setAuthToken(jwt);
     localStorage.setItem('firstLogin', firstLogin);
     
     setAuthState({
@@ -99,12 +118,7 @@ export const AuthProvider = ({ children }) => {
     validateToken();
   }, [authState.token, authState.user, fetchUserData, logout]);
 
-  // 5. Función isAuthenticated
-  const isAuthenticated = useCallback(() => {
-    return !!authState.token && !!authState.user;
-  }, [authState.token, authState.user]);
-
-  // 6. Otras funciones
+  // 5. Otras funciones
   const completeFirstLogin = useCallback(() => {
     localStorage.setItem('firstLogin', 'false');
     setAuthState(prev => ({
@@ -117,6 +131,10 @@ export const AuthProvider = ({ children }) => {
     return authState.user?.atr_id_rol === roleId;
   }, [authState.user]);
 
+  const isAdmin = useCallback(() => {
+    return authState.user?.atr_id_rol === 1;
+  }, [authState.user]);
+
   const updateUser = useCallback((userData) => {
     setAuthState(prev => ({
       ...prev,
@@ -124,55 +142,44 @@ export const AuthProvider = ({ children }) => {
     }));
   }, []);
 
-  // Verificación activa de autenticación
-  const verifyAuthentication = useCallback(async () => {
-    if (!authState.token) return false;
-    
-    try {
-      const response = await api.get('/auth/verify-token');
-      return response.data.valid;
-    } catch (error) {
-      console.error('Active verification failed:', error);
-      return false;
-    }
-  }, [authState.token]);
-
-  // Valor del contexto
+  // 6. Valor del contexto optimizado
   const contextValue = useMemo(() => ({
     user: authState.user,
     token: authState.token,
-    isAuthenticated,
-    isLoading: authState.isLoading,
     firstLogin: authState.firstLogin,
+    isAuthenticated: authState.isAuthenticated,
+    isLoading: authState.isLoading,
     login,
     logout,
     completeFirstLogin,
     hasRole,
-    updateUser,
-    verifyAuthentication
+    isAdmin,
+    updateUser
   }), [
     authState.user,
     authState.token,
-    isAuthenticated,
-    authState.isLoading,
     authState.firstLogin,
+    authState.isAuthenticated,
+    authState.isLoading,
     login,
     logout,
     completeFirstLogin,
     hasRole,
-    updateUser,
-    verifyAuthentication
+    isAdmin,
+    updateUser
   ]);
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {!authState.isLoading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

@@ -1,14 +1,14 @@
 // File: src/components/appointments/ViewAppointments.jsx
 import React, {useEffect} from 'react';
 import {useDispatch,useSelector} from 'react-redux';
-import { listAppointments } from '../../redux/appointments/appointmentsSlice';
+import { fetchAppointments } from '../../redux/appointments/appointmentsSlice';
 import { selectAllAppointments } from '../../redux/appointments/appointmentsSelectors';
 
 export default function ViewAppointments() {
   const dispatch = useDispatch();
   const apps     = useSelector(selectAllAppointments);
 
-  useEffect(()=>{ dispatch(listAppointments()); },[dispatch]);
+  useEffect(()=>{ dispatch(fetchAppointments()); },[dispatch]);
 
   return (
     <ul className="app-list">

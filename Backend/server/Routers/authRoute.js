@@ -55,6 +55,16 @@ router.get(
   auth.verifyEmail
 );
 
+// — Verificación de email (POST para frontend React)—
+router.post(
+  '/verify-email',
+  [
+    body('token').notEmpty().withMessage('Token de verificación requerido')
+  ],
+  validateRequest,
+  auth.verifyEmailPost
+);
+
 // — Login —
 router.post(
   '/login',

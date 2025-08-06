@@ -1,0 +1,52 @@
+/* Estilos globales para formularios, tablas, botones y toasts */
+.app-form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.form-group {
+  margin-bottom: 1.2rem;
+}
+
+input, select, textarea {
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #80bdff;
+  outline: none;
+}
+
+.btn-primary, .btn-success, .btn-danger, .btn-info {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.table th, .table td {
+  vertical-align: middle;
+}
+
+.toast {
+  font-size: 1rem;
+}
+
+.input-error {
+  border-color: #dc3545;
+}
+.error {
+  color: #dc3545;
+  font-size: 0.95em;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .table-responsive {
+    font-size: 0.95em;
+  }
+  .app-form {
+    padding: 0 1rem;
+  }
+} 

@@ -1,4 +1,4 @@
-const { sequelize } = require('../Config/db');
+const sequelize = require('../Config/db');
 const { logError } = require('../helpers/errorHelper');
 
 /**

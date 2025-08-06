@@ -1,21 +1,36 @@
-import React from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import api from '../services/api';
 
-export default function EmailVerified() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const success = searchParams.get('success') === 'true';
-  const error = searchParams.get('error');
+const EmailVerified = () => {
+  const [status, setStatus] = useState('Verificando...');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) {
+      setStatus('Token inválido o faltante.');
+      return;
+    }
+    api.post('/auth/verify-email', { token })
+      .then(() => setStatus('¡Correo verificado! Espera la aprobación del administrador.'))
+      .catch(() => setStatus('Error al verificar el correo. El enlace puede haber expirado o ya fue usado.'));
+  }, []);
 
   return (
-    <div style={{ textAlign: 'center', marginTop: 60 }}>
-      <h1>
-        {success
-          ? '¡Correo verificado exitosamente!'
-          : 'Error al verificar el correo'}
-      </h1>
-      {error && <p style={{ color: 'red' }}>{decodeURIComponent(error)}</p>}
-      <button onClick={() => navigate('/login')}>Ir al login</button>
+    <div style={{
+      maxWidth: 400,
+      margin: '60px auto',
+      background: '#fff',
+      borderRadius: 10,
+      boxShadow: '0 2px 12px rgba(211,145,176,0.10)',
+      padding: 32,
+      textAlign: 'center',
+      fontFamily: 'Inter, sans-serif',
+    }}>
+      <h2 style={{ color: '#BA6E8F', marginBottom: 18 }}>Verificación de Correo</h2>
+      <p style={{ color: '#555', fontSize: 16 }}>{status}</p>
     </div>
   );
-} 
+};
+
+export default EmailVerified; 

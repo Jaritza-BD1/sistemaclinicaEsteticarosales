@@ -1,0 +1,318 @@
+/* Contenedor principal */
+.pending-users-container {
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  min-height: calc(100vh - 64px);
+}
+
+/* Header del componente */
+.pending-users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.pending-users-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pending-count {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Mensajes de éxito y error */
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #c3e6cb;
+  margin-bottom: 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #f5c6cb;
+  margin-bottom: 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Información de paginación */
+.pagination-info {
+  background-color: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.pagination-info p {
+  margin: 0;
+  color: #1976d2;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Contenedor de carga */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Tabla de usuarios pendientes */
+.pending-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.pending-users-table th {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pending-users-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.pending-users-table tr:hover {
+  background-color: #f8f9fa;
+  transition: background-color 0.2s ease;
+}
+
+.pending-users-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badge de nombre de usuario */
+.username-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Celda de email */
+.email-cell {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #666;
+}
+
+/* Celda de acciones */
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.approve-button {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.approve-button:hover {
+  background-color: #c3e6cb;
+}
+
+.reject-button {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.reject-button:hover {
+  background-color: #f5c6cb;
+}
+
+/* Mensaje de no datos */
+.no-data-message {
+  text-align: center;
+  padding: 40px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.no-data-message h3 {
+  color: #6c757d;
+  margin-bottom: 10px;
+  font-size: 20px;
+}
+
+.no-data-message p {
+  color: #6c757d;
+  margin: 0;
+  font-size: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pending-users-header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .pending-users-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .header-info {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .pending-users-table {
+    font-size: 12px;
+  }
+  
+  .pending-users-table th,
+  .pending-users-table td {
+    padding: 8px 6px;
+  }
+  
+  .actions-cell {
+    gap: 4px;
+    flex-direction: column;
+  }
+  
+  .action-button {
+    font-size: 12px;
+    padding: 6px 12px;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .email-cell {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pending-users-container {
+    padding: 10px;
+  }
+  
+  .pending-users-table {
+    display: block;
+    overflow-x: auto;
+  }
+  
+  .pending-users-table th,
+  .pending-users-table td {
+    min-width: 100px;
+  }
+  
+  .username-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  
+  .pagination-info {
+    font-size: 12px;
+  }
+  
+  .pending-count {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+} 

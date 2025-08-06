@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import './pending-users.css';
 
 const PendingUsers = () => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     const fetchPendingUsers = async () => {
@@ -13,83 +15,131 @@ const PendingUsers = () => {
         setUsers(response.data);
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching pending users:', err);
         setError('Error al cargar usuarios pendientes');
         setLoading(false);
       }
     };
-    
     fetchPendingUsers();
   }, []);
 
   const handleApprove = async (userId) => {
     try {
-      await api.put(`/admin/approve-user/${userId}`);
+      await api.post(`/admin/approve-user/${userId}`);
       setUsers(users.filter(user => user.atr_id_usuario !== userId));
+      setSuccessMsg('Usuario aprobado exitosamente');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
+      console.error('Error approving user:', err);
       setError('Error al aprobar usuario');
     }
   };
 
   const handleReject = async (userId) => {
+    const confirm = window.confirm('¿Estás seguro de que deseas rechazar este usuario?');
+    if (!confirm) return;
     try {
-      await api.put(`/admin/reject-user/${userId}`);
+      await api.post(`/admin/reject-user/${userId}`);
       setUsers(users.filter(user => user.atr_id_usuario !== userId));
+      setSuccessMsg('Usuario rechazado exitosamente');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
+      console.error('Error rejecting user:', err);
       setError('Error al rechazar usuario');
     }
   };
 
-  if (loading) {
-    return <div>Cargando...</div>;
-  }
-
   return (
-    <div className="container mx-auto mt-10">
-      <h2 className="text-2xl font-bold mb-6">Usuarios Pendientes de Aprobación</h2>
-      
-      {error && <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>}
-      
-      {users.length === 0 ? (
-        <p>No hay usuarios pendientes de aprobación</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
+    <div className="pending-users-container">
+      <div className="pending-users-header">
+        <h1>Usuarios Pendientes de Aprobación</h1>
+        <div className="header-info">
+          <span className="pending-count">{users.length} usuarios pendientes</span>
+        </div>
+      </div>
+
+      {successMsg && (
+        <div className="success-message">
+          ✅ {successMsg}
+        </div>
+      )}
+
+      {error && (
+        <div className="error-message">
+          ❌ {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Cargando usuarios pendientes...</p>
+        </div>
+      ) : users.length > 0 ? (
+        <>
+          <div className="pagination-info">
+            <p>
+              Mostrando {users.length} usuarios pendientes de aprobación
+            </p>
+          </div>
+
+          <table className="pending-users-table">
             <thead>
               <tr>
-                <th className="py-2 px-4 border-b">Usuario</th>
-                <th className="py-2 px-4 border-b">Nombre</th>
-                <th className="py-2 px-4 border-b">Email</th>
-                <th className="py-2 px-4 border-b">Fecha Registro</th>
-                <th className="py-2 px-4 border-b">Acciones</th>
+                <th>ID Usuario</th>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Fecha Registro</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {users.map(user => (
                 <tr key={user.atr_id_usuario}>
-                  <td className="py-2 px-4 border-b">{user.atr_usuario}</td>
-                  <td className="py-2 px-4 border-b">{user.atr_nombre_usuario}</td>
-                  <td className="py-2 px-4 border-b">{user.atr_correo_electronico}</td>
-                  <td className="py-2 px-4 border-b">
-                    {new Date(user.atr_fecha_creacion).toLocaleDateString()}
+                  <td>{user.atr_id_usuario}</td>
+                  <td>
+                    <span className="username-badge">
+                      {user.atr_usuario}
+                    </span>
                   </td>
-                  <td className="py-2 px-4 border-b">
+                  <td>{user.atr_nombre_usuario}</td>
+                  <td>
+                    <div className="email-cell">
+                      {user.atr_correo_electronico}
+                    </div>
+                  </td>
+                  <td>
+                    {user.atr_fecha_creacion ? 
+                      new Date(user.atr_fecha_creacion).toLocaleDateString('es-ES') : 
+                      'Fecha no disponible'
+                    }
+                  </td>
+                  <td className="actions-cell">
                     <button
                       onClick={() => handleApprove(user.atr_id_usuario)}
-                      className="mr-2 bg-green-500 text-white py-1 px-3 rounded hover:bg-green-600"
+                      className="action-button approve-button"
+                      title="Aprobar usuario"
                     >
-                      Aprobar
+                      ✅ Aprobar
                     </button>
                     <button
                       onClick={() => handleReject(user.atr_id_usuario)}
-                      className="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600"
+                      className="action-button reject-button"
+                      title="Rechazar usuario"
                     >
-                      Rechazar
+                      ❌ Rechazar
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </>
+      ) : (
+        <div className="no-data-message">
+          <h3>No hay usuarios pendientes</h3>
+          <p>No se encontraron usuarios pendientes de aprobación en el sistema.</p>
         </div>
       )}
     </div>

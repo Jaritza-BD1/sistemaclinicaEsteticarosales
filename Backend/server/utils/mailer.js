@@ -44,24 +44,14 @@ async function sendResetEmail(to, tempPassword, expiryHours, smtpEmail, smtpPass
 const templates = {
   verification: (email, token, name) => ({
     to: email,
-    subject: 'Verifica tu cuenta - Clínica Estética Rosales',
+    subject: 'Verifica tu correo',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">¡Bienvenido a Clínica Estética Rosales!</h2>
         <p>Hola ${name},</p>
-        <p>Gracias por registrarte en nuestro sistema. Para completar tu registro, por favor haz clic en el siguiente enlace:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${FRONTEND_URL}/verify-email?token=${token}" 
-             style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-            Verificar mi cuenta
-          </a>
-        </div>
-        <p><strong>Importante:</strong> Este enlace expira en 24 horas.</p>
-        <p>Si no solicitaste este registro, puedes ignorar este correo.</p>
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-        <p style="color: #666; font-size: 12px;">
-          Este es un correo automático, por favor no respondas a este mensaje.
-        </p>
+        <p>Por favor verifica tu correo haciendo clic en el siguiente enlace:</p>
+        <a href="${FRONTEND_URL}/email-verified?token=${token}">Verificar correo</a>
+        <p>Si no solicitaste esto, ignora este mensaje.</p>
       </div>
     `
   }),
@@ -110,7 +100,7 @@ async function sendVerificationEmail(email, token, name) {
       ...mailOptions
     });
     console.log(`Email de verificación enviado a: ${email}`);
-    console.log(`URL de verificación: ${FRONTEND_URL}/verify-email?token=${token}`);
+    console.log(`URL de verificación: ${FRONTEND_URL}/email-verified?token=${token}`);
   } catch (error) {
     console.error('Error enviando email de verificación:', error);
     throw error;

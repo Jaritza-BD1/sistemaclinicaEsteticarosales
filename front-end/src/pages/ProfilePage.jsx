@@ -47,7 +47,22 @@ const ProfilePage = () => {
         handleCloseModal();
       }
     } catch (error) {
-      console.error('Error al actualizar el perfil:', error.message || error);
+      // Manejar diferentes tipos de error
+      let errorMessage = 'Error desconocido';
+      
+      if (error && typeof error === 'object') {
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.error) {
+          errorMessage = error.error;
+        } else if (error.toString) {
+          errorMessage = error.toString();
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      console.error('Error al actualizar el perfil:', errorMessage);
       // Aquí puedes mostrar un mensaje de error al usuario
     }
   };

@@ -263,7 +263,7 @@ const Verify2FA = ({ userId, onSuccess, userEmail }) => {
       {error && (
         <div style={{ marginTop: 12, padding: 10, background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 7, color: '#B91C1C', fontWeight: 500, textAlign: 'left', fontSize: 13 }}>
           <svg style={{ width: 18, height: 18, verticalAlign: 'middle', marginRight: 6 }} viewBox="0 0 24 24" fill="none" stroke="#B91C1C" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          {error}
+                      {typeof error === 'string' ? error : 'Error desconocido'}
         </div>
       )}
       {/* Ayuda */}

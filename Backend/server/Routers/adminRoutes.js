@@ -2,6 +2,7 @@
 const express = require('express');
 const { param, body, validationResult } = require('express-validator');
 const asyncHandler = require('express-async-handler');
+const adminController = require('../Controllers/adminController'); // <--- Importación necesaria
 const {
   listUsers,
   createUser,
@@ -69,6 +70,11 @@ router.put(
   validate,
   asyncHandler(resetUserPassword)
 );
+
+// Desbloquear usuario
+router.patch('/users/:id/unblock', asyncHandler(adminController.unblockUser));
+// Eliminar usuario
+router.delete('/users/:id', asyncHandler(adminController.deleteUser));
 
 // ───────── Bitácora ─────────
 

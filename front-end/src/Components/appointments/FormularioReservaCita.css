@@ -1,0 +1,483 @@
+/* ========================================
+   ESTILOS PARA FORMULARIO DE RESERVA DE CITAS
+   ======================================== */
+
+.appointment-form-container {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  font-family: var(--font-family-primary);
+}
+
+/* ========================================
+   HEADER DEL FORMULARIO
+   ======================================== */
+
+.form-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-xl) 0;
+}
+
+.form-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-3xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.header-icon {
+  color: var(--rose-500);
+  font-size: 2rem;
+}
+
+.form-subtitle {
+  color: var(--text-secondary);
+  font-size: var(--font-size-lg);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ========================================
+   PAPEL PRINCIPAL
+   ======================================== */
+
+.form-paper {
+  background: var(--white-pure);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--rose-100);
+  padding: var(--spacing-2xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* ========================================
+   TARJETAS DE FORMULARIO
+   ======================================== */
+
+.form-card {
+  background: var(--white-pure);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--rose-100);
+  transition: var(--transition-normal);
+  height: 100%;
+}
+
+.form-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.card-icon {
+  color: var(--rose-500);
+  font-size: 1.5rem;
+}
+
+.card-divider {
+  margin: var(--spacing-md) 0;
+  border-color: var(--rose-200);
+}
+
+/* ========================================
+   CAMPOS DE FORMULARIO
+   ======================================== */
+
+.form-field {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-field .MuiOutlinedInput-root {
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-normal);
+}
+
+.form-field .MuiOutlinedInput-root:hover {
+  border-color: var(--rose-300);
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused {
+  border-color: var(--rose-500);
+}
+
+.form-field .MuiInputLabel-root {
+  color: var(--rose-500);
+  font-weight: var(--font-weight-medium);
+}
+
+.form-field .MuiInputLabel-root.Mui-focused {
+  color: var(--rose-500);
+}
+
+.error-text {
+  color: var(--error);
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-xs);
+}
+
+/* ========================================
+   INFORMACIÓN SELECCIONADA
+   ======================================== */
+
+.selected-info {
+  margin-top: var(--spacing-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.info-chip {
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--border-radius-md);
+}
+
+/* ========================================
+   RESUMEN DE CITA
+   ======================================== */
+
+.appointment-summary {
+  padding: var(--spacing-md);
+  background: var(--rose-50);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--rose-200);
+}
+
+.summary-title {
+  color: var(--rose-600);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.summary-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.summary-chip {
+  background: var(--rose-100);
+  color: var(--rose-600);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--rose-200);
+}
+
+.summary-chip:hover {
+  background: var(--rose-200);
+}
+
+/* ========================================
+   ACCIONES DEL FORMULARIO
+   ======================================== */
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding-top: var(--spacing-xl);
+  margin-top: var(--spacing-xl);
+  border-top: 1px solid var(--rose-200);
+}
+
+.clear-btn {
+  color: var(--rose-500);
+  border-color: var(--rose-300);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--border-radius-md);
+  text-transform: none;
+  transition: var(--transition-normal);
+}
+
+.clear-btn:hover {
+  background: var(--rose-50);
+  border-color: var(--rose-400);
+  color: var(--rose-600);
+}
+
+.submit-btn {
+  background: var(--gradient-rose);
+  color: var(--white-pure);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--border-radius-md);
+  text-transform: none;
+  box-shadow: var(--shadow-rose);
+  transition: var(--transition-normal);
+}
+
+.submit-btn:hover {
+  background: var(--gradient-rose);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ========================================
+   NOTIFICACIONES
+   ======================================== */
+
+.notification-alert {
+  border-radius: var(--border-radius-md);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ========================================
+   AUTCOMPLETE PERSONALIZADO
+   ======================================== */
+
+.MuiAutocomplete-root .MuiOutlinedInput-root {
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-normal);
+}
+
+.MuiAutocomplete-root .MuiOutlinedInput-root:hover {
+  border-color: var(--rose-300);
+}
+
+.MuiAutocomplete-root .MuiOutlinedInput-root.Mui-focused {
+  border-color: var(--rose-500);
+}
+
+.MuiAutocomplete-root .MuiInputLabel-root {
+  color: var(--rose-500);
+  font-weight: var(--font-weight-medium);
+}
+
+.MuiAutocomplete-root .MuiInputLabel-root.Mui-focused {
+  color: var(--rose-500);
+}
+
+/* ========================================
+   RESPONSIVIDAD
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .appointment-form-container {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+  
+  .form-paper {
+    padding: var(--spacing-lg);
+  }
+  
+  .form-title {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .form-subtitle {
+    font-size: var(--font-size-base);
+  }
+}
+
+@media (max-width: 768px) {
+  .appointment-form-container {
+    padding: var(--spacing-md);
+  }
+  
+  .form-paper {
+    padding: var(--spacing-md);
+  }
+  
+  .form-title {
+    font-size: var(--font-size-xl);
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .form-subtitle {
+    font-size: var(--font-size-sm);
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .clear-btn,
+  .submit-btn {
+    width: 100%;
+  }
+  
+  .card-title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .summary-items {
+    flex-direction: column;
+  }
+  
+  .selected-info {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .appointment-form-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .form-paper {
+    padding: var(--spacing-sm);
+  }
+  
+  .form-title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .form-subtitle {
+    font-size: var(--font-size-xs);
+  }
+  
+  .card-title {
+    font-size: var(--font-size-base);
+  }
+  
+  .appointment-summary {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* ========================================
+   ANIMACIONES
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.form-card:nth-child(1) { animation-delay: 0.1s; }
+.form-card:nth-child(2) { animation-delay: 0.2s; }
+.form-card:nth-child(3) { animation-delay: 0.3s; }
+.form-card:nth-child(4) { animation-delay: 0.4s; }
+.form-card:nth-child(5) { animation-delay: 0.5s; }
+.form-card:nth-child(6) { animation-delay: 0.6s; }
+
+/* ========================================
+   ESTADOS DE HOVER Y FOCUS
+   ======================================== */
+
+.form-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--rose-300);
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--rose-500);
+  border-width: 2px;
+}
+
+.form-field .MuiOutlinedInput-root.Mui-focused .MuiInputLabel-root {
+  color: var(--rose-500);
+}
+
+/* ========================================
+   ESTILOS ESPECÍFICOS PARA MATERIAL-UI
+   ======================================== */
+
+.MuiMenuItem-root {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-sm);
+}
+
+.MuiMenuItem-root:hover {
+  background-color: var(--rose-50);
+}
+
+.MuiMenuItem-root.Mui-selected {
+  background-color: var(--rose-100);
+  color: var(--rose-600);
+}
+
+.MuiMenuItem-root.Mui-selected:hover {
+  background-color: var(--rose-200);
+}
+
+/* ========================================
+   MEJORAS DE ACCESIBILIDAD
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .form-card,
+  .clear-btn,
+  .submit-btn {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .form-title,
+  .card-title {
+    color: var(--rose-700);
+  }
+  
+  .form-field .MuiOutlinedInput-root {
+    border-width: 2px;
+  }
+}
+
+/* ========================================
+   ESTADOS ESPECIALES
+   ======================================== */
+
+.form-card.error {
+  border-color: var(--error);
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.1);
+}
+
+.form-card.success {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+/* ========================================
+   LOADING STATES
+   ======================================== */
+
+.form-card.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.form-card.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--rose-200);
+  border-top: 2px solid var(--rose-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 

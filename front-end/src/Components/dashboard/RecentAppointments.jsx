@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Table, Badge } from 'react-bootstrap';
+import { Card, CardContent, CardHeader, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Typography } from '@mui/material';
 import './dashboard.css';
 
 const RecentAppointments = () => {
@@ -9,43 +9,41 @@ const RecentAppointments = () => {
     { id: 3, patient: 'Carlos Sánchez', service: 'Depilación láser', time: '02:15 PM', status: 'cancelado' }
   ];
 
-  const statusVariant = {
+  const statusColor = {
     completado: 'success',
     pendiente: 'warning',
-    cancelado: 'danger'
+    cancelado: 'error'
   };
 
   return (
-    <Card className="mb-4">
-      <Card.Header>
-        <h5>Últimas Citas</h5>
-      </Card.Header>
-      <Card.Body>
-        <Table striped hover>
-          <thead>
-            <tr>
-              <th>Paciente</th>
-              <th>Servicio</th>
-              <th>Hora</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.map(app => (
-              <tr key={app.id}>
-                <td>{app.patient}</td>
-                <td>{app.service}</td>
-                <td>{app.time}</td>
-                <td>
-                  <Badge bg={statusVariant[app.status]}>
-                    {app.status}
-                  </Badge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Card.Body>
+    <Card sx={{ mb: 4 }}>
+      <CardHeader title={<Typography variant="h6">Últimas Citas</Typography>} />
+      <CardContent>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Paciente</TableCell>
+                <TableCell>Servicio</TableCell>
+                <TableCell>Hora</TableCell>
+                <TableCell>Estado</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {appointments.map(app => (
+                <TableRow key={app.id}>
+                  <TableCell>{app.patient}</TableCell>
+                  <TableCell>{app.service}</TableCell>
+                  <TableCell>{app.time}</TableCell>
+                  <TableCell>
+                    <Chip label={app.status} color={statusColor[app.status]} size="small" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </CardContent>
     </Card>
   );
 };

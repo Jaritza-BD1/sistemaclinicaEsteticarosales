@@ -146,10 +146,10 @@ async function resetUserPassword(req, res, next) {
 }
 
 // — Listar entradas de bitácora —
-// GET /api/admin/logs?usuario=&from=&to=
+// GET /api/admin/logs?usuario=&from=&to=&limit=&offset=
 async function listLogs(req, res, next) {
   try {
-    const { usuario, from, to } = req.query;
+    const { usuario, from, to, limit = 10, offset = 0 } = req.query;
     const where = {};
 
     if (usuario) {
@@ -161,9 +161,15 @@ async function listLogs(req, res, next) {
       if (to)   where.atr_fecha[Op.lte] = new Date(to);
     }
 
+    // Obtener el total de registros para la paginación
+    const total = await Bitacora.count({ where });
+
+    // Obtener los registros con paginación
     const logs = await Bitacora.findAll({
       where,
       order: [['atr_fecha','DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       attributes: [
         ['atr_id_bitacora', 'id'],
         ['atr_fecha', 'fecha'],
@@ -174,7 +180,21 @@ async function listLogs(req, res, next) {
       ]
     });
 
-    res.json(logs);
+    // Calcular información de paginación
+    const currentPage = Math.floor(offset / limit) + 1;
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      data: logs,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalRecords: total,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: currentPage < totalPages,
+        hasPrevPage: currentPage > 1
+      }
+    });
   } catch (err) {
     console.error('Error listando logs:', err);
     next(err);
@@ -199,7 +219,7 @@ async function deleteLogEntry(req, res, next) {
 async function getPendingUsers(req, res, next) {
   try {
     const list = await User.findAll({
-      where: { atr_estado_usuario: 'Pendiente Aprobación' }
+      where: { atr_estado_usuario: 'PENDIENTE_APROBACION' }
     });
     const safe = list.map(u => {
       const j = u.toJSON();
@@ -224,15 +244,45 @@ async function approveUser(req, res, next) {
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-    if (user.atr_estado_usuario !== 'Pendiente Aprobación') {
+    if (user.atr_estado_usuario !== 'PENDIENTE_APROBACION') {
       return res.status(400).json({ error: 'No está pendiente de aprobación' });
     }
-    await user.update({ atr_estado_usuario: 'Activo' });
+    await user.update({ atr_estado_usuario: 'ACTIVO', atr_is_approved: true });
     await sendApprovalEmail(user.atr_correo_electronico);
     res.json({ message: 'Usuario aprobado exitosamente' });
   } catch (error) {
     console.error('Error aprobando usuario:', error);
     next(error);
+  }
+}
+
+// — Desbloquear usuario —
+// PATCH /api/admin/users/:id/unblock
+async function unblockUser(req, res, next) {
+  try {
+    const { id } = req.params;
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await user.update({ atr_estado_usuario: 'ACTIVO', atr_intentos_fallidos: 0, atr_reset_expiry: null });
+    res.json({ success: true, message: 'Usuario desbloqueado' });
+  } catch (err) {
+    console.error('Error desbloqueando usuario:', err);
+    next(err);
+  }
+}
+
+// — Eliminar usuario —
+// DELETE /api/admin/users/:id
+async function deleteUser(req, res, next) {
+  try {
+    const { id } = req.params;
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await user.destroy();
+    res.json({ success: true, message: 'Usuario eliminado' });
+  } catch (err) {
+    console.error('Error eliminando usuario:', err);
+    next(err);
   }
 }
 
@@ -244,7 +294,9 @@ module.exports = {
   listLogs,
   deleteLogEntry,
   getPendingUsers,
-  approveUser
+  approveUser,
+  unblockUser,
+  deleteUser
 };
 
 

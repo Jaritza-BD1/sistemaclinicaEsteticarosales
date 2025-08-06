@@ -25,7 +25,7 @@ function exportToCSV(data, filename = 'bitacora.csv') {
     window.URL.revokeObjectURL(url);
 }
 
-const BitacoraConsulta = () => {
+const BitacoraConsulta = ({ showNavigation = true }) => {
     const navigate = useNavigate();
     // Estados para los filtros
     const [fechaInicio, setFechaInicio] = useState('');
@@ -113,14 +113,14 @@ const BitacoraConsulta = () => {
 
         try {
             const response = await fetchBitacora(queryParams);
-            if (response.data.success) {
-                setEventos(response.data.data);
+            if (response.success) {
+                setEventos(response.data || []);
             } else {
-                setError(response.data.message || 'Error al cargar la bitácora.');
+                setError(response.message || 'Error al cargar la bitácora.');
             }
         } catch (err) {
             console.error('Error al cargar bitácora:', err);
-            setError('No se pudo conectar con el servidor o hubo un error inesperado.');
+            setError(err.message || 'No se pudo conectar con el servidor o hubo un error inesperado.');
         } finally {
             setLoading(false);
         }
@@ -149,11 +149,13 @@ const BitacoraConsulta = () => {
 
     return (
         <div className="bitacora-container">
-            <div className="bitacora-nav">
-                <button onClick={() => navigate('/admin/bitacora/consulta')}>Consulta</button>
-                <button onClick={() => navigate('/admin/bitacora/estadisticas')}>Estadísticas</button>
-            </div>
-            <h1>Consulta de Bitácora del Sistema</h1>
+            {showNavigation && (
+                <div className="bitacora-nav">
+                    <button className="active">Consulta</button>
+                    <button onClick={() => navigate('/bitacora/estadisticas')}>Estadísticas</button>
+                </div>
+            )}
+            {showNavigation && <h1>Gestión de Bitácora del Sistema</h1>}
 
             <div className="filter-section">
                 <label htmlFor="nombreUsuarioFiltro">Usuario:</label>
@@ -210,7 +212,7 @@ const BitacoraConsulta = () => {
             </div>
 
             {loading && <p>Cargando eventos...</p>}
-            {error && <p className="error-message">{error}</p>}
+            {error && <p className="error-message">{typeof error === 'string' ? error : 'Error desconocido'}</p>}
 
             {!loading && !error && (
                 <>

@@ -1,11 +1,10 @@
 // File: src/pages/CancelarCitaPage.jsx
 import React from 'react';
-import {useParams,useNavigate} from 'react-router-dom';
-import CancelAppointment from '../Components/appointments/CancelAppointment';
+// Suponiendo que tienes un componente para mostrar citas canceladas
+import CancelledAppointmentsList from '../Components/appointments/CancelledAppointmentsList';
 
 const CancelarCitaPage = () => {
-  const {id} = useParams();
-  const nav = useNavigate();
-  return <CancelAppointment appointmentId={id} onClose={()=>nav('/citas')}/>;
+  return <CancelledAppointmentsList />;
 };
+
 export default CancelarCitaPage;

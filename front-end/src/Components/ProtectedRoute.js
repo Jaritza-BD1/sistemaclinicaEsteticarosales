@@ -11,7 +11,7 @@ export const ProtectedRoute = ({ children, roles = [] }) => {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated()) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
