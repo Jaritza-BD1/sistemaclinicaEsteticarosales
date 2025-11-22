@@ -4,6 +4,7 @@ const { body, query, validationResult } = require('express-validator');
 const { authenticate } = require('../Middlewares/authMiddlewares');
 const auth = require('../Controllers/authControllers');
 const twoFAController = require('../Controllers/twoFactorController');
+const { verify2FACode } = require('../Controllers/authControllers');
 
 
 const router = express.Router();
@@ -65,6 +66,16 @@ router.post(
   auth.verifyEmailPost
 );
 
+// — Reenviar código de verificación (registro) —
+router.post(
+  '/resend-verification',
+  [
+    body('email').trim().isEmail().withMessage('Email inválido')
+  ],
+  validateRequest,
+  auth.resendVerification
+);
+
 // — Login —
 router.post(
   '/login',
@@ -100,6 +111,17 @@ router.post(
   auth.forgotPassword
 );
 
+// Verificar OTP de restablecimiento (forgot-password)
+router.post(
+  '/verify-reset-otp',
+  [
+    body('email').trim().isEmail().withMessage('Email inválido'),
+    body('token').notEmpty().withMessage('Código requerido')
+  ],
+  validateRequest,
+  auth.verifyResetOTP
+);
+
 // — Restablecer contraseña —
 router.post(
   '/reset-password',
@@ -125,6 +147,9 @@ router.get(
   authenticate,
   (req, res) => res.json({ valid: true, user: req.user })
 );
+
+// -- Funcionalidades de 2FA --
+ router.post('/verify-2fa', verify2FACode);
 
 // Rutas de 2FA (requieren autenticación)
 router.get('/2fa/setup', authenticate, twoFAController.generate2FASecret);

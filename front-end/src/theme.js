@@ -1,41 +1,60 @@
 // src/theme.js
 import { createTheme } from '@mui/material/styles';
 
-// Sistema de colores rosa pastel
-const roseColors = {
-  50: '#fdf2f8',
-  100: '#fce7f3',
-  200: '#fbcfe8',
-  300: '#f9a8d4',
-  400: '#f472b6',
-  500: '#ec4899',
-  600: '#db2777',
-  700: '#be185d',
-  800: '#9d174d',
-  900: '#831843',
-};
+// Paleta base (composición 70% blanco, 20% rosa pálido, 10% acento)
+const BASE_WHITE = '#FFFFFF';
+const PALE_PINK = '#FCE4EC';
+const PALE_PINK_LIGHT = '#FFF6F9';
+const PALE_PINK_L2 = '#FFF2F6';
+const PALE_PINK_L3 = '#FFFBFD';
+const PALE_PINK_DARK = '#F8BBD0';
+const ACCENT = '#212845';
+const BLEND_BG = '#E8E7EB';
 
 const theme = createTheme({
   palette: {
+    // New contrast system: base 70% white, 20% pale pastel pink, 10% accent (#212845)
+    // We compute a soft blended background for a subtle overall tint and
+    // expose an explicit 'accent' color for high-contrast text/icons.
     primary: {
-      main: roseColors[500],
-      light: roseColors[400],
-      dark: roseColors[600],
-      contrastText: '#ffffff',
+      // Use a pale pastel pink as primary (20% presence when combined with white and accent)
+      main: PALE_PINK,
+      light: PALE_PINK_L2,
+      dark: PALE_PINK_DARK,
+      contrastText: ACCENT, // accent as primary contrast for readable text
     },
     secondary: {
-      main: roseColors[300],
-      light: roseColors[200],
-      dark: roseColors[400],
-      contrastText: '#ffffff',
+      // Secondary will be an even paler pink for subtle surfaces
+      main: PALE_PINK_LIGHT,
+      light: PALE_PINK_L3,
+      dark: '#FCEAF0',
+      contrastText: ACCENT,
+    },
+    accent: {
+      // Explicit accent color (10% weight in the requested composition)
+      main: ACCENT,
+      contrastText: BASE_WHITE,
     },
     background: {
-      default: '#fef7f9',
-      paper: '#ffffff',
+      // Blend: 70% white + 20% pale pink (#FCE4EC) + 10% accent (#212845)
+      default: BLEND_BG,
+      paper: BASE_WHITE,
     },
     text: {
-      primary: '#374151',
+      // Use accent for primary text to ensure good contrast against pale backgrounds
+      primary: ACCENT,
       secondary: '#6b7280',
+    },
+    // Expose base tokens for easy access in components: theme.palette.brand.*
+    brand: {
+      base: BASE_WHITE,
+      pale: PALE_PINK,
+      paleLight: PALE_PINK_LIGHT,
+      paleL2: PALE_PINK_L2,
+      paleL3: PALE_PINK_L3,
+      paleDark: PALE_PINK_DARK,
+      accent: ACCENT,
+      blendBg: BLEND_BG,
     },
     error: {
       main: '#f44336',
@@ -66,32 +85,32 @@ const theme = createTheme({
     h1: {
       fontWeight: 700,
       fontSize: '2.25rem',
-      color: roseColors[600],
+      color: ACCENT,
     },
     h2: {
       fontWeight: 600,
       fontSize: '1.875rem',
-      color: roseColors[600],
+      color: ACCENT,
     },
     h3: {
       fontWeight: 600,
       fontSize: '1.5rem',
-      color: roseColors[600],
+      color: ACCENT,
     },
     h4: {
       fontWeight: 500,
       fontSize: '1.25rem',
-      color: roseColors[600],
+      color: ACCENT,
     },
     h5: {
       fontWeight: 500,
       fontSize: '1.125rem',
-      color: roseColors[600],
+      color: ACCENT,
     },
     h6: {
       fontWeight: 500,
       fontSize: '1rem',
-      color: roseColors[600],
+      color: ACCENT,
     },
     body1: {
       fontSize: '1rem',
@@ -114,31 +133,32 @@ const theme = createTheme({
           textTransform: 'none',
           fontWeight: 600,
           padding: '12px 24px',
-          transition: 'all 0.25s ease-in-out',
+          transition: 'all 0.18s ease-in-out',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+            boxShadow: 'none',
           },
         },
         contained: {
-          background: `linear-gradient(135deg, ${roseColors[400]} 0%, ${roseColors[500]} 100%)`,
-          boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+          backgroundColor: PALE_PINK,
+          color: ACCENT,
+          boxShadow: 'none',
           '&:hover': {
-            background: `linear-gradient(135deg, ${roseColors[500]} 0%, ${roseColors[600]} 100%)`,
+            backgroundColor: PALE_PINK_DARK,
           },
         },
         outlined: {
-          borderColor: roseColors[300],
-          color: roseColors[500],
+          borderColor: PALE_PINK_DARK,
+          color: ACCENT,
           '&:hover': {
-            backgroundColor: roseColors[50],
-            borderColor: roseColors[400],
+            backgroundColor: PALE_PINK_LIGHT,
+            borderColor: PALE_PINK_DARK,
           },
         },
         text: {
-          color: roseColors[500],
+          color: PALE_PINK,
           '&:hover': {
-            backgroundColor: roseColors[50],
+            backgroundColor: PALE_PINK_LIGHT,
           },
         },
       },
@@ -150,20 +170,23 @@ const theme = createTheme({
             borderRadius: 8,
             backgroundColor: '#ffffff',
             '& fieldset': {
-              borderColor: roseColors[200],
+              borderColor: PALE_PINK_L2,
             },
             '&:hover fieldset': {
-              borderColor: roseColors[300],
+              borderColor: PALE_PINK_DARK,
             },
             '&.Mui-focused fieldset': {
-              borderColor: roseColors[500],
+              borderColor: PALE_PINK,
             },
           },
           '& .MuiInputLabel-root': {
-            color: roseColors[500],
+            color: ACCENT,
             '&.Mui-focused': {
-              color: roseColors[500],
+              color: ACCENT,
             },
+          },
+          '& .MuiOutlinedInput-input': {
+            color: ACCENT,
           },
         },
       },
@@ -173,7 +196,7 @@ const theme = createTheme({
         root: {
           borderRadius: 12,
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          border: `1px solid ${roseColors[100]}`,
+          border: `1px solid ${PALE_PINK_L2}`,
           transition: 'all 0.25s ease-in-out',
           '&:hover': {
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
@@ -187,16 +210,21 @@ const theme = createTheme({
         paper: {
           borderRadius: 12,
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-          border: `1px solid ${roseColors[100]}`,
+          border: `1px solid ${PALE_PINK_L2}`,
+          // Force dialog surfaces to be fully white and use the accent color for text
+          backgroundColor: BASE_WHITE,
+          color: ACCENT,
         },
       },
     },
     MuiDialogTitle: {
       styleOverrides: {
         root: {
-          color: roseColors[600],
+          color: ACCENT,
           fontWeight: 600,
           padding: '24px 24px 16px 24px',
+          // Ensure title background is neutral/white so dialogs read as white surfaces
+          backgroundColor: BASE_WHITE,
         },
       },
     },
@@ -204,6 +232,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           padding: '16px 24px',
+          backgroundColor: BASE_WHITE,
+          color: ACCENT,
         },
       },
     },
@@ -211,14 +241,19 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           padding: '16px 24px 24px 24px',
+          backgroundColor: BASE_WHITE,
+          color: ACCENT,
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
-          boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+          // Use a subtle tint using the new accent at low opacity so the AppBar
+          // reads as part of the 70/20/10 composition without being visually heavy.
+          background: `linear-gradient(135deg, rgba(33,40,69,0.06) 0%, rgba(236,236,239,0.04) 100%)`,
+          boxShadow: '0 2px 8px rgba(33,40,69,0.06)',
+          color: '#212845',
         },
       },
     },
@@ -236,10 +271,10 @@ const theme = createTheme({
           fontWeight: 500,
         },
         colorPrimary: {
-          backgroundColor: roseColors[100],
-          color: roseColors[600],
+          backgroundColor: PALE_PINK_L2,
+          color: ACCENT,
           '&:hover': {
-            backgroundColor: roseColors[200],
+            backgroundColor: PALE_PINK_LIGHT,
           },
         },
       },
@@ -292,9 +327,9 @@ const theme = createTheme({
     MuiTableHead: {
       styleOverrides: {
         root: {
-          backgroundColor: roseColors[50],
+          backgroundColor: PALE_PINK_L3,
           '& .MuiTableCell-head': {
-            color: roseColors[600],
+            color: ACCENT,
             fontWeight: 600,
           },
         },
@@ -307,7 +342,7 @@ const theme = createTheme({
             backgroundColor: '#fef7f9',
           },
           '& .MuiTableRow-root:hover': {
-            backgroundColor: roseColors[50],
+            backgroundColor: PALE_PINK_L3,
           },
         },
       },
@@ -315,9 +350,10 @@ const theme = createTheme({
     MuiIconButton: {
       styleOverrides: {
         root: {
-          color: roseColors[500],
+          // Default icon color to the accent for better contrast
+          color: '#212845',
           '&:hover': {
-            backgroundColor: roseColors[50],
+            backgroundColor: '#FFF6F9',
           },
         },
       },
@@ -325,12 +361,12 @@ const theme = createTheme({
     MuiFab: {
       styleOverrides: {
         root: {
-          background: `linear-gradient(135deg, ${roseColors[400]} 0%, ${roseColors[500]} 100%)`,
-          boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+          backgroundColor: PALE_PINK,
+          color: ACCENT,
+          boxShadow: 'none',
           '&:hover': {
-            background: `linear-gradient(135deg, ${roseColors[500]} 0%, ${roseColors[600]} 100%)`,
+            backgroundColor: PALE_PINK_DARK,
             transform: 'translateY(-2px)',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
           },
         },
       },

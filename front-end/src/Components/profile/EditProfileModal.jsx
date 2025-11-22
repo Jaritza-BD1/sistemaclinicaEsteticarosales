@@ -86,7 +86,7 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
-      twoFactorEnabled: userData?.twoFactorEnabled || false,
+      dos_fa_enabled: userData?.dos_fa_enabled || false,
       notifications: userData?.notifications || {
         email: true,
         sms: false,
@@ -129,9 +129,10 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
       PaperProps={{
         sx: {
           borderRadius: isMobile ? 0 : 3,
-          background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+          backgroundColor: 'background.paper',
+          color: 'accent.main',
           border: '1px solid',
-          borderColor: 'primary.200',
+          borderColor: 'brand.paleL2',
           minHeight: isMobile ? '100vh' : 'auto',
           maxHeight: isMobile ? '100vh' : '90vh',
           overflow: 'hidden'
@@ -139,14 +140,14 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
       }}
     >
       <DialogTitle sx={{ 
-        color: 'primary.main', 
+        color: 'accent.main', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
         pb: 1,
         borderBottom: '1px solid',
-        borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)'
+        borderColor: 'brand.paleL2',
+        backgroundColor: 'background.paper'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <EditIcon sx={{ mr: 1 }} />
@@ -182,10 +183,10 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
             borderRadius: '4px',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            background: 'brand.pale',
             borderRadius: '4px',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              background: 'brand.paleDark',
             },
           },
         }}
@@ -196,9 +197,9 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
@@ -313,9 +314,9 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
@@ -448,8 +449,8 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
                       <FormControlLabel
                         control={
                           <Switch
-                            checked={formik.values.twoFactorEnabled}
-                            onChange={(e) => formik.setFieldValue('twoFactorEnabled', e.target.checked)}
+                            checked={formik.values.dos_fa_enabled}
+                            onChange={(e) => formik.setFieldValue('dos_fa_enabled', e.target.checked)}
                             color="primary"
                           />
                         }
@@ -465,9 +466,9 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
@@ -527,8 +528,9 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
         p: 3, 
         pt: 1,
         borderTop: '1px solid',
-        borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)'
+        borderColor: 'brand.paleL2',
+        backgroundColor: 'background.paper',
+        color: 'accent.main'
       }}>
         <Button
           onClick={handleCloseModal}
@@ -551,12 +553,13 @@ const EditProfileModal = ({ open, handleClose, userData, onSave }) => {
           endIcon={<SaveIcon />}
           disabled={formik.isSubmitting}
           sx={{
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            backgroundColor: 'brand.pale',
+            color: 'accent.main',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              backgroundColor: 'brand.paleDark',
               transform: 'translateY(-1px)',
             },
-            boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+            boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
           }}
         >
           {formik.isSubmitting ? 'Guardando...' : 'Guardar Cambios'}

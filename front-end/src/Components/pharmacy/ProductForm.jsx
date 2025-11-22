@@ -130,6 +130,12 @@ function ProductForm({ product = null, onClose, open = false }) {
       maxWidth="lg"
       fullWidth
       fullScreen={isMobile}
+      PaperProps={{
+        sx: {
+          backgroundColor: 'background.paper',
+          color: 'accent.main'
+        }
+      }}
     >
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
@@ -158,7 +164,7 @@ function ProductForm({ product = null, onClose, open = false }) {
               <Grid item xs={12}>
                 <Card sx={{ 
                   borderRadius: 2,
-                  background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                  backgroundColor: 'background.paper',
                   border: '1px solid',
                   borderColor: 'primary.200'
                 }}>
@@ -204,7 +210,7 @@ function ProductForm({ product = null, onClose, open = false }) {
               <Grid item xs={12}>
                 <Card sx={{ 
                   borderRadius: 2,
-                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                  backgroundColor: 'background.paper',
                   border: '1px solid',
                   borderColor: 'info.200'
                 }}>
@@ -250,7 +256,7 @@ function ProductForm({ product = null, onClose, open = false }) {
               <Grid item xs={12}>
                 <Card sx={{ 
                   borderRadius: 2,
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                  backgroundColor: 'background.paper',
                   border: '1px solid',
                   borderColor: 'success.200'
                 }}>

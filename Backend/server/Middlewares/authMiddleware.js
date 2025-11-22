@@ -59,7 +59,25 @@ const isAdmin = async (req, res, next) => {
   }
 };
 
+// Middleware genérico para comprobar que el usuario tenga uno de los roles permitidos
+const hasAnyRole = (...allowedRoleIds) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) return ResponseService.unauthorized(res, 'Usuario no autenticado');
+      const userRole = req.user.atr_id_rol;
+      if (!allowedRoleIds.includes(userRole)) {
+        return ResponseService.forbidden(res, 'Acceso denegado. Permisos insuficientes');
+      }
+      next();
+    } catch (error) {
+      logger.error('Error verificando roles', error);
+      return ResponseService.forbidden(res, 'Error verificando permisos');
+    }
+  };
+};
+
 module.exports = {
   authenticate,
   isAdmin
+  , hasAnyRole
 }; 

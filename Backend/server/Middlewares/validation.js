@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const { body, param } = require('express-validator');
 const ResponseService = require('../services/responseService');
 const logger = require('../utils/logger');
 
@@ -82,3 +83,50 @@ module.exports = {
   validateRequest,
   commonValidations
 }; 
+
+// Patient validation schemas
+const patientCreateValidators = [
+  body('atr_nombre').isString().trim().isLength({ min: 2 }).withMessage('Nombre es requerido'),
+  body('atr_apellido').isString().trim().isLength({ min: 2 }).withMessage('Apellido es requerido'),
+  body('atr_identidad').isString().trim().isLength({ min: 6 }).withMessage('Identidad es requerida'),
+  body('atr_fecha_nacimiento').isISO8601().withMessage('Fecha de nacimiento inválida'),
+  body('atr_id_genero').isInt().withMessage('Género es requerido'),
+  // atr_numero_expediente puede venir como número o como cadena numérica.
+  // Aceptamos null/undefined, un entero o una cadena compuesta sólo por dígitos.
+  body('atr_numero_expediente').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    if (typeof value === 'number' && Number.isInteger(value)) return true;
+    if (typeof value === 'string' && /^\d+$/.test(value.trim())) return true;
+    throw new Error('atr_numero_expediente inválido');
+  }),
+  body('telefonos').optional().isArray(),
+  body('telefonos.*.atr_telefono').optional().isString().trim().isLength({ min: 6 }).withMessage('Teléfono inválido'),
+  body('correos').optional().isArray(),
+  body('correos.*.atr_correo').optional().isEmail().withMessage('Correo inválido'),
+  body('direcciones').optional().isArray(),
+  body('direcciones.*.atr_direccion_completa').optional().isString().trim().isLength({ min: 5 })
+];
+
+const patientUpdateValidators = [
+  param('id').isInt().withMessage('ID inválido'),
+  body('atr_nombre').optional().isString().trim().isLength({ min: 2 }),
+  body('atr_apellido').optional().isString().trim().isLength({ min: 2 }),
+  body('atr_identidad').optional().isString().trim(),
+  body('atr_fecha_nacimiento').optional().isISO8601(),
+  body('atr_id_genero').optional().isInt(),
+  body('atr_numero_expediente').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') return true;
+    if (typeof value === 'number' && Number.isInteger(value)) return true;
+    if (typeof value === 'string' && /^\d+$/.test(value.trim())) return true;
+    throw new Error('atr_numero_expediente inválido');
+  }),
+  body('telefonos').optional().isArray(),
+  body('telefonos.*.atr_telefono').optional().isString().trim().isLength({ min: 6 }),
+  body('correos').optional().isArray(),
+  body('correos.*.atr_correo').optional().isEmail(),
+  body('direcciones').optional().isArray(),
+  body('direcciones.*.atr_direccion_completa').optional().isString().trim()
+];
+
+module.exports.patientCreateValidators = patientCreateValidators;
+module.exports.patientUpdateValidators = patientUpdateValidators;

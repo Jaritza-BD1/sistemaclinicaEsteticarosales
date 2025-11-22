@@ -31,16 +31,20 @@ import {
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import BaseForm from '../common/BaseForm';
+import BaseForm, { useFormContext } from '../common/BaseForm';
 import { FormTextField, FormDateField, FormSelectField, FormDynamicFields } from '../common/FormFields';
-import { createPatient, clearError } from '../../redux/patients/patientsSlice';
+import { createPatient, clearError, fetchPatients } from '../../redux/patients/patientsSlice';
+import { patientRegistrationSchema } from '../../services/validationSchemas';
+import useGeneros from '../../hooks/useGeneros';
+import { getPatientTypes } from '../../services/patientService';
 
-function PatientRegistrationForm() {
+function PatientRegistrationForm({ onSuccess: onSuccessProp, inModal = false }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { status, error } = useSelector(state => state.patients);
   
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({});
   const [stepValidation, setStepValidation] = useState({});
@@ -48,12 +52,37 @@ function PatientRegistrationForm() {
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [direction, setDirection] = useState('right');
 
-  // Datos para selectores
-  const generos = [
-    { value: 1, label: 'Masculino' },
-    { value: 2, label: 'Femenino' },
-    { value: 3, label: 'Otro' }
-  ];
+  // Cargar géneros desde API
+  const { options: generos, loading: generosLoading } = useGeneros();
+  const [patientTypes, setPatientTypes] = useState([]);
+  const [patientTypesLoading, setPatientTypesLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadTypes = async () => {
+      setPatientTypesLoading(true);
+      try {
+        const res = await getPatientTypes();
+        if (mounted && res && res.data) {
+          setPatientTypes(Array.isArray(res.data) ? res.data : res.data.data || []);
+          setPatientTypesLoading(false);
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+      if (mounted) {
+        setPatientTypes([
+          { value: 1, label: 'General' },
+          { value: 2, label: 'VIP' },
+          { value: 3, label: 'Otro' }
+        ]);
+      }
+      setPatientTypesLoading(false);
+    };
+    loadTypes();
+    return () => { mounted = false; };
+  }, []);
 
   // Datos para selectores (comentados para evitar warnings)
   // const alergiasComunes = [
@@ -71,7 +100,7 @@ function PatientRegistrationForm() {
     { 
       label: 'Información Personal', 
       icon: <PersonIcon />,
-      validation: ['nombre', 'apellido', 'fechaNacimiento', 'identidad', 'genero', 'numeroExpediente']
+      validation: ['nombre', 'apellido', 'fechaNacimiento', 'identidad', 'genero', 'tipoPaciente', 'numeroExpediente']
     },
     { 
       label: 'Información de Contacto', 
@@ -131,12 +160,12 @@ function PatientRegistrationForm() {
       }
     });
 
-    try {
-      if (stepIndex === 0) {
-        if (!stepData.nombre || !stepData.apellido || !stepData.fechaNacimiento || !stepData.identidad || !stepData.genero || !stepData.numeroExpediente) {
-          return false;
-        }
-      } else if (stepIndex === 1) {
+      try {
+        if (stepIndex === 0) {
+          if (!stepData.nombre || !stepData.apellido || !stepData.fechaNacimiento || !stepData.identidad || !stepData.genero || !stepData.tipoPaciente || !stepData.numeroExpediente) {
+            return false;
+          }
+        } else if (stepIndex === 1) {
         if (!stepData.telefonos || stepData.telefonos.length === 0) {
           return false;
         }
@@ -181,10 +210,24 @@ function PatientRegistrationForm() {
       
       setShowSuccessNotification(true);
       
-      // Redirigir a la lista de pacientes después de 2 segundos
-      setTimeout(() => {
-        navigate('/pacientes/lista');
-      }, 2000);
+      // Si se proporcionó un callback onSuccess (modo modal), usarlo (esperar a que cierre y recargue).
+      if (typeof onSuccessProp === 'function') {
+        try { await onSuccessProp(); } catch (e) { console.warn(e); }
+      } else {
+        // Si no hay callback (modo standalone), recargar lista y navegar a la vista de pacientes
+        try {
+          await dispatch(fetchPatients()).unwrap();
+        } catch (e) {
+          // ignore fetch errors here
+        }
+
+        if (!inModal) {
+          // Redirigir a la lista de pacientes después de 1 segundo
+          setTimeout(() => {
+            navigate('/pacientes/lista');
+          }, 1000);
+        }
+      }
       
       return { success: true, message: 'Paciente registrado exitosamente' };
     } catch (error) {
@@ -193,7 +236,7 @@ function PatientRegistrationForm() {
     }
   };
 
-  const renderStepContent = (step) => {
+  const renderStepContent = (step, ctxData = {}) => {
     const animationProps = {
       in: true,
       timeout: 600,
@@ -206,14 +249,16 @@ function PatientRegistrationForm() {
         return (
           <Slide direction={direction} {...animationProps}>
             <Card sx={{ 
-              borderRadius: 3,
-              background: 'white',
+              borderRadius: isMobile ? 2 : 3,
+              background: isMobile ? theme.palette.grey[50] : 'white',
               border: '1px solid',
               borderColor: stepValidation[step] === false ? 'error.main' : 'grey.200',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease-in-out'
+              boxShadow: isMobile ? 'none' : '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease-in-out',
+              width: isMobile ? '100%' : 'auto',
+              mx: isMobile ? 0 : 'auto',
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: isMobile ? 1.5 : 4 }}>
                 <Zoom in={true} timeout={800}>
                   <Typography variant="h6" sx={{ 
                     color: 'black', 
@@ -237,15 +282,13 @@ function PatientRegistrationForm() {
                   </Grow>
                 )}
                 
-                <Grid container spacing={3}>
+                <Grid container spacing={isMobile ? 1 : 3}>
                   <Grid item xs={12} sm={6}>
                     <Fade in={true} timeout={1000}>
                       <FormTextField
                         name="nombre"
                         label="Nombre"
                         required
-                        value={formData.nombre || ''}
-                        onChange={(e) => handleFormDataChange('nombre', e.target.value)}
                       />
                     </Fade>
                   </Grid>
@@ -256,8 +299,6 @@ function PatientRegistrationForm() {
                         name="apellido"
                         label="Apellido"
                         required
-                        value={formData.apellido || ''}
-                        onChange={(e) => handleFormDataChange('apellido', e.target.value)}
                       />
                     </Fade>
                   </Grid>
@@ -268,8 +309,6 @@ function PatientRegistrationForm() {
                         name="identidad"
                         label="Número de Identidad"
                         required
-                        value={formData.identidad || ''}
-                        onChange={(e) => handleFormDataChange('identidad', e.target.value)}
                       />
                     </Fade>
                   </Grid>
@@ -280,8 +319,6 @@ function PatientRegistrationForm() {
                         name="fechaNacimiento"
                         label="Fecha de Nacimiento"
                         required
-                        value={formData.fechaNacimiento || ''}
-                        onChange={(e) => handleFormDataChange('fechaNacimiento', e.target.value)}
                       />
                     </Fade>
                   </Grid>
@@ -293,23 +330,30 @@ function PatientRegistrationForm() {
                         label="Género"
                         options={generos}
                         required
-                        value={formData.genero || ''}
-                        onChange={(e) => handleFormDataChange('genero', e.target.value)}
                       />
                     </Fade>
                   </Grid>
                   
-                  <Grid item xs={12} sm={6}>
-                    <Fade in={true} timeout={2000}>
-                      <FormTextField
-                        name="numeroExpediente"
-                        label="Número de Expediente"
-                        required
-                        value={formData.numeroExpediente || ''}
-                        onChange={(e) => handleFormDataChange('numeroExpediente', e.target.value)}
-                      />
-                    </Fade>
-                  </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Fade in={true} timeout={2000}>
+                        <FormSelectField
+                          name="tipoPaciente"
+                          label="Tipo de paciente"
+                          options={patientTypes}
+                          required
+                        />
+                      </Fade>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Fade in={true} timeout={2200}>
+                        <FormTextField
+                          name="numeroExpediente"
+                          label="Número de Expediente"
+                          required
+                        />
+                      </Fade>
+                    </Grid>
                 </Grid>
               </CardContent>
             </Card>
@@ -320,14 +364,16 @@ function PatientRegistrationForm() {
         return (
           <Slide direction={direction} {...animationProps}>
             <Card sx={{ 
-              borderRadius: 3,
-              background: 'white',
+              borderRadius: isMobile ? 2 : 3,
+              background: isMobile ? theme.palette.grey[50] : 'white',
               border: '1px solid',
               borderColor: stepValidation[step] === false ? 'error.main' : 'grey.200',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease-in-out'
+              boxShadow: isMobile ? 'none' : '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease-in-out',
+              width: isMobile ? '100%' : 'auto',
+              mx: isMobile ? 0 : 'auto',
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: isMobile ? 1.5 : 4 }}>
                 <Zoom in={true} timeout={800}>
                   <Typography variant="h6" sx={{ 
                     color: 'black', 
@@ -351,23 +397,21 @@ function PatientRegistrationForm() {
                   </Grow>
                 )}
                 
-                <Fade in={true} timeout={1000}>
-                  <FormDynamicFields
-                    name="telefonos"
-                    label="Teléfonos"
-                    fields={[
-                      { name: 'numero', label: 'Número', type: 'text', required: true },
-                      { name: 'tipo', label: 'Tipo', type: 'select', options: [
-                        { value: 'Móvil', label: 'Móvil' },
-                        { value: 'Trabajo', label: 'Trabajo' },
-                        { value: 'Casa', label: 'Casa' }
-                      ], required: true }
-                    ]}
-                    value={formData.telefonos || []}
-                    onChange={(value) => handleFormDataChange('telefonos', value)}
-                    required
-                  />
-                </Fade>
+                        <Fade in={true} timeout={1000}>
+                          <FormDynamicFields
+                            name="telefonos"
+                            label="Teléfonos"
+                            fields={[
+                              { name: 'telefono', label: 'Teléfono', type: 'text', required: true },
+                              { name: 'tipo', label: 'Tipo', type: 'select', options: [
+                                { value: 'Móvil', label: 'Móvil' },
+                                { value: 'Trabajo', label: 'Trabajo' },
+                                { value: 'Casa', label: 'Casa' }
+                              ], required: true }
+                            ]}
+                            required
+                          />
+                        </Fade>
                 
                 <Fade in={true} timeout={1200}>
                   <FormDynamicFields
@@ -380,8 +424,7 @@ function PatientRegistrationForm() {
                         { value: 'Trabajo', label: 'Trabajo' }
                       ], required: true }
                     ]}
-                    value={formData.correos || []}
-                    onChange={(value) => handleFormDataChange('correos', value)}
+                  
                   />
                 </Fade>
                 
@@ -397,8 +440,7 @@ function PatientRegistrationForm() {
                         { value: 'Trabajo', label: 'Trabajo' }
                       ], required: true }
                     ]}
-                    value={formData.direcciones || []}
-                    onChange={(value) => handleFormDataChange('direcciones', value)}
+                  
                   />
                 </Fade>
               </CardContent>
@@ -410,14 +452,16 @@ function PatientRegistrationForm() {
         return (
           <Slide direction={direction} {...animationProps}>
             <Card sx={{ 
-              borderRadius: 3,
-              background: 'white',
+              borderRadius: isMobile ? 2 : 3,
+              background: isMobile ? theme.palette.grey[50] : 'white',
               border: '1px solid',
               borderColor: 'grey.200',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease-in-out'
+              boxShadow: isMobile ? 'none' : '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease-in-out',
+              width: isMobile ? '100%' : 'auto',
+              mx: isMobile ? 0 : 'auto',
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: isMobile ? 1.5 : 4 }}>
                 <Zoom in={true} timeout={800}>
                   <Typography variant="h6" sx={{ 
                     color: 'black', 
@@ -445,8 +489,7 @@ function PatientRegistrationForm() {
                         { value: 'Severa', label: 'Severa' }
                       ], required: true }
                     ]}
-                    value={formData.alergias || []}
-                    onChange={(value) => handleFormDataChange('alergias', value)}
+                  
                   />
                 </Fade>
                 
@@ -459,8 +502,7 @@ function PatientRegistrationForm() {
                       { name: 'fecha', label: 'Fecha', type: 'date', required: true },
                       { name: 'proxima', label: 'Próxima Dosis', type: 'date', required: false }
                     ]}
-                    value={formData.vacunas || []}
-                    onChange={(value) => handleFormDataChange('vacunas', value)}
+                  
                   />
                 </Fade>
               </CardContent>
@@ -472,14 +514,16 @@ function PatientRegistrationForm() {
         return (
           <Slide direction={direction} {...animationProps}>
             <Card sx={{ 
-              borderRadius: 3,
-              background: 'white',
+              borderRadius: isMobile ? 2 : 3,
+              background: isMobile ? theme.palette.grey[50] : 'white',
               border: '1px solid',
               borderColor: 'grey.200',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease-in-out'
+              boxShadow: isMobile ? 'none' : '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease-in-out',
+              width: isMobile ? '100%' : 'auto',
+              mx: isMobile ? 0 : 'auto',
             }}>
-              <CardContent sx={{ p: 4 }}>
+              <CardContent sx={{ p: isMobile ? 1.5 : 4 }}>
                 <Zoom in={true} timeout={800}>
                   <Typography variant="h6" sx={{ 
                     color: 'black', 
@@ -509,28 +553,28 @@ function PatientRegistrationForm() {
                     mb: 3
                   }}>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Nombre:</strong> {formData.nombre} {formData.apellido}
+                      <strong>Nombre:</strong> {ctxData.nombre} {ctxData.apellido}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Identidad:</strong> {formData.identidad}
+                      <strong>Identidad:</strong> {ctxData.identidad}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Número de Expediente:</strong> {formData.numeroExpediente}
+                      <strong>Número de Expediente:</strong> {ctxData.numeroExpediente}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Teléfonos:</strong> {formData.telefonos?.length || 0} registrados
+                      <strong>Teléfonos:</strong> {ctxData.telefonos?.length || 0} registrados
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Correos:</strong> {formData.correos?.length || 0} registrados
+                      <strong>Correos:</strong> {ctxData.correos?.length || 0} registrados
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Direcciones:</strong> {formData.direcciones?.length || 0} registradas
+                      <strong>Direcciones:</strong> {ctxData.direcciones?.length || 0} registradas
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Alergias:</strong> {formData.alergias?.length || 0} registradas
+                      <strong>Alergias:</strong> {ctxData.alergias?.length || 0} registradas
                     </Typography>
                     <Typography variant="body2">
-                      <strong>Vacunas:</strong> {formData.vacunas?.length || 0} registradas
+                      <strong>Vacunas:</strong> {ctxData.vacunas?.length || 0} registradas
                     </Typography>
                   </Box>
                 </Fade>
@@ -544,16 +588,43 @@ function PatientRegistrationForm() {
     }
   };
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <BaseForm
-        title="Registro de Paciente"
-        subtitle="Registra un nuevo paciente en el sistema"
-        formType="patient"
-        onSubmit={handleSubmit}
-        requiredPermissions={['patients:write']}
-        maxWidth="lg"
-      >
+  // Inner form content that uses BaseForm's context
+  function FormInner() {
+    const form = useFormContext();
+    const { formData: ctxData } = form;
+
+    const validateStepCtx = (stepIndex) => {
+      const step = steps[stepIndex];
+      const data = ctxData || {};
+      try {
+        if (stepIndex === 0) {
+          if (!data.nombre || !data.apellido || !data.fechaNacimiento || !data.identidad || !data.genero || !data.tipoPaciente || !data.numeroExpediente) return false;
+        } else if (stepIndex === 1) {
+          if (!data.telefonos || data.telefonos.length === 0) return false;
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    const handleNextCtx = () => {
+      if (validateStepCtx(activeStep)) {
+        setDirection('right');
+        setActiveStep((prev) => prev + 1);
+        setStepValidation(prev => ({ ...prev, [activeStep]: true }));
+      } else {
+        setStepValidation(prev => ({ ...prev, [activeStep]: false }));
+      }
+    };
+
+    const handleBackCtx = () => {
+      setDirection('left');
+      setActiveStep((prev) => prev - 1);
+    };
+
+    return (
+      <>
         {/* Stepper */}
         <Box sx={{ mb: 4 }}>
           <Stepper activeStep={activeStep} alternativeLabel>
@@ -577,14 +648,14 @@ function PatientRegistrationForm() {
 
         {/* Contenido del paso actual */}
         <Box sx={{ mb: 4 }}>
-          {renderStepContent(activeStep)}
+          {renderStepContent(activeStep, ctxData)}
         </Box>
 
         {/* Botones de navegación */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Button
             disabled={activeStep === 0}
-            onClick={handleBack}
+            onClick={handleBackCtx}
             startIcon={<ArrowBackIcon />}
             variant="outlined"
             sx={{
@@ -604,7 +675,7 @@ function PatientRegistrationForm() {
               startIcon={<SaveIcon />}
               variant="outlined"
               onClick={() => {
-                localStorage.setItem('patientFormProgress', JSON.stringify(formData));
+                localStorage.setItem('patientFormProgress', JSON.stringify(ctxData || {}));
                 setShowSaveNotification(true);
               }}
               sx={{
@@ -622,7 +693,7 @@ function PatientRegistrationForm() {
             {activeStep === steps.length - 1 ? (
               <Button
                 variant="contained"
-                onClick={() => handleSubmit(formData)}
+                type="submit"
                 endIcon={<CheckIcon />}
                 disabled={status === 'loading'}
                 sx={{
@@ -638,7 +709,7 @@ function PatientRegistrationForm() {
             ) : (
               <Button
                 variant="contained"
-                onClick={handleNext}
+                onClick={handleNextCtx}
                 endIcon={<ArrowForwardIcon />}
                 sx={{
                   backgroundColor: 'primary.main',
@@ -653,6 +724,22 @@ function PatientRegistrationForm() {
             )}
           </Box>
         </Box>
+      </>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <BaseForm
+        title="Registro de Paciente"
+        subtitle="Registra un nuevo paciente en el sistema"
+        formType="patient"
+        validationSchema={patientRegistrationSchema}
+        onSubmit={handleSubmit}
+        requiredPermissions={['patients:write']}
+        maxWidth="lg"
+      >
+        <FormInner />
 
         {/* Notificación de guardado */}
         <Snackbar

@@ -13,14 +13,12 @@ import {
   Button,
   Alert,
   Snackbar,
-  useTheme,
   Fade,
   Slide,
   Grow,
   Zoom,
   CircularProgress,
-  Skeleton,
-  Backdrop
+  Skeleton
 } from '@mui/material';
 import {
   Science as ScienceIcon,
@@ -33,9 +31,10 @@ import {
 } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+// useNavigate removed (not needed in modal flow)
+import { useExamModal } from '../../context/ExamModalContext';
 import BaseForm from '../common/BaseForm';
-import { FormTextField, FormSelectField, FormDateField, FormDynamicFields } from '../common/FormFields';
+import { FormTextField, FormSelectField, FormDateField } from '../common/FormFields';
 import { createExam, clearError } from '../../redux/exams/examsSlice';
 import { getActivePatients } from '../../redux/patients/patientsSlice';
 import { getActiveDoctors } from '../../redux/doctors/doctorsSlice';
@@ -60,15 +59,15 @@ const LoadingStep = () => (
 
 function CreateExam() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { status, error } = useSelector(state => state.exams);
   const { activePatients } = useSelector(state => state.patients);
   const { activeDoctors } = useSelector(state => state.doctors);
+  const modalContext = useExamModal();
   
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({});
   const [stepValidation, setStepValidation] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  // local loading state not needed (redux status used)
   const [showSaveNotification, setShowSaveNotification] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [direction, setDirection] = useState('right');
@@ -122,7 +121,7 @@ function CreateExam() {
       icon: <CheckIcon />,
       validation: []
     }
-  ], []);
+  ], [mockExams, prioridades]);
 
   // Cargar progreso guardado al iniciar
   useEffect(() => {
@@ -209,6 +208,8 @@ function CreateExam() {
     }));
   }, []);
 
+  const { closeCreate, triggerRefresh } = modalContext || {};
+
   const handleSubmit = useCallback(async (data) => {
     try {
       await dispatch(createExam(data)).unwrap();
@@ -218,17 +219,16 @@ function CreateExam() {
       
       setShowSuccessNotification(true);
       
-      // Redirigir a la lista de exámenes después de 2 segundos
-      setTimeout(() => {
-        navigate('/examenes/lista');
-      }, 2000);
+      // If running inside modal, close modal and trigger a refresh in the list; otherwise navigate
+      if (closeCreate) closeCreate();
+      if (triggerRefresh) triggerRefresh();
       
       return { success: true, message: 'Examen solicitado exitosamente' };
     } catch (error) {
       console.error('Error al solicitar examen:', error);
       throw error;
     }
-  }, [dispatch, navigate]);
+  }, [dispatch, closeCreate, triggerRefresh]);
 
   // Componente de paso memoizado
   const StepContent = useMemo(() => {
@@ -523,7 +523,7 @@ function CreateExam() {
       default:
         return null;
     }
-  }, [activeStep, direction, stepValidation, formData, activePatients, activeDoctors, status, handleFormDataChange]);
+  }, [activeStep, direction, stepValidation, formData, activePatients, activeDoctors, status, handleFormDataChange, steps]);
 
   if (!isDataLoaded) {
     return (

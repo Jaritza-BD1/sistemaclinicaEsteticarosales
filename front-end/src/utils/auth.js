@@ -31,16 +31,18 @@ export function isValidTokenFormat(token) {
     return false;
   }
   
-  // Verificar que cada parte sea válida (base64)
+  // Verificar que cada parte sea válida (base64 URL-safe para JWT)
+  // JWT utiliza base64url, que permite '-' y '_' en lugar de '+' y '/'
   try {
+    const base64UrlRegex = /^[A-Za-z0-9-_]+=*$/; // padding '=' es opcional
     parts.forEach((part, index) => {
-      if (part && !/^[A-Za-z0-9+/=]+$/.test(part)) {
-        throw new Error(`Invalid base64 in part ${index}`);
+      if (!part || !base64UrlRegex.test(part)) {
+        throw new Error(`Invalid base64url in part ${index}`);
       }
     });
     return true;
   } catch (error) {
-    console.warn('isValidTokenFormat: Error en validación base64:', error.message);
+    console.warn('isValidTokenFormat: Error en validación base64url:', error.message);
     return false;
   }
 }

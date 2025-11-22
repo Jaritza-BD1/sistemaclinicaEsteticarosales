@@ -19,7 +19,7 @@ import {
   Security as SecurityIcon
 } from '@mui/icons-material';
 import BaseForm from '../common/BaseForm';
-import { FormTextField, FormPasswordField, FormSelectField } from '../common/FormFields';
+import { FormTextField, FormPasswordField, FormSelectField, FormSwitchField } from '../common/FormFields';
 import { userSchema } from '../../services/validationSchemas';
 import { withSecurity } from '../../services/securityService';
 
@@ -81,7 +81,7 @@ const UserForm = ({ initialData = {}, onSuccess }) => {
           <Grid item xs={12}>
             <Card sx={{ 
               borderRadius: 2,
-              background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+              backgroundColor: '#FCE4EC',
               border: '1px solid',
               borderColor: 'primary.200'
             }}>
@@ -155,7 +155,7 @@ const UserForm = ({ initialData = {}, onSuccess }) => {
           <Grid item xs={12}>
             <Card sx={{ 
               borderRadius: 2,
-              background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+              backgroundColor: '#FCE4EC',
               border: '1px solid',
               borderColor: 'primary.200'
             }}>
@@ -198,13 +198,9 @@ const UserForm = ({ initialData = {}, onSuccess }) => {
                   </Grid>
                   
                   <Grid item xs={12}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          name="dos_fa_enabled"
-                          defaultChecked={initialData.dos_fa_enabled || false}
-                        />
-                      }
+                    {/* Usar campo controlado FormSwitchField para mapear al contexto del formulario */}
+                    <FormSwitchField
+                      name="dos_fa_enabled"
                       label="Autenticación de Dos Factores (2FA)"
                     />
                   </Grid>
@@ -242,12 +238,12 @@ const UserForm = ({ initialData = {}, onSuccess }) => {
                 variant="contained"
                 endIcon={<SaveIcon />}
                 sx={{
-                  background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+                  backgroundColor: '#FCE4EC',
+                  color: '#212845',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-                    transform: 'translateY(-1px)',
+                    backgroundColor: '#F8BBD0',
                   },
-                  boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+                  boxShadow: 'none',
                 }}
               >
                 Guardar Usuario

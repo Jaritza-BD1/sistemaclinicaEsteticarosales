@@ -21,7 +21,6 @@ import {
   useTheme,
   useMediaQuery,
   Autocomplete,
-  Chip,
   IconButton
 } from '@mui/material';
 import {
@@ -30,14 +29,15 @@ import {
   MedicalServices as MedicalIcon,
   Person as PersonIcon,
   CalendarToday as CalendarIcon,
-  Description as DescriptionIcon,
-  CheckCircle as CheckIcon,
-  Add as AddIcon
+  Description as DescriptionIcon
 } from '@mui/icons-material';
+
+import { useNavigate } from 'react-router-dom';
 
 const CreateTreatmentModal = ({ open, onClose, onSave }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     nombre_tratamiento: '',
@@ -110,48 +110,62 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errors = validateForm();
-    
-    if (Object.keys(errors).length === 0) {
-      setNotification({ 
-        message: 'Tratamiento creado exitosamente!', 
-        type: 'success', 
-        open: true 
+
+    if (Object.keys(errors).length > 0) {
+      setNotification({
+        message: 'Por favor, complete todos los campos requeridos',
+        type: 'error',
+        open: true
       });
-      
-      // Aquí iría la lógica para enviar los datos a la API
-      console.log('Datos del tratamiento:', formData);
-      
+      return;
+    }
+
+    try {
+      setNotification({ message: 'Creando tratamiento...', type: 'info', open: true });
+      // onSave debe devolver el tratamiento creado
+      let created = null;
       if (onSave) {
-        onSave(formData);
+        created = await onSave(formData);
       }
-      
-      // Limpiar formulario y cerrar modal
-      setTimeout(() => {
-        setFormData({
-          nombre_tratamiento: '',
-          descripcion: '',
-          tipo_tratamiento: '',
-          duracion: '',
-          frecuencia: '',
-          costo: '',
-          paciente: '',
-          medico: '',
-          fecha_inicio: '',
-          fecha_fin: '',
-          observaciones: '',
-          estado: 'activo'
-        });
-        onClose();
-      }, 1500);
-    } else {
-      setNotification({ 
-        message: 'Por favor, complete todos los campos requeridos', 
-        type: 'error', 
-        open: true 
+
+      setNotification({
+        message: 'Tratamiento creado exitosamente!',
+        type: 'success',
+        open: true
       });
+
+      // Limpiar formulario
+      setFormData({
+        nombre_tratamiento: '',
+        descripcion: '',
+        tipo_tratamiento: '',
+        duracion: '',
+        frecuencia: '',
+        costo: '',
+        paciente: '',
+        medico: '',
+        fecha_inicio: '',
+        fecha_fin: '',
+        observaciones: '',
+        estado: 'activo'
+      });
+
+      // Si se devolvió el tratamiento creado, navegar a su vista
+      const id = created?.id || created?.atr_id_tratamiento || created?._id;
+      if (id) {
+        // Navegar a la lista y abrir el detalle mediante query param
+        navigate(`/tratamientos/lista?treatmentId=${id}`);
+      }
+
+      // Cerrar modal
+      if (onClose) onClose();
+    } catch (err) {
+      console.error('Error creating treatment', err);
+      const message = err?.response?.data?.message || err?.message || 'Error al crear tratamiento';
+      setNotification({ message, type: 'error', open: true });
     }
   };
 
@@ -229,18 +243,20 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
         PaperProps={{
           sx: {
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: 'background.paper',
+            color: 'accent.main',
             border: '1px solid',
-            borderColor: 'primary.200'
+            borderColor: 'brand.paleL2'
           }
         }}
       >
         <DialogTitle sx={{ 
-          color: 'primary.main', 
+          color: 'accent.main', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between',
-          pb: 1
+          pb: 1,
+          backgroundColor: 'background.paper'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <MedicalIcon sx={{ mr: 1 }} />
@@ -251,12 +267,12 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers>
+  <DialogContent dividers sx={{ backgroundColor: 'background.paper', color: 'accent.main' }}>
           <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               {/* Información Básica del Tratamiento */}
               <Grid item xs={12}>
-                <Card sx={{ mb: 3, borderRadius: 2 }}>
+                <Card sx={{ mb: 3, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid', borderColor: 'brand.paleL2' }}>
                   <CardContent>
                     <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                       <MedicalIcon sx={{ mr: 1 }} />
@@ -639,16 +655,16 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
           </form>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3, pt: 1 }}>
+        <DialogActions sx={{ p: 3, pt: 1, backgroundColor: 'background.paper', color: 'accent.main' }}>
           <Button
             onClick={handleClose}
             variant="outlined"
             sx={{
               borderColor: 'primary.300',
-              color: 'primary.main',
+              color: 'accent.main',
               '&:hover': {
-                borderColor: 'primary.main',
-                backgroundColor: 'primary.50',
+                borderColor: 'accent.main',
+                backgroundColor: 'brand.paleL3',
               },
             }}
           >
@@ -659,12 +675,13 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
             variant="contained"
             endIcon={<SaveIcon />}
             sx={{
-              background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+              backgroundColor: 'brand.pale',
+              color: 'accent.main',
               '&:hover': {
-                background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                backgroundColor: 'brand.paleDark',
                 transform: 'translateY(-1px)',
               },
-              boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+              boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
             }}
           >
             Crear Tratamiento

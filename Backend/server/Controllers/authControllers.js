@@ -2,13 +2,15 @@
 
 const { Sequelize, Op } = require('sequelize');
 const User = require('../Models/User');
+const Token = require('../Models/tokenmodel');
 const Parametro = require('../Models/Parametro');
 const HistContrasena = require('../Models/PasswordHistory');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const { sendResetEmail, sendVerificationEmail, sendPasswordChangeEmail } = require('../utils/mailer');
+const { OTP } = require('../Config/security');
+const { send2FAEmailCode, sendResetEmail, sendVerificationEmail, sendPasswordChangeEmail, sendVerificationCodeEmail, sendPasswordResetCodeEmail } = require('../utils/mailer');
 const { generateTempPassword, generateToken } = require('../helpers/tokenHelper');
 const BitacoraService = require('../services/bitacoraService');
 
@@ -67,8 +69,14 @@ exports.register = async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const verificationToken = generateToken();
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // Generar código OTP de 6 dígitos para verificación por email
+  const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+  const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+    // Si el frontend envía dos_fa_enabled, mapearlo a atr_2fa_enabled
+    const atr2faFromBody = req.body?.dos_fa_enabled !== undefined
+      ? Boolean(req.body.dos_fa_enabled)
+      : (req.body?.atr_2fa_enabled !== undefined ? Boolean(req.body.atr_2fa_enabled) : false);
 
     const user = await User.create({
       atr_usuario: usuario,
@@ -78,14 +86,21 @@ exports.register = async (req, res) => {
       atr_estado_usuario: 'PENDIENTE_VERIFICACION',
       atr_verification_token: verificationToken,
       atr_token_expiry: tokenExpiry,
-      atr_primer_ingreso: true
+      atr_primer_ingreso: true,
+      atr_2fa_enabled: atr2faFromBody
     });
 
-    await sendVerificationEmail(
-      user.atr_correo_electronico, 
-      verificationToken,
-      user.atr_nombre_usuario
-    );
+    // Enviar código OTP por email en lugar de enlace
+    try {
+      await sendVerificationCodeEmail(
+        user.atr_correo_electronico,
+        verificationToken,
+        user.atr_nombre_usuario || user.atr_usuario
+      );
+    } catch (mailErr) {
+      console.error('Error enviando código de verificación por email:', mailErr);
+      // No bloquear el registro si falla el envío, pero dejar aviso en logs
+    }
 
     res.status(201).json({ message: 'Registro exitoso. Revisa tu email para verificar tu cuenta.' });
   } catch (error) {
@@ -159,6 +174,39 @@ exports.verifyEmailPost = async (req, res) => {
   } catch (error) {
     console.error('Error en verificación de email (POST):', error);
     return res.status(500).json({ error: 'Error en el servidor durante la verificación.' });
+  }
+};
+
+// Reenviar código de verificación por email (para registro)
+exports.resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email es requerido' });
+
+    const user = await User.findOne({ where: { atr_correo_electronico: email.toLowerCase() } });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    if (user.atr_estado_usuario !== 'PENDIENTE_VERIFICACION') {
+      return res.status(400).json({ error: 'El usuario no está pendiente de verificación' });
+    }
+
+    // Generar nuevo código de 6 dígitos
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await user.update({ atr_verification_token: newCode, atr_token_expiry: expiry });
+
+    try {
+      await sendVerificationCodeEmail(user.atr_correo_electronico, newCode, user.atr_nombre_usuario || user.atr_usuario);
+    } catch (mailErr) {
+      console.error('Error reenvío código verificación:', mailErr);
+      return res.status(500).json({ error: 'Error enviando el código por email' });
+    }
+
+    return res.json({ message: 'Código de verificación reenviado' });
+  } catch (error) {
+    console.error('Error en resendVerification:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -241,16 +289,92 @@ exports.login = async (req, res) => {
       return res.json({ firstLogin: true, resetToken });
     }
 
-    if (user.atr_2fa_enabled) {
-      console.log('Login: 2FA required for user:', { 
-        userId: user.atr_id_usuario, 
-        username: user.atr_usuario 
+if (user.atr_2fa_enabled) {
+  console.log('Login: 2FA required for user:', { 
+    userId: user.atr_id_usuario, 
+    username: user.atr_usuario 
+  });
+
+  try {
+    // 1. Invalidar cualquier código OTP previo no utilizado
+    await Token.update(
+      { 
+        atr_utilizado: true,
+        atr_fecha_modificacion: new Date(),
+        atr_modificado_por: 'SISTEMA'
+      },
+      { 
+        where: { 
+          atr_id_usuario: user.atr_id_usuario,
+          atr_tipo: 'LOGIN_OTP',
+          atr_utilizado: false
+        } 
+      }
+    );
+
+    // 2. Verificar límite de intentos recientes
+    const recentAttempts = await Token.count({
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_tipo: 'LOGIN_OTP',
+        atr_fecha_creacion: { 
+          [Op.gt]: new Date(Date.now() - 15 * 60 * 1000) // Últimos 15 minutos
+        }
+      }
+    });
+
+    if (recentAttempts >= 3) {
+      return res.status(429).json({ 
+        error: 'Demasiados intentos. Por favor, espera 15 minutos antes de solicitar un nuevo código.' 
       });
-      const response = { twoFARequired: true, userId: user.atr_id_usuario };
-      console.log('Login: Sending response:', response);
-      console.log('Login: Response type check - userId type:', typeof user.atr_id_usuario);
-      return res.json(response);
     }
+
+    // 3. Generar nuevo código OTP
+    const otpCode = Token.generateOTP();
+    const expirationTime = Token.generateExpirationDate(10); // 10 minutos
+
+    // 4. Guardar el nuevo token
+    await Token.create({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_codigo: otpCode,
+      atr_tipo: 'LOGIN_OTP',
+      atr_fecha_expiracion: expirationTime,
+      atr_creado_por: 'SISTEMA'
+    });
+
+    // 5. Enviar el código por correo
+    try {
+      await send2FAEmailCode(
+        user.atr_correo_electronico,
+        otpCode,
+        user.atr_nombre_usuario || user.atr_usuario
+      );
+      console.log('Código 2FA generado y enviado para el usuario:', user.atr_usuario);
+    } catch (emailError) {
+      console.error('Error al enviar correo 2FA:', emailError);
+      return res.status(500).json({ 
+        error: 'Error al enviar el código de verificación. Por favor, inténtalo de nuevo.' 
+      });
+    }
+    
+    const response = { 
+      success: true,
+      twoFARequired: true, 
+      userId: user.atr_id_usuario,
+      message: 'Se ha enviado un código de verificación a tu correo electrónico'
+    };
+    
+    console.log('Login: 2FA iniciado exitosamente para usuario:', user.atr_usuario);
+    return res.json(response);
+    
+  } catch (error) {
+    console.error('Error en proceso 2FA:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Error en el proceso de autenticación de dos factores' 
+    });
+  }
+}
 
     const token = jwt.sign(
       { 
@@ -344,6 +468,18 @@ exports.changePassword = async (req, res) => {
     });
 
     await sendPasswordChangeEmail(user.atr_correo_electronico, user.atr_nombre_usuario);
+    // Registrar en bitácora el cambio de contraseña
+    try {
+      await BitacoraService.registrarEvento({
+        atr_id_usuario: user.atr_id_usuario,
+        atr_id_objetos: 1,
+        atr_accion: 'Cambio contraseña',
+        atr_descripcion: 'Cambio de contraseña por el propio usuario',
+        ip_origen: req.ip
+      });
+    } catch (e) {
+      console.error('Error registrando evento de bitácora (changePassword):', e);
+    }
 
     res.json({ message: 'Contraseña actualizada exitosamente' });
   } catch (error) {
@@ -384,29 +520,90 @@ exports.forgotPassword = async (req, res) => {
       );
       return res.json({ message: 'Correo con contraseña temporal enviado correctamente.' });
     }
-
-    const resetToken = generateToken();
-    const resetExpiry = new Date(Date.now() + 3600 * 1000);
-
-    await user.update({
-      atr_reset_token: resetToken,
-      atr_reset_expiry: resetExpiry
+    // Control de reintentos: limitar solicitudes de OTP por usuario en ventana
+    const recentAttempts = await Token.count({
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_tipo: 'PASSWORD_RESET_OTP',
+        atr_fecha_creacion: { [Op.gt]: new Date(Date.now() - 15 * 60 * 1000) } // últimos 15 minutos
+      }
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
-    
-    await transporter.sendMail({
-      from: `"Clínica Estética Rosales" <${process.env.EMAIL_USER}>`,
-      to: user.atr_correo_electronico,
-      subject: 'Recuperación de Contraseña',
-      html: `<p>Haz clic aquí para restablecer tu contraseña: <a href="${resetUrl}">${resetUrl}</a></p>`
+    if (recentAttempts >= 3) {
+      return res.status(429).json({ error: 'Demasiadas solicitudes. Por favor espera 15 minutos antes de solicitar otro código.' });
+    }
+
+    // Nuevo flujo: generar OTP de 6 dígitos y guardarlo en la tabla de tokens
+    const otpCode = Token.generateOTP();
+    const expiration = Token.generateExpirationDate(10); // 10 minutos
+
+    // Invalidar OTPs anteriores del mismo tipo
+    await Token.update({ atr_utilizado: true }, {
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_tipo: 'PASSWORD_RESET_OTP',
+        atr_utilizado: false
+      }
     });
 
-    res.json({ message: 'Correo de recuperación enviado correctamente.' });
+    // Crear nuevo token OTP para restablecimiento de contraseña
+    await Token.create({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_codigo: otpCode,
+      atr_tipo: 'PASSWORD_RESET_OTP',
+      atr_fecha_expiracion: expiration,
+      atr_creado_por: 'SISTEMA'
+    });
+
+    // Enviar OTP por email (plantilla específica de restablecimiento)
+    try {
+      await sendPasswordResetCodeEmail(user.atr_correo_electronico, otpCode, user.atr_nombre_usuario || user.atr_usuario);
+    } catch (mailErr) {
+      console.error('Error enviando OTP de recuperación por email:', mailErr);
+      return res.status(500).json({ error: 'Error enviando el código por email' });
+    }
+
+    return res.json({ message: 'Código OTP enviado a tu correo. Ingresa el código para continuar.' });
   } catch (err) {
     console.error('Error en forgotPassword:', err);
     res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
+
+// Verificar OTP de restablecimiento y emitir token temporal para cambiar contraseña
+exports.verifyResetOTP = async (req, res) => {
+  try {
+    const { email, token } = req.body;
+    if (!email || !token) return res.status(400).json({ error: 'Email y código son requeridos' });
+
+    const user = await User.findOne({ where: { atr_correo_electronico: email.toLowerCase() } });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // Buscar token válido
+    const t = await Token.findOne({
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_codigo: token,
+        atr_tipo: 'PASSWORD_RESET_OTP',
+        atr_utilizado: false,
+        atr_fecha_expiracion: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!t) return res.status(400).json({ error: 'Código inválido o expirado' });
+
+    // Marcar token como utilizado
+    await t.update({ atr_utilizado: true, atr_modificado_por: 'SISTEMA', atr_fecha_modificacion: new Date() });
+
+    // Generar reset token clásico y guardarlo en user
+    const resetToken = generateToken();
+    const resetExpiry = new Date(Date.now() + 3600 * 1000); // 1 hora
+    await user.update({ atr_reset_token: resetToken, atr_reset_expiry: resetExpiry });
+
+    return res.json({ message: 'Código validado', resetToken });
+  } catch (error) {
+    console.error('Error en verifyResetOTP:', error);
+    return res.status(500).json({ error: 'Error en el servidor' });
   }
 };
 
@@ -451,10 +648,13 @@ exports.resetPassword = async (req, res) => {
     const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10;
     const hashedNew = await bcrypt.hash(newPassword, saltRounds);
 
+    // Actualizar contraseña; limpiar flags de primer ingreso y de intentos fallidos
     await user.update({
       atr_contrasena: hashedNew,
       atr_reset_token: null,
-      atr_reset_expiry: null
+      atr_reset_expiry: null,
+      atr_primer_ingreso: false,
+      atr_intentos_fallidos: 0
     });
     
     await HistContrasena.create({
@@ -463,6 +663,20 @@ exports.resetPassword = async (req, res) => {
     });
 
     await sendPasswordChangeEmail(user.atr_correo_electronico, user.atr_nombre_usuario);
+
+    // Registrar en bitácora el restablecimiento de contraseña
+    try {
+      // atr_accion debe tener como máximo 20 caracteres (según modelo Bitacora)
+      await BitacoraService.registrarEvento({
+        atr_id_usuario: user.atr_id_usuario,
+        atr_id_objetos: 1,
+        atr_accion: 'Cambio contraseña',
+        atr_descripcion: 'Contraseña restablecida mediante token/OTP',
+        ip_origen: req.ip
+      });
+    } catch (e) {
+      console.error('Error registrando evento de bitácora (resetPassword):', e);
+    }
 
     res.json({ message: 'Contraseña restablecida exitosamente' });
   } catch (error) {
@@ -482,5 +696,97 @@ exports.getUserProfile = async (req, res) => {
   } catch (error) {
     console.error('Error obteniendo perfil:', error);
     res.status(500).json({ error: 'Error obteniendo perfil de usuario' });
+  }
+};
+
+exports.verify2FACode = async (req, res) => {
+  try {
+    const { userId, code } = req.body;
+    
+    if (!userId || !code) {
+      return res.status(400).json({ error: 'ID de usuario y código son requeridos' });
+    }
+
+    // Verificar límite de intentos
+    const recentAttempts = await Token.count({
+      where: {
+        atr_id_usuario: userId,
+        atr_tipo: 'LOGIN_OTP',
+        atr_fecha_creacion: { 
+          [Op.gt]: new Date(Date.now() - OTP.ATTEMPT_WINDOW_MINUTES * 60 * 1000) 
+        }
+      }
+    });
+
+    if (recentAttempts >= OTP.MAX_ATTEMPTS) {
+      return res.status(429).json({ 
+        success: false,
+        error: `Demasiados intentos. Por favor, espera ${OTP.ATTEMPT_WINDOW_MINUTES} minutos.` 
+      });
+    }
+
+    // Buscar el token válido
+    const token = await Token.findOne({
+      where: {
+        atr_id_usuario: userId,
+        atr_codigo: code,
+        atr_tipo: 'LOGIN_OTP',
+        atr_utilizado: false,
+        atr_fecha_expiracion: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!token) {
+      return res.status(400).json({ error: 'Código inválido o expirado' });
+    }
+
+    // Marcar el token como utilizado
+    await token.update({ 
+      atr_utilizado: true,
+      atr_fecha_modificacion: new Date(),
+      atr_modificado_por: 'SISTEMA'
+    });
+
+    // Obtener el usuario
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Generar token de autenticación
+    const authToken = jwt.sign(
+      { 
+        id: user.atr_id_usuario, 
+        role: user.atr_id_rol 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Limpiar datos sensibles
+    const safeUser = user.toJSON();
+    delete safeUser.atr_contrasena;
+    delete safeUser.atr_intentos_fallidos;
+    delete safeUser.atr_reset_token;
+    delete safeUser.atr_reset_expiry;
+
+    // Registrar en bitácora
+    await BitacoraService.registrarEvento({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_id_objetos: 1, // ID del objeto/pantalla de login
+      atr_accion: 'Verificación 2FA',
+      atr_descripcion: 'Verificación de dos factores exitosa',
+      ip_origen: req.ip
+    });
+
+    res.json({ 
+      token: authToken, 
+      user: safeUser, 
+      message: 'Autenticación de dos factores exitosa' 
+    });
+
+  } catch (error) {
+    console.error('Error en verificación 2FA:', error);
+    res.status(500).json({ error: 'Error en la verificación de dos factores' });
   }
 };

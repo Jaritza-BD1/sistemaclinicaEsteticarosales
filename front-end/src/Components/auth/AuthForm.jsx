@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BsEye, BsEyeSlash } from 'react-icons/bs';
 import api from '../../services/api';
+import { mapRegistrationPayload } from '../../services/securityService';
 import { useAuth } from '../context/AuthContext';
 import './AuthForm.css';
 import '../../asset/Style/ForgotPassword.css';
@@ -12,7 +13,7 @@ import Verify2FA from '../twoFactor/Verify2FA'; // <-- NUEVO
 const maxLoginAttempts = 3;
 
 const AuthForm = () => {
-  const { login } = useAuth();
+  const { login, updateUser } = useAuth();
   const navigate = useNavigate();
 
   // Estados principales
@@ -23,7 +24,7 @@ const AuthForm = () => {
     atr_correo_electronico: '',
     atr_contrasena: '',
     confirmPassword: '',
-    atr_2fa_enabled: false,
+    dos_fa_enabled: false,
   });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
@@ -172,58 +173,56 @@ const AuthForm = () => {
         }
 
         // Validar que el token existe y es válido antes de proceder
-        if (data.token && data.token.length <= 8192) {
-          // Limpiar tokens anteriores antes de guardar el nuevo
+          if (data.token && data.token.length <= 8192) {
+          // Guardar token en localStorage y en api defaults (limpiar antes)
           localStorage.removeItem('authToken');
           localStorage.removeItem('token');
-          
           localStorage.setItem('token', data.token);
           api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-          login(data.token);
-          
-          // Agregar delay para asegurar que el contexto se actualice
-          setTimeout(() => {
-            const targetPath = data.user.atr_id_rol === 1 ? '/admin' : '/dashboard';
-            console.log('🔄 Navegando a:', targetPath);
-            navigate(targetPath);
-          }, 100);
+
+          // Registrar token + user en el contexto de forma atómica para evitar
+          // que ProtectedRoute lea isAuthenticated=true pero user===null.
+          login(data.token, false, data.user || null);
+
+          // Redirigir según rol (si no vino user, el AuthProvider intentará
+          // cargar perfil; en ese caso se queda en /admin o /dashboard por rol)
+          const targetPath = data.user?.atr_id_rol === 1 ? '/admin' : '/dashboard';
+          console.log('🔄 Navegando a:', targetPath);
+          navigate(targetPath);
         } else {
           console.error('Token inválido recibido del servidor:', data.token);
           setApiError('Error: Token de autenticación inválido');
         }
       } else {
         // REGISTRO
-        await api.post('/auth/register', {
-          username: formData.atr_usuario, 
-          name: formData.atr_nombre_usuario,
-          email: formData.atr_correo_electronico,
-          password: formData.atr_contrasena,
-          confirmPassword: formData.confirmPassword,
-        });
+        // Map frontend formData into API payload (includes 2FA intent)
+        const payload = mapRegistrationPayload(formData);
+        await api.post('/auth/register', payload);
         setRegistrationSuccess(true); // Mostrar mensaje de éxito
         // setShow2FASetup(true); // <-- ELIMINADO: ya no se muestra el setup de 2FA tras registro
       }
     } catch (err) {
-      // Manejo de errores HTTP
-      if (err.response) {
-        const { status, data } = err.response;
-        if (status === 401) {
-          setLoginAttempts(attempts => attempts + 1);
-          setApiError(
-            `Credenciales incorrectas. Restan ${
-              maxLoginAttempts - (loginAttempts + 1)
-            } intentos`
-          );
-        } else if (status === 403) {
-          setIsLocked(true);
-          setApiError('Usuario bloqueado.');
-        } else if (status === 409) {
-          setApiError('El usuario ya existe.');
-        } else {
-          setApiError(data.message || 'Error en el servidor');
-        }
+      // Manejo de errores HTTP. Soportar tanto el error axios clásico
+      // como la posible customMessage adjuntada por el interceptor.
+      const status = err?.response?.status;
+      const data = err?.response?.data || {};
+      const backendMessage = data.error || data.message || err?.customMessage;
+
+      if (status === 401) {
+        setLoginAttempts(attempts => attempts + 1);
+        // Mostrar el mensaje exacto del backend si viene, sino el mensaje por defecto
+        setApiError(
+          backendMessage || `Credenciales incorrectas. Restan ${maxLoginAttempts - (loginAttempts + 1)} intentos`
+        );
+      } else if (status === 403) {
+        setIsLocked(true);
+        setApiError(backendMessage || 'Usuario bloqueado.');
+      } else if (status === 409) {
+        setApiError(backendMessage || 'El usuario ya existe.');
+      } else if (status) {
+        setApiError(backendMessage || 'Error en el servidor');
       } else {
-        setApiError('Error de conexión');
+        setApiError(backendMessage || 'Error de conexión');
       }
     } finally {
       setIsSubmitting(false);
@@ -258,9 +257,18 @@ const AuthForm = () => {
           <div className="success-message">
             <h2>¡Registro Exitoso!</h2>
             <p>Por favor, verifica tu correo electrónico y espera a que un administrador apruebe tu cuenta antes de poder acceder al sistema.</p>
-            <button onClick={toggleAuthMode} className="auth-button">
-              Volver al Login
-            </button>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
+              <button
+                onClick={() => navigate('/verify-email', { state: { email: formData.atr_correo_electronico } })}
+                className="auth-button"
+                style={{ background: '#6EA1C7' }}
+              >
+                Verificar correo
+              </button>
+              <button onClick={toggleAuthMode} className="auth-button">
+                Volver al Login
+              </button>
+            </div>
           </div>
           <div className="footer">
             © 2023 Centro Médico Dra. Alejandra Rosales | Todos los derechos reservados
@@ -282,20 +290,20 @@ const AuthForm = () => {
         userEmail={userEmailFor2FA}
         onSuccess={async (data) => {
           // Validar que el token existe y es válido antes de proceder
-          if (data.token && data.token.length <= 8192) {
-            // Limpiar tokens anteriores antes de guardar el nuevo
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('token');
-            
-            localStorage.setItem('token', data.token);
-            login(data.token);
-            navigate(data.user.atr_id_rol === 1 ? '/admin' : '/dashboard');
-          } else {
-            console.error('Token inválido recibido del servidor en 2FA:', data.token);
-            setApiError('Error: Token de autenticación inválido');
-            setTwoFARequired(false);
-            setUserIdFor2FA(null);
-          }
+                if (data.token && data.token.length <= 8192) {
+                // Guardar token y user de forma atómica en el contexto
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('token');
+                localStorage.setItem('token', data.token);
+                api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+                login(data.token, false, data.user || null);
+                navigate(data.user?.atr_id_rol === 1 ? '/admin' : '/dashboard');
+              } else {
+                console.error('Token inválido recibido del servidor en 2FA:', data.token);
+                setApiError('Error: Token de autenticación inválido');
+                setTwoFARequired(false);
+                setUserIdFor2FA(null);
+              }
         }}
       />
     );
@@ -432,9 +440,9 @@ const AuthForm = () => {
               <div className="form-group">
                 <label className="checkbox-label">
                   <input
-                    name="atr_2fa_enabled"
+                    name="dos_fa_enabled"
                     type="checkbox"
-                    checked={formData.atr_2fa_enabled}
+                    checked={formData.dos_fa_enabled}
                     onChange={handleChange}
                   />
                   Habilitar 2FA

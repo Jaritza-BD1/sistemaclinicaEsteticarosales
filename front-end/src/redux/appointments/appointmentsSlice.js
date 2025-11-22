@@ -124,14 +124,44 @@ export const fetchDoctors = createAsyncThunk(
   }
 );
 
+// Thunks para operaciones de pagos
+export const loadPendingPayments = createAsyncThunk(
+  'appointments/loadPendingPayments',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const pendingPayments = await appointmentApi.fetchPendingPayments(params);
+      // Las citas ya vienen formateadas del backend con los campos correctos
+      return pendingPayments;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || error.message);
+    }
+  }
+);
+
+export const payAppointmentThunk = createAsyncThunk(
+  'appointments/payAppointment',
+  async ({ appointmentId, paymentData = {} }, { rejectWithValue }) => {
+    try {
+      const result = await appointmentApi.payAppointment(appointmentId, paymentData);
+      // El resultado ya viene formateado del backend
+      return result;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || error.message);
+    }
+  }
+);
+
 const appointmentsSlice = createSlice({
   name: 'appointments',
   initialState: {
     items: [], // Lista principal de citas (usada por el calendario)
     patients: [], // Lista de pacientes para formularios
     doctors: [], // Lista de médicos para formularios
+    pendingPayments: [], // Lista de citas pendientes de pago
     status: 'idle', // Estado general: 'idle', 'loading', 'succeeded', 'failed'
     error: null, // Mensaje de error
+    paymentStatus: 'idle', // Estado de operaciones de pago: 'idle', 'loading', 'succeeded', 'failed'
+    paymentError: null, // Mensaje de error específico para pagos
   },
   reducers: {
     clearError: (state) => {
@@ -139,6 +169,12 @@ const appointmentsSlice = createSlice({
     },
     clearAppointments: (state) => {
       state.items = [];
+    },
+    clearPaymentError: (state) => {
+      state.paymentError = null;
+    },
+    clearPendingPayments: (state) => {
+      state.pendingPayments = [];
     }
   },
   extraReducers: (builder) => {
@@ -288,9 +324,45 @@ const appointmentsSlice = createSlice({
       .addCase(fetchDoctors.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
+      })
+
+      // Casos para loadPendingPayments
+      .addCase(loadPendingPayments.pending, (state) => {
+        state.paymentStatus = 'loading';
+        state.paymentError = null;
+      })
+      .addCase(loadPendingPayments.fulfilled, (state, action) => {
+        state.pendingPayments = action.payload;
+        state.paymentStatus = 'succeeded';
+        state.paymentError = null;
+      })
+      .addCase(loadPendingPayments.rejected, (state, action) => {
+        state.paymentStatus = 'failed';
+        state.paymentError = action.payload;
+      })
+
+      // Casos para payAppointmentThunk
+      .addCase(payAppointmentThunk.pending, (state) => {
+        state.paymentStatus = 'loading';
+        state.paymentError = null;
+      })
+      .addCase(payAppointmentThunk.fulfilled, (state, action) => {
+        // Remover la cita de pendingPayments si existe
+        state.pendingPayments = state.pendingPayments.filter(item => item.atr_id_cita !== action.payload.atr_id_cita);
+        // Actualizar la cita en items si existe
+        const index = state.items.findIndex(item => item.atr_id_cita === action.payload.atr_id_cita);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+        state.paymentStatus = 'succeeded';
+        state.paymentError = null;
+      })
+      .addCase(payAppointmentThunk.rejected, (state, action) => {
+        state.paymentStatus = 'failed';
+        state.paymentError = action.payload;
       });
   },
 });
 
-export const { clearError, clearAppointments } = appointmentsSlice.actions;
+export const { clearError, clearAppointments, clearPaymentError, clearPendingPayments } = appointmentsSlice.actions;
 export default appointmentsSlice.reducer;

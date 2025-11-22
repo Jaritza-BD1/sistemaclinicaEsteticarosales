@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, CssBaseline, Toolbar, useMediaQuery, useTheme } from '@mui/material';
+import { Box, CssBaseline, Toolbar, useTheme } from '@mui/material';
 import TopAppBar from '../Components/common/TopAppBar';
 import SideBar from '../Components/common/SideBar';
 
@@ -14,7 +14,7 @@ const AppLayout = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#ffffff' }}>
       <CssBaseline />
       
       <TopAppBar onMenuToggle={handleDrawerToggle} />
@@ -23,23 +23,29 @@ const AppLayout = ({ children }) => {
       <Box
         component="main"
         sx={{
+          position: 'relative',
           flexGrow: 1,
           p: { xs: 2, sm: 3 },
           width: { 
             xs: '100%', 
             sm: `calc(100% - ${drawerWidth}px)` 
           },
-          mt: { xs: '56px', sm: '64px' },
+          mt: { xs: '48px', sm: '56px' },
           transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
+          /* Move page-level scrolling to the layout so all pages respect
+             TopAppBar and Sidebar margins. Set maxHeight relative to the
+             TopAppBar height for each breakpoint and enable vertical scroll. */
+          maxHeight: { xs: 'calc(100vh - 48px)', sm: 'calc(100vh - 56px)' },
+          overflowY: 'auto',
         }}
       >
         <Toolbar 
           sx={{ 
             display: { xs: 'block', sm: 'none' },
-            minHeight: { xs: '56px', sm: '64px' }
+            minHeight: { xs: '48px', sm: '56px' }
           }} 
         />
         

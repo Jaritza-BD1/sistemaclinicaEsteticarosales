@@ -23,31 +23,8 @@ const TopAppBar = ({ onMenuToggle }) => {
   const theme = useTheme(); // Acceder al tema principal de la aplicación
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detecta si la pantalla es pequeña
 
-  // Define la paleta de colores rosa pastel suave localmente, para asegurar consistencia
-  // Idealmente, esto debería estar en tu `src/theme.js` global.
-  const pastelThemePalette = {
-    primary: {
-      main: '#FCE4EC', // Fondo principal del sidebar (no directamente usado aquí, pero para consistencia)
-      dark: '#F8BBD0', // Color de ítem activo/hover (no directamente usado aquí)
-      contrastText: '#4A235A', // Color de texto para los elementos sobre fondos pastel
-    },
-    secondary: {
-      main: '#E0B0C8', // Un rosa suave y empolvado para la barra superior
-      contrastText: '#4A235A', // Color del texto para la secundaria
-    },
-    info: { // Para el icono de info y algunos botones
-      main: '#6A5ACD', // Un color más oscuro para contraste
-      contrastText: '#ffffff',
-    },
-    error: { // Para badges y botones de error
-      main: '#DC3545', // Rojo para errores
-      contrastText: '#ffffff',
-    },
-    success: { // Para el icono de notificaciones
-      main: '#28A745', // Verde para éxito
-      contrastText: '#ffffff',
-    },
-  };
+  // Use the global theme palette for consistent colors across the app
+  const pastelThemePalette = theme.palette;
 
 
   // Estado para controlar el menú del usuario
@@ -94,7 +71,7 @@ const TopAppBar = ({ onMenuToggle }) => {
         boxShadow: 3, // Sombra sutil para darle profundidad
       }}
     >
-      <Toolbar sx={{ minHeight: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}> {/* Flexbox para control de alineación */}
+  <Toolbar sx={{ minHeight: { xs: 48, sm: 56 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: { xs: 1, sm: 2 } }}> {/* Flexbox para control de alineación. Altura reducida y padding responsivo */}
         {/* Lado Izquierdo - Botón de menú y otros iconos */}
         <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
           {/* Icono para alternar el menú lateral (más visible y con feedback) */}
@@ -104,26 +81,26 @@ const TopAppBar = ({ onMenuToggle }) => {
             edge="start"
             onClick={onMenuToggle}
             sx={{
-              mr: isMobile ? 1 : 2, // Margen responsivo
+              mr: isMobile ? 1 : 1.5, // Margen responsivo reducido
               display: { sm: 'none' }, // Solo visible en pantallas pequeñas
-              bgcolor: 'rgba(255,255,255,0.08)', // Fondo sutil para el icono
+              bgcolor: 'rgba(255,255,255,0.06)', // Fondo sutil para el icono
               borderRadius: 2, // Bordes redondeados
               transition: 'background 0.2s', // Transición suave
               '&:hover': { bgcolor: 'rgba(255,255,255,0.18)' }, // Efecto hover
               color: pastelThemePalette.primary.contrastText, // Color del icono
-              p: { xs: 1, sm: 1.5 }, // Padding responsivo
+              p: { xs: 0.75, sm: 1 }, // Padding responsivo reducido
             }}
           >
-            <MenuIcon fontSize={isMobile ? "medium" : "large"} /> {/* Tamaño responsivo del icono */}
+            <MenuIcon fontSize={isMobile ? "small" : "medium"} /> {/* Tamaño responsivo del icono */}
           </IconButton>
 
           {/* Iconos de Notificaciones y Ayuda (alineados a la izquierda del título en desktop, o junto al menú en móvil) */}
-          <IconButton color="inherit" sx={{ mr: isMobile ? 1 : 2, color: pastelThemePalette.primary.contrastText }}>
+          <IconButton color="inherit" sx={{ mr: isMobile ? 1 : 1.5, color: pastelThemePalette.primary.contrastText }}>
             <Badge badgeContent={3} color="error"> {/* Badge con el color de error del tema */}
               <NotificationsIcon />
             </Badge>
           </IconButton>
-          <IconButton color="inherit" sx={{ mr: isMobile ? 0 : 2, color: pastelThemePalette.primary.contrastText }} onClick={() => setHelpOpen(true)}>
+          <IconButton color="inherit" sx={{ mr: isMobile ? 0 : 1.5, color: pastelThemePalette.primary.contrastText }} onClick={() => setHelpOpen(true)}>
             <HelpOutlineIcon />
           </IconButton>
         </Box>
@@ -138,7 +115,7 @@ const TopAppBar = ({ onMenuToggle }) => {
             color: pastelThemePalette.primary.contrastText, // Color del texto
             letterSpacing: 1, // Espaciado entre letras
             textAlign: { xs: 'center', md: 'left' }, // Centrado en móvil, izquierda en desktop
-            fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' }, // Tamaño de fuente responsivo
+            fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.25rem' }, // Tamaño de fuente responsivo y reducido
             position: { xs: 'absolute', md: 'static' }, // Para centrar en móviles
             left: '50%',
             transform: { xs: 'translateX(-50%)', md: 'none' },
@@ -153,34 +130,34 @@ const TopAppBar = ({ onMenuToggle }) => {
             <>
               <IconButton
                 sx={{
-                  p: 0,
-                  ml: { xs: 0, sm: 1 }, // Margen izquierdo responsivo
-                  border: '2px solid', // Borde para el avatar/botón
-                  borderColor: pastelThemePalette.primary.contrastText, // Color del borde
-                  bgcolor: 'rgba(255,255,255,0.08)', // Fondo sutil
-                  borderRadius: 2, // Bordes redondeados
-                  transition: 'background 0.2s',
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.18)' },
-                  display: 'flex', // Asegura que avatar y texto estén en línea
-                  alignItems: 'center',
-                }}
+                    p: 0,
+                    ml: { xs: 0, sm: 0.75 }, // Margen izquierdo responsivo reducido
+                    border: '2px solid', // Borde para el avatar/botón
+                    borderColor: pastelThemePalette.primary.contrastText, // Color del borde
+                    bgcolor: 'rgba(255,255,255,0.06)', // Fondo sutil
+                    borderRadius: 2, // Bordes redondeados
+                    transition: 'background 0.2s',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+                    display: 'flex', // Asegura que avatar y texto estén en línea
+                    alignItems: 'center',
+                  }}
                 onClick={handleOpenUserMenu}
                 aria-controls={anchorElUser ? 'menu-appbar' : undefined}
                 aria-haspopup="true"
                 color="inherit" // Hereda el color del AppBar
               >
                 <Avatar sx={{
-                  width: { xs: 32, sm: 36 }, // Tamaño responsivo del avatar
-                  height: { xs: 32, sm: 36 },
-                  bgcolor: pastelThemePalette.primary.dark, // Color de fondo del avatar
-                  color: pastelThemePalette.primary.contrastText, // Color del texto/icono del avatar
-                }}>
+                    width: { xs: 28, sm: 32 }, // Tamaño responsivo del avatar reducido
+                    height: { xs: 28, sm: 32 },
+                    bgcolor: pastelThemePalette.primary.dark, // Color de fondo del avatar
+                    color: pastelThemePalette.primary.contrastText, // Color del texto/icono del avatar
+                  }}>
                   {fullUser.avatarUrl
                     ? <img src={fullUser.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : (fullUser.username ? fullUser.username[0].toUpperCase() : <AccountCircleIcon fontSize="medium" sx={{ color: pastelThemePalette.primary.contrastText }} />)
                   }
                 </Avatar>
-                <Typography variant="subtitle1" color="inherit" sx={{ ml: 1, mr: 1.5, display: { xs: 'none', sm: 'block' }, fontWeight: 500 }}>
+                  <Typography variant="subtitle1" color="inherit" sx={{ ml: 1, mr: 1, display: { xs: 'none', sm: 'block' }, fontWeight: 500, fontSize: '0.95rem' }}>
                   Hola, {fullUser.username || 'Usuario'}
                 </Typography>
               </IconButton>

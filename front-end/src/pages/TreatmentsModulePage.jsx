@@ -5,9 +5,10 @@ import { Container, Typography, Button, Box } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 // Importar los componentes separados
-import TreatmentList from '../components/treatments/TreatmentList';
-import CreateTreatmentModal from '../components/treatments/CreateTreatmentModal';
-import PatientTreatmentDetailModal from '../components/treatments/PatientTreatmentDetailModal';
+import TreatmentList from '../Components/treatment/TreatmentList';
+import CreateTreatmentModal from '../Components/treatment/CreateTreatmentModal';
+import PatientTreatmentDetailModal from '../Components/treatment/PatientTreatmentDetailModal';
+import { useTreatment } from '../Components/context/TreatmentContext';
 // ... otros imports
 
 function TreatmentsModulePage() {
@@ -15,6 +16,7 @@ function TreatmentsModulePage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isPatientDetailModalOpen, setIsPatientDetailModalOpen] = useState(false);
     const [selectedTreatment, setSelectedTreatment] = useState(null); // Para editar o ver detalles
+    const { addTreatment } = useTreatment();
 
     const handleBack = () => {
         navigate(-1); // Vuelve a la página anterior en el historial
@@ -52,7 +54,16 @@ function TreatmentsModulePage() {
             <CreateTreatmentModal
                 open={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
-                // ... props para datos de edición
+                onSave={async (form) => {
+                    try {
+                        const created = await addTreatment(form);
+                        setIsCreateModalOpen(false);
+                        return created;
+                    } catch (e) {
+                        console.error('Error creating treatment', e);
+                        throw e;
+                    }
+                }}
             />
             <PatientTreatmentDetailModal
                 open={isPatientDetailModalOpen}

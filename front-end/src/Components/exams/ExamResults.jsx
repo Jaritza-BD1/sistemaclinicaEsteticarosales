@@ -483,7 +483,8 @@ const ExamResult = ({ examId }) => {
         PaperProps={{
           sx: {
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: 'background.paper',
+            color: 'accent.main',
             border: '1px solid',
             borderColor: 'primary.200'
           }
@@ -591,12 +592,13 @@ const ExamResult = ({ examId }) => {
             variant="contained"
             endIcon={<SaveIcon />}
             sx={{
-              background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+              backgroundColor: 'brand.pale',
+              color: 'accent.main',
               '&:hover': {
-                background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                backgroundColor: 'brand.paleDark',
                 transform: 'translateY(-1px)',
               },
-              boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+              boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
             }}
           >
             Guardar Cambios

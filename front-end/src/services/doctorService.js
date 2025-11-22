@@ -39,8 +39,7 @@ export const formatDoctorForForm = (doctor) => {
     fechaNacimiento: doctor.atr_fecha_nacimiento,
     genero: doctor.atr_id_genero,
     numeroColegiado: doctor.atr_numero_colegiado,
-    especialidadPrincipal: doctor.atr_especialidad_principal,
-    estado: doctor.atr_estado_medico,
+    especialidades: (doctor.Especialidades || []).map(e => ({ id: e.atr_id_especialidad, atr_especialidad: e.atr_especialidad })),
     telefonos: doctor.telefonos || [],
     correos: doctor.correos || [],
     direcciones: doctor.direcciones || []
@@ -56,8 +55,12 @@ export const formatFormDataForBackend = (formData) => {
     atr_fecha_nacimiento: formData.fechaNacimiento,
     atr_id_genero: parseInt(formData.genero),
     atr_numero_colegiado: formData.numeroColegiado,
-    atr_especialidad_principal: formData.especialidadPrincipal,
-    atr_estado_medico: formData.estado || 'ACTIVO',
+    // Enviar lista de especialidades como array de ids (enteros)
+    especialidades: (formData.especialidades || []).map(e => {
+      if (typeof e === 'number') return e;
+      if (e && (e.atr_id_especialidad || e.id)) return e.atr_id_especialidad || e.id;
+      return null;
+    }).filter(Boolean),
     telefonos: formData.telefonos || [],
     correos: formData.correos || [],
     direcciones: formData.direcciones || []

@@ -13,9 +13,12 @@ import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { DataGrid } from '@mui/x-data-grid';
+import ModalForm from '../common/ModalForm';
+import PatientForm from './PatientForm';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import TableChartIcon from '@mui/icons-material/TableChart';
-import { fetchPatients, deletePatient, clearError } from '../../redux/patients/patientsSlice';
+import { fetchPatients, deletePatient, clearError, getPatient } from '../../redux/patients/patientsSlice';
 
 const theme = createTheme({
   palette: {
@@ -122,15 +125,33 @@ const PatientList = () => {
     navigate(`/pacientes/detalle/${paciente.atr_id_paciente}`);
   };
 
-  const handleEditPatient = (paciente) => {
-    // TODO: Implementar edición de paciente
-    console.log('Editar paciente:', paciente);
+  const handleEditPatient = async (paciente) => {
+    try {
+      // If the patient object already contains the tipo field, use it directly
+      if (paciente && (paciente.atr_id_tipo_paciente !== undefined || paciente.tipoPaciente !== undefined)) {
+        setSelected(paciente);
+        setEditOpen(true);
+        return;
+      }
+
+      // Otherwise fetch full patient details to ensure atr_id_tipo_paciente is available
+      const full = await dispatch(getPatient(paciente.atr_id_paciente)).unwrap();
+      setSelected(full || paciente);
+      setEditOpen(true);
+    } catch (err) {
+      // fallback to opening with the partial object
+      console.warn('No se pudo cargar paciente completo, abriendo con datos parciales', err);
+      setSelected(paciente);
+      setEditOpen(true);
+    }
   };
 
   const handleDeletePatient = (paciente) => {
     setSelected(paciente);
     setDeleteOpen(true);
   };
+
+  const [editOpen, setEditOpen] = useState(false);
 
   const getStatusColor = (estado) => {
     switch (estado) {
@@ -232,122 +253,49 @@ const PatientList = () => {
           </Box>
         </Paper>
 
-        {/* Tabla de pacientes */}
-        <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Nombre</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Expediente</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Identidad</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Estado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Contacto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 600 }}>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filtered
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((paciente) => (
-                    <TableRow key={paciente.atr_id_paciente} hover>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            {paciente.atr_nombre} {paciente.atr_apellido}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {paciente.atr_fecha_nacimiento}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {paciente.atr_numero_expediente}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {paciente.atr_identidad}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={paciente.atr_estado_paciente || 'ACTIVO'}
-                          color={getStatusColor(paciente.atr_estado_paciente)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          {paciente.telefonos?.length > 0 && (
-                            <Tooltip title={`${paciente.telefonos.length} teléfono(s)`}>
-                              <Phone />
-                            </Tooltip>
-                          )}
-                          {paciente.correos?.length > 0 && (
-                            <Tooltip title={`${paciente.correos.length} correo(s)`}>
-                              <Email />
-                            </Tooltip>
-                          )}
-                          {paciente.direcciones?.length > 0 && (
-                            <Tooltip title={`${paciente.direcciones.length} dirección(es)`}>
-                              <LocationOn />
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Tooltip title="Ver detalles">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleViewPatient(paciente)}
-                              sx={{ color: 'primary.main' }}
-                            >
-                              <Visibility />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Editar">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEditPatient(paciente)}
-                              sx={{ color: 'primary.main' }}
-                            >
-                              <Edit />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Eliminar">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeletePatient(paciente)}
-                              sx={{ color: 'error.main' }}
-                            >
-                              <Delete />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={filtered.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={(event, newPage) => setPage(newPage)}
-            onRowsPerPageChange={(event) => {
-              setRowsPerPage(parseInt(event.target.value, 10));
-              setPage(0);
-            }}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-          />
+        {/* DataGrid de pacientes */}
+        <Paper sx={{ borderRadius: 2, overflow: 'hidden', p: 2 }}>
+          <Box sx={{ height: 600, width: '100%' }}>
+            <DataGrid
+              rows={filtered}
+              columns={[
+                { field: 'fullName', headerName: 'Nombre completo', flex: 1, minWidth: 200, valueGetter: (params) => `${params.row.atr_nombre || ''} ${params.row.atr_apellido || ''}` },
+                { field: 'atr_identidad', headerName: 'Identidad', flex: 0.6, minWidth: 140 },
+                { field: 'atr_numero_expediente', headerName: 'Expediente', flex: 0.6, minWidth: 120 },
+                { field: 'telefonoPrincipal', headerName: 'Teléfono principal', flex: 0.8, minWidth: 160, valueGetter: (params) => {
+                    const phones = params.row.telefonos || [];
+                    if (!phones || phones.length === 0) return '';
+                    const first = phones[0];
+                    return first.telefono || first.atr_telefono || first.numero || '';
+                  }
+                },
+                { field: 'actions', headerName: 'Acciones', sortable: false, filterable: false, width: 160, renderCell: (params) => (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Ver detalles">
+                      <IconButton size="small" onClick={() => handleViewPatient(params.row)} sx={{ color: 'primary.main' }}>
+                        <Visibility />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Editar">
+                      <IconButton size="small" onClick={() => handleEditPatient(params.row)} sx={{ color: 'primary.main' }}>
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Eliminar">
+                      <IconButton size="small" onClick={() => handleDeletePatient(params.row)} sx={{ color: 'error.main' }}>
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )}
+              ]}
+              getRowId={row => row.atr_id_paciente}
+              pageSize={10}
+              rowsPerPageOptions={[5,10,20]}
+              loading={status === 'loading'}
+              autoHeight
+            />
+          </Box>
         </Paper>
 
         {/* Diálogo de eliminación */}
@@ -369,6 +317,16 @@ const PatientList = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Modal edición/registro */}
+        <ModalForm open={editOpen} onClose={() => { setEditOpen(false); setSelected(null); }} title={selected ? 'Editar Paciente' : 'Registrar Paciente'} maxWidth="md">
+          <PatientForm initialData={selected || {}} onSuccess={async () => {
+            setEditOpen(false);
+            setSelected(null);
+            try { await dispatch(fetchPatients()).unwrap(); } catch (e) {}
+            setSnackbar({ open: true, msg: 'Paciente guardado', severity: 'success' });
+          }} onCancel={() => { setEditOpen(false); setSelected(null); }} />
+        </ModalForm>
 
         {/* Snackbar para notificaciones */}
         <Snackbar

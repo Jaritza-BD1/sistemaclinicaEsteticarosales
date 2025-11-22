@@ -62,18 +62,32 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // 2. Función de login optimizada (depende de logout)
-  const login = useCallback((jwt, firstLogin = false) => {
+  // Ahora login acepta un tercer parámetro opcional `userData` para evitar
+  // condiciones de carrera donde el token se establece antes que el user.
+  const login = useCallback((jwt, firstLogin = false, userData = null) => {
     setAuthToken(jwt);
     localStorage.setItem('firstLogin', firstLogin);
-    
-    setAuthState({
-      user: null,
+
+    // Asegurar que las peticiones siguientes incluyan el header Authorization
+    try {
+      if (jwt) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${jwt}`;
+      }
+    } catch (e) {
+      // Ignorar si api no está disponible en este contexto
+      console.warn('No fue posible establecer Authorization header en login', e);
+    }
+
+    setAuthState(prev => ({
+      ...prev,
+      user: userData || null,
       token: jwt,
       firstLogin,
       isAuthenticated: true,
-      isLoading: true
-    });
-    
+      // Si ya venía el user en la respuesta podemos marcar isLoading false
+      isLoading: userData ? false : true
+    }));
+
     if (firstLogin) {
       window.location.href = '/change-password';
     }

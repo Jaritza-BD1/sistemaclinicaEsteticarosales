@@ -1,0 +1,7 @@
+/* Local wrapper for FullCalendar common styles (v6.1.18).
+   This file imports the official CSS from unpkg so the browser receives a
+   local resource (Content-Type: text/css). If you need fully offline
+   usage, replace the @import with the actual CSS contents.
+*/
+/* Import local copy of FullCalendar core CSS. Download `common.min.css` into this folder. */
+@import url('./common.min.css');

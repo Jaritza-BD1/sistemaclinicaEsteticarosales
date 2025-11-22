@@ -1,0 +1,182 @@
+/* Styles for AdminErrores page - based on RolandPermissionpage.css */
+.roles-permissions-page {
+  min-height: calc(100vh - 64px);
+  background-color: #fafbfd; /* softer background */
+  padding: 0 12px 48px; /* horizontal padding to respect sidebar/topbar gutters */
+  margin: 0;
+  box-sizing: border-box;
+  /* layout-level scrolling is handled by AppLayout; keep this container flexible */
+}
+
+.roles-permissions-header {
+  background-color: #FCE4EC; /* pale pastel pink */
+  color: #212845; /* accent dark color for text */
+  padding: 1.2rem 0;
+  margin: 0 0 1rem 0;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 3px 10px rgba(33,40,69,0.04);
+}
+
+.roles-permissions-header h1 {
+  margin: 0;
+  font-weight: 700;
+  color: #212845;
+}
+
+.roles-permissions-header p {
+  margin: 0.4rem 0 0 0;
+  opacity: 0.95;
+  font-size: 1.05rem;
+  color: #212845;
+}
+
+.tabs-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(33,40,69,0.04);
+  overflow: hidden;
+  margin-bottom: 1rem;
+  padding: 8px; /* small padding so inner content has breathing room */
+}
+
+.tab-content {
+  padding: 18px 18px 24px 18px;
+  min-height: 160px;
+  width: 100%;
+}
+
+.tab-icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+.info-box {
+  background-color: #F8BBD0; /* slightly darker pale pink */
+  color: #212845;
+  padding: 1.25rem;
+  border-radius: 12px;
+  text-align: center;
+  margin-top: 1.25rem;
+}
+
+.info-box p {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.95;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .roles-permissions-header {
+    padding: 1.2rem 0;
+    margin-bottom: 1rem;
+  }
+  
+  .roles-permissions-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .roles-permissions-header p {
+    font-size: 1rem;
+  }
+  
+  .tab-content {
+    padding: 12px;
+    min-height: 240px;
+  }
+  
+  .info-box {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .roles-permissions-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .tab-content {
+    padding: 0;
+  }
+}
+
+/* Animations */
+.tabs-container {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover effects */
+.tab-content:hover {
+  background-color: #ffffff;
+  transition: background-color 0.2s ease;
+}
+
+/* make DataGrid take full width inside tab-content */
+.tab-content .MuiDataGrid-root {
+  background: transparent;
+}
+
+/* ensure the DataGrid container is responsive */
+.data-grid-wrapper {
+  width: 100%;
+  overflow: auto;
+}
+
+/* Custom scrollbar for tab content */
+.tab-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Page scrollbar styles */
+.roles-permissions-page::-webkit-scrollbar {
+  width: 12px;
+}
+.roles-permissions-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+.roles-permissions-page::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 8px;
+}
+.roles-permissions-page::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.18);
+}
+
+/* Firefox scrollbar styling for the layout/main scroller and this page if used */
+main, .roles-permissions-page {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.12) transparent;
+}
+
+@media (max-width: 600px) {
+  /* No page-level height here; AppLayout controls vertical scrolling */
+  .roles-permissions-header h1 {
+    font-size: 1.5rem;
+  }
+}

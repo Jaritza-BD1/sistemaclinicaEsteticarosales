@@ -32,15 +32,38 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
     identidad: '',
     fechaNacimiento: '',
     genero: '',
-    telefono: '',
-    email: '',
-    direccion: '',
+    tipoPaciente: '',
+    telefonos: [],
+    correos: [],
+    direcciones: [],
     numeroExpediente: '',
-    ...initialData
   });
+
+  // Mapear initialData (forma del backend) a los campos del formulario
+  useEffect(() => {
+    if (!initialData || Object.keys(initialData).length === 0) return;
+
+    setFormData(prev => ({
+      nombre: initialData.atr_nombre || initialData.nombre || prev.nombre,
+      apellido: initialData.atr_apellido || initialData.apellido || prev.apellido,
+      identidad: initialData.atr_identidad || initialData.identidad || prev.identidad,
+      fechaNacimiento: initialData.atr_fecha_nacimiento || initialData.fechaNacimiento || prev.fechaNacimiento,
+      // El backend usa `atr_id_genero` (número). Guardamos el id directamente.
+      genero: initialData.atr_id_genero ?? initialData.genero ?? prev.genero,
+      // Tipo de paciente viene como `atr_id_tipo_paciente` desde el backend
+      tipoPaciente: initialData.atr_id_tipo_paciente ?? initialData.tipoPaciente ?? prev.tipoPaciente,
+      telefonos: (initialData.telefonos && initialData.telefonos.length) ? initialData.telefonos.map(p => ({ atr_telefono: p.atr_telefono || p.telefono || '' })) : prev.telefonos,
+      correos: (initialData.correos && initialData.correos.length) ? initialData.correos.map(e => ({ atr_correo: e.atr_correo || e.correo || '' })) : prev.correos,
+      direcciones: (initialData.direcciones && initialData.direcciones.length) ? initialData.direcciones.map(d => ({ atr_direccion_completa: d.atr_direccion_completa || d.direccion || '' })) : prev.direcciones,
+      alergias: (initialData.alergias && initialData.alergias.length) ? initialData.alergias.map(a => ({ atr_alergia: a.atr_alergia || a })) : (initialData.alergias || []),
+      vacunas: (initialData.vacunas && initialData.vacunas.length) ? initialData.vacunas.map(v => ({ atr_vacuna: v.atr_vacuna || v.atr_vacuna || '', atr_fecha_vacunacion: v.atr_fecha_vacunacion || v.atr_fecha || v.fecha_vacunacion || '' })) : (initialData.vacunas || []),
+      numeroExpediente: initialData.atr_numero_expediente || initialData.numeroExpediente || prev.numeroExpediente
+    }));
+  }, [initialData]);
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [patientTypes, setPatientTypes] = useState([]);
 
   // Limpiar error cuando cambia
   useEffect(() => {
@@ -88,13 +111,16 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
     if (!formData.genero) {
       newErrors.genero = 'El género es requerido';
     }
+    if (!formData.tipoPaciente) {
+      newErrors.tipoPaciente = 'El tipo de paciente es requerido';
+    }
     
-    if (!formData.telefono?.trim()) {
-      newErrors.telefono = 'El teléfono es requerido';
+    if (!formData.telefonos || formData.telefonos.length === 0 || !formData.telefonos[0].atr_telefono?.trim()) {
+      newErrors.telefonos = 'Al menos un teléfono es requerido';
     }
     
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'El email no es válido';
+      newErrors.correos = 'El email no es válido';
     }
     
     setErrors(newErrors);
@@ -114,7 +140,7 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
     try {
       if (initialData.atr_id_paciente) {
         // Actualizar paciente existente
-        await dispatch(updatePatient({ id: initialData.atr_id_paciente, data: formData })).unwrap();
+        await dispatch(updatePatient({ id: initialData.atr_id_paciente, patientData: formData })).unwrap();
       } else {
         // Crear nuevo paciente
         await dispatch(createPatient(formData)).unwrap();
@@ -128,9 +154,12 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
           identidad: '',
           fechaNacimiento: '',
           genero: '',
-          telefono: '',
-          email: '',
-          direccion: '',
+          tipoPaciente: '',
+          telefonos: [],
+          correos: [],
+          direcciones: [],
+          alergias: [],
+          vacunas: [],
           numeroExpediente: ''
         });
       }
@@ -153,13 +182,78 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
       identidad: '',
       fechaNacimiento: '',
       genero: '',
-      telefono: '',
-      email: '',
-      direccion: '',
+      tipoPaciente: '',
+      telefonos: [],
+      correos: [],
+      direcciones: [],
+      alergias: [],
+      vacunas: [],
       numeroExpediente: ''
     });
     setErrors({});
   };
+
+  // Handlers for dynamic arrays
+  const handleAddPhone = () => setFormData(prev => ({ ...prev, telefonos: [...(prev.telefonos||[]), { atr_telefono: '' }] }));
+  const handleRemovePhone = (idx) => setFormData(prev => ({ ...prev, telefonos: prev.telefonos.filter((_,i) => i !== idx) }));
+  const handlePhoneChange = (idx) => (e) => {
+    const val = e.target.value;
+    setFormData(prev => {
+      const arr = [...(prev.telefonos||[])]; arr[idx] = { ...arr[idx], atr_telefono: val }; return { ...prev, telefonos: arr };
+    });
+    if (errors.telefonos) setErrors(prev => ({ ...prev, telefonos: '' }));
+  };
+
+  const handleAddCorreo = () => setFormData(prev => ({ ...prev, correos: [...(prev.correos||[]), { atr_correo: '' }] }));
+  const handleRemoveCorreo = (idx) => setFormData(prev => ({ ...prev, correos: prev.correos.filter((_,i) => i !== idx) }));
+  const handleCorreoChange = (idx) => (e) => {
+    const val = e.target.value;
+    setFormData(prev => { const arr = [...(prev.correos||[])]; arr[idx] = { ...arr[idx], atr_correo: val }; return { ...prev, correos: arr }; });
+  };
+
+  const handleAddDireccion = () => setFormData(prev => ({ ...prev, direcciones: [...(prev.direcciones||[]), { atr_direccion_completa: '' }] }));
+  const handleRemoveDireccion = (idx) => setFormData(prev => ({ ...prev, direcciones: prev.direcciones.filter((_,i) => i !== idx) }));
+  const handleDireccionChange = (idx) => (e) => {
+    const val = e.target.value;
+    setFormData(prev => { const arr = [...(prev.direcciones||[])]; arr[idx] = { ...arr[idx], atr_direccion_completa: val }; return { ...prev, direcciones: arr }; });
+  };
+
+  const handleAddAlergia = () => setFormData(prev => ({ ...prev, alergias: [...(prev.alergias||[]), { atr_alergia: '' }] }));
+  const handleRemoveAlergia = (idx) => setFormData(prev => ({ ...prev, alergias: prev.alergias.filter((_,i) => i !== idx) }));
+  const handleAlergiaChange = (idx) => (e) => { const val = e.target.value; setFormData(prev => { const arr = [...(prev.alergias||[])]; arr[idx] = { ...arr[idx], atr_alergia: val }; return { ...prev, alergias: arr }; }); };
+
+  const handleAddVacuna = () => setFormData(prev => ({ ...prev, vacunas: [...(prev.vacunas||[]), { atr_vacuna: '', atr_fecha_vacunacion: '' }] }));
+  const handleRemoveVacuna = (idx) => setFormData(prev => ({ ...prev, vacunas: prev.vacunas.filter((_,i) => i !== idx) }));
+  const handleVacunaChange = (idx, field) => (e) => { const val = e.target.value; setFormData(prev => { const arr = [...(prev.vacunas||[])]; arr[idx] = { ...arr[idx], [field]: val }; return { ...prev, vacunas: arr }; }); };
+
+  // Cargar tipos de paciente desde backend si existe endpoint; si falla, usar fallback
+  useEffect(() => {
+    let mounted = true;
+    const loadTypes = async () => {
+      try {
+        // Intentar endpoint específico bajo patients service
+        const patientService = require('../../services/patientService');
+        const res = await patientService.getPatientTypes();
+        if (mounted && res && res.data) {
+          setPatientTypes(Array.isArray(res.data) ? res.data : res.data.data || []);
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Fallback estático si no hay endpoint
+      if (mounted) {
+        setPatientTypes([
+          { value: 1, label: 'General' },
+          { value: 2, label: 'VIP' },
+          { value: 3, label: 'Otro' }
+        ]);
+      }
+    };
+    loadTypes();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <Box 
@@ -333,11 +427,30 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
                 },
               }}
             >
-              <MenuItem value="M">Masculino</MenuItem>
-              <MenuItem value="F">Femenino</MenuItem>
-              <MenuItem value="O">Otro</MenuItem>
+              {/* Usar IDs numéricos que corresponden a tbl_genero seed: 1=Masculino, 2=Femenino, 3=No Binario */}
+              <MenuItem value={1}>Masculino</MenuItem>
+              <MenuItem value={2}>Femenino</MenuItem>
+              <MenuItem value={3}>No binario</MenuItem>
             </Select>
             {errors.genero && <FormHelperText>{errors.genero}</FormHelperText>}
+          </FormControl>
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <FormControl fullWidth error={!!errors.tipoPaciente} disabled={isSubmitting}>
+            <InputLabel>Tipo de paciente</InputLabel>
+            <Select
+              value={formData.tipoPaciente}
+              onChange={handleChange('tipoPaciente')}
+              label="Tipo de paciente"
+            >
+              {patientTypes.map((t) => (
+                <MenuItem key={t.value ?? t.atr_id_tipo_paciente ?? t.id} value={t.value ?? t.atr_id_tipo_paciente ?? t.id}>
+                  {(t.label ?? t.atr_nombre_tipo_paciente ?? t.nombre) || 'Tipo'}
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.tipoPaciente && <FormHelperText>{errors.tipoPaciente}</FormHelperText>}
           </FormControl>
         </Grid>
 
@@ -350,70 +463,80 @@ const PatientForm = ({ initialData = {}, onSuccess, onCancel }) => {
         </Grid>
 
         <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Teléfono"
-            value={formData.telefono}
-            onChange={handleChange('telefono')}
-            error={!!errors.telefono}
-            helperText={errors.telefono}
-            disabled={isSubmitting}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'primary.300',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
+          {errors.telefonos && (
+            <Typography color="error" variant="caption">{errors.telefonos}</Typography>
+          )}
+          {(formData.telefonos || []).map((p, idx) => (
+            <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              <TextField
+                fullWidth
+                label={idx === 0 ? 'Teléfono' : `Teléfono ${idx + 1}`}
+                value={p.atr_telefono}
+                onChange={handlePhoneChange(idx)}
+                disabled={isSubmitting}
+              />
+              <Button size="small" color="error" onClick={() => handleRemovePhone(idx)} disabled={isSubmitting}>Eliminar</Button>
+            </Box>
+          ))}
+          <Button onClick={handleAddPhone} disabled={isSubmitting} sx={{ mt: 1 }}>Agregar teléfono</Button>
         </Grid>
 
         <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange('email')}
-            error={!!errors.email}
-            helperText={errors.email}
-            disabled={isSubmitting}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'primary.300',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
+          {(formData.correos || []).map((e, idx) => (
+            <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              <TextField
+                fullWidth
+                label={idx === 0 ? 'Email' : `Email ${idx + 1}`}
+                type="email"
+                value={e.atr_correo}
+                onChange={handleCorreoChange(idx)}
+                disabled={isSubmitting}
+              />
+              <Button size="small" color="error" onClick={() => handleRemoveCorreo(idx)} disabled={isSubmitting}>Eliminar</Button>
+            </Box>
+          ))}
+          <Button onClick={handleAddCorreo} disabled={isSubmitting} sx={{ mt: 1 }}>Agregar correo</Button>
         </Grid>
 
         <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Dirección"
-            value={formData.direccion}
-            onChange={handleChange('direccion')}
-            disabled={isSubmitting}
-            multiline
-            rows={2}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'primary.300',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
+          {(formData.direcciones || []).map((d, idx) => (
+            <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              <TextField
+                fullWidth
+                label={idx === 0 ? 'Dirección' : `Dirección ${idx + 1}`}
+                value={d.atr_direccion_completa}
+                onChange={handleDireccionChange(idx)}
+                disabled={isSubmitting}
+                multiline
+                rows={2}
+              />
+              <Button size="small" color="error" onClick={() => handleRemoveDireccion(idx)} disabled={isSubmitting}>Eliminar</Button>
+            </Box>
+          ))}
+          <Button onClick={handleAddDireccion} disabled={isSubmitting} sx={{ mt: 1 }}>Agregar dirección</Button>
+        </Grid>
+
+        <Grid item xs={12}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Alergias</Typography>
+          {(formData.alergias || []).map((a, idx) => (
+            <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              <TextField fullWidth label={`Alergia ${idx + 1}`} value={a.atr_alergia} onChange={handleAlergiaChange(idx)} disabled={isSubmitting} />
+              <Button size="small" color="error" onClick={() => handleRemoveAlergia(idx)} disabled={isSubmitting}>Eliminar</Button>
+            </Box>
+          ))}
+          <Button onClick={handleAddAlergia} disabled={isSubmitting} sx={{ mt: 1 }}>Agregar alergia</Button>
+        </Grid>
+
+        <Grid item xs={12}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Vacunas</Typography>
+          {(formData.vacunas || []).map((v, idx) => (
+            <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              <TextField fullWidth label={`Vacuna ${idx + 1}`} value={v.atr_vacuna} onChange={handleVacunaChange(idx, 'atr_vacuna')} disabled={isSubmitting} />
+              <TextField type="date" value={v.atr_fecha_vacunacion} onChange={handleVacunaChange(idx, 'atr_fecha_vacunacion')} disabled={isSubmitting} sx={{ width: 200 }} InputLabelProps={{ shrink: true }} />
+              <Button size="small" color="error" onClick={() => handleRemoveVacuna(idx)} disabled={isSubmitting}>Eliminar</Button>
+            </Box>
+          ))}
+          <Button onClick={handleAddVacuna} disabled={isSubmitting} sx={{ mt: 1 }}>Agregar vacuna</Button>
         </Grid>
       </Grid>
 

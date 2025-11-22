@@ -16,6 +16,7 @@ import {
   useTheme,
   useMediaQuery
 } from '@mui/material';
+import { Switch } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
@@ -179,7 +180,31 @@ export const FormSelectField = ({
       <Select
         name={name}
         value={value}
-        onChange={handleChange}
+        onChange={(e) => {
+          // Coerce numeric-looking values to Number to preserve types
+          const raw = e.target.value;
+          let parsed = raw;
+          if (typeof raw === 'string' && /^\d+$/.test(raw)) parsed = Number(raw);
+          // Find label for the selected option (if provided)
+          const selectedOption = options.find(opt => opt && opt.value === parsed);
+          const selectedLabel = selectedOption ? selectedOption.label : '';
+          // Create a synthetic event compatible with handleChange from context
+          handleChange({ target: { name, value: parsed, type: e.target.type } });
+          // Also store a companion label field (e.g., generoLabel) so callers can send both id and text
+          try {
+            handleChange({ target: { name: `${name}Label`, value: selectedLabel, type: 'text' } });
+          } catch (err) {
+            // ignore if context handler not available
+          }
+          // If an external onChange prop was passed (parent component expects event), call it too
+          if (typeof props.onChange === 'function') {
+            try {
+              props.onChange({ target: { name, value: parsed } });
+            } catch (err) {
+              // swallow
+            }
+          }
+        }}
         onBlur={() => debouncedFieldValidation(name)}
         label={label}
         sx={{
@@ -423,6 +448,45 @@ export const FormChipsField = ({
           />
         ))}
       </Box>
+    </Box>
+  );
+};
+
+// Campo switch (boolean) controlado por FormContext
+export const FormSwitchField = ({
+  name,
+  label,
+  checkedTrueLabel,
+  checkedFalseLabel,
+  disabled = false,
+  sx = {},
+  ...props
+}) => {
+  const { formData, handleChange } = useFormContext();
+
+  if (!name) {
+    console.error('FormSwitchField: name prop is required but was', name);
+    return null;
+  }
+
+  const value = !!formData[name];
+
+  // Create a synthetic event to reuse handleChange from context
+  const onToggle = (e, checked) => {
+    const syntheticEvent = { target: { name, value: checked, type: 'checkbox', checked } };
+    handleChange(syntheticEvent);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ...sx }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{label}</Typography>
+      <Switch
+        name={name}
+        checked={value}
+        onChange={onToggle}
+        disabled={disabled}
+        {...props}
+      />
     </Box>
   );
 };

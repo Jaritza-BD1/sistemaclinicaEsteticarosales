@@ -5,12 +5,13 @@ import { Box } from '@mui/material';
 import { Navigate } from 'react-router-dom';
 
 const BackupPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
-  // Verificar si el usuario es administrador
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/login" replace />;
-  }
+  // Si no hay usuario logueado, redirigir al login
+  if (!user) return <Navigate to="/login" replace />;
+
+  // Si no es admin, mostrar not-found (o unauthorized)
+  if (!isAdmin()) return <Navigate to="/not-found" replace />;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>

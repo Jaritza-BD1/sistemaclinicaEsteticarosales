@@ -1,5 +1,27 @@
 class ResponseService {
-  static success(res, data = null, message = 'Success', statusCode = 200) {
+  /**
+   * Flexible success responder.
+   * Supports both call shapes used across the codebase:
+   *  - success(res, message, data, statusCode)
+   *  - success(res, data, message, statusCode)
+   */
+  static success(res, a = null, b = 'Success', c = 200) {
+    let message = 'Success';
+    let data = null;
+    let statusCode = 200;
+
+    if (typeof a === 'string') {
+      // signature: (res, message, data?, statusCode?)
+      message = a;
+      data = b === 'Success' ? null : b;
+      statusCode = typeof c === 'number' ? c : 200;
+    } else {
+      // signature: (res, data, message?, statusCode?)
+      data = a;
+      message = typeof b === 'string' ? b : 'Success';
+      statusCode = typeof c === 'number' ? c : 200;
+    }
+
     return res.status(statusCode).json({
       success: true,
       message,
@@ -8,7 +30,26 @@ class ResponseService {
     });
   }
 
-  static error(res, message = 'Error occurred', statusCode = 400, errors = null) {
+  /**
+   * Flexible error responder.
+   * Accepts either:
+   *  - error(res, message, statusCode, errors)
+   *  - error(res, message, errors)
+   * If the third argument is a number it is treated as statusCode, otherwise as errors.
+   */
+  static error(res, message = 'Error occurred', maybeStatusOrErrors = 400, maybeErrors = null) {
+    let statusCode = 400;
+    let errors = null;
+
+    if (typeof maybeStatusOrErrors === 'number') {
+      statusCode = maybeStatusOrErrors;
+      errors = maybeErrors;
+    } else {
+      // caller passed errors as third arg (common in controllers)
+      errors = maybeStatusOrErrors;
+      statusCode = 400;
+    }
+
     return res.status(statusCode).json({
       success: false,
       message,
@@ -60,6 +101,20 @@ class ResponseService {
       },
       timestamp: new Date().toISOString()
     });
+  }
+
+  // Convenience helpers used across controllers
+  static created(res, a = null, b = null) {
+    // created could be called as (res, data) or (res, message, data). Delegate to success with 201.
+    return this.success(res, a, b, 201);
+  }
+
+  static badRequest(res, message = 'Bad Request', errors = null) {
+    return this.error(res, message, 400, errors);
+  }
+
+  static conflict(res, message = 'Conflict', errors = null) {
+    return this.error(res, message, 409, errors);
   }
 }
 

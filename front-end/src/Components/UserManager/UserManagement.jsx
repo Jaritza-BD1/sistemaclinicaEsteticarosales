@@ -4,9 +4,19 @@ import { useAuth } from '../context/AuthContext';
 import './user-management.css';
 import ModalForm from '../common/ModalForm';
 import UserForm from './UserForm';
+import {
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography
+} from '@mui/material';
 
 const UserManagement = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +30,9 @@ const UserManagement = () => {
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [resetResult, setResetResult] = useState(null);
   const [actionLoading, setActionLoading] = useState({}); // { [id]: bool }
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmPayload, setConfirmPayload] = useState({ action: '', id: null, label: '' });
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleAddUser = () => {
     setUserModalOpen(true);
@@ -74,58 +87,99 @@ const UserManagement = () => {
   };
 
   const handleBlock = async (id) => {
-    if (user?.role !== 'admin') return;
+    if (!isAdmin()) return;
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      await api.patch(`/admin/users/${id}/block`);
+      console.debug('Request: PATCH /admin/users/' + id + '/block');
+      const resp = await api.patch(`/admin/users/${id}/block`);
+      console.debug('Response:', resp);
+      setSuccessMessage('Usuario bloqueado correctamente');
       await fetchUsers(currentPage);
     } catch (err) {
       console.error('Error blocking user:', err);
-      setError('Error al bloquear usuario');
+      const msg = err?.message || err?.body?.message || (err?.response && err.response.message) || 'Error al bloquear usuario';
+      setError(msg);
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
   const handleUnblock = async (id) => {
-    if (user?.role !== 'admin') return;
+    if (!isAdmin()) return;
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      await api.patch(`/admin/users/${id}/unblock`);
+      console.debug('Request: PATCH /admin/users/' + id + '/unblock');
+      const resp = await api.patch(`/admin/users/${id}/unblock`);
+      console.debug('Response:', resp);
+      setSuccessMessage('Usuario desbloqueado correctamente');
       await fetchUsers(currentPage);
     } catch (err) {
       console.error('Error unblocking user:', err);
-      setError('Error al desbloquear usuario');
+      const msg = err?.message || err?.body?.message || (err?.response && err.response.message) || 'Error al desbloquear usuario';
+      setError(msg);
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
   const handleReset = async (id) => {
-    if (user?.role !== 'admin') return;
+    if (!isAdmin()) return;
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
+      console.debug('Request: PUT /admin/users/' + id + '/reset-password');
       const res = await api.put(`/admin/users/${id}/reset-password`);
-      setResetResult({ id, password: res.data.nuevaContraseña });
+      console.debug('Response:', res);
+      const nueva = res.nuevaContraseña || res.data?.nuevaContraseña || '';
+      setResetResult({ id, password: nueva });
+      setSuccessMessage(nueva ? `Contraseña reseteada: ${nueva}` : 'Contraseña reseteada correctamente');
       await fetchUsers(currentPage);
     } catch (err) {
       console.error('Error resetting password:', err);
-      setError('Error al resetear contraseña');
+      const msg = err?.message || err?.body?.message || (err?.response && err.response.message) || 'Error al resetear contraseña';
+      setError(msg);
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
+  // Abre el diálogo de confirmación con payload (acción, id, label opcional)
+  const openConfirm = (action, id, label) => {
+    setConfirmPayload({ action, id, label });
+    setConfirmOpen(true);
+  };
+
   const handleDelete = async (id) => {
-    if (user?.role !== 'admin') return;
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) return;
+    if (!isAdmin()) return;
+    openConfirm('delete', id, 'Eliminar usuario');
+  };
+
+  const handleConfirm = async () => {
+    const { action, id } = confirmPayload;
+    setConfirmOpen(false);
+    if (!action || !id) return;
+
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      await api.delete(`/admin/users/${id}`);
-      await fetchUsers(currentPage);
+      if (action === 'delete') {
+        console.debug('Request: DELETE /admin/users/' + id);
+        const resp = await api.delete(`/admin/users/${id}`);
+        console.debug('Response:', resp);
+        setSuccessMessage('Usuario eliminado correctamente');
+        await fetchUsers(currentPage);
+      }
+      if (action === 'block') {
+        await handleBlock(id);
+      }
+      if (action === 'unblock') {
+        await handleUnblock(id);
+      }
+      if (action === 'reset') {
+        await handleReset(id);
+      }
     } catch (err) {
-      console.error('Error deleting user:', err);
-      setError('Error al eliminar usuario');
+      console.error('Error executing confirm action:', err);
+      const msg = err?.message || err?.body?.message || (err?.response && err.response.message) || 'Error al ejecutar la acción';
+      setError(msg);
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
@@ -189,7 +243,7 @@ const UserManagement = () => {
                     <button
                       className={`action-button block-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
                       disabled={actionLoading[u.atr_id_usuario]}
-                      onClick={() => handleBlock(u.atr_id_usuario)}
+                      onClick={() => openConfirm('block', u.atr_id_usuario, `Bloquear ${u.atr_usuario}`)}
                       title="Bloquear usuario"
                     >
                       {actionLoading[u.atr_id_usuario] ? '⏳' : '🔒'}
@@ -199,7 +253,7 @@ const UserManagement = () => {
                       <button
                         className={`action-button unblock-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
                         disabled={actionLoading[u.atr_id_usuario]}
-                        onClick={() => handleUnblock(u.atr_id_usuario)}
+                        onClick={() => openConfirm('unblock', u.atr_id_usuario, `Desbloquear ${u.atr_usuario}`)}
                         title="Desbloquear usuario"
                       >
                         {actionLoading[u.atr_id_usuario] ? '⏳' : '🔓'}
@@ -209,7 +263,7 @@ const UserManagement = () => {
                     <button
                       className={`action-button reset-button ${actionLoading[u.atr_id_usuario] ? 'loading' : ''}`}
                       disabled={actionLoading[u.atr_id_usuario]}
-                      onClick={() => handleReset(u.atr_id_usuario)}
+                      onClick={() => openConfirm('reset', u.atr_id_usuario, `Resetear contraseña ${u.atr_usuario}`)}
                       title="Resetear contraseña"
                     >
                       {actionLoading[u.atr_id_usuario] ? '⏳' : '🔄'}
@@ -285,6 +339,47 @@ const UserManagement = () => {
       <ModalForm open={userModalOpen} onClose={handleCloseUser} title="Crear Usuario">
         <UserForm onSuccess={handleUserSuccess} />
       </ModalForm>
+      {/* Dialogo de confirmación reutilizable */}
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        aria-labelledby="confirm-dialog-title"
+      >
+        <DialogTitle id="confirm-dialog-title">{confirmPayload.label || 'Confirmar acción'}</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Estás seguro de que deseas continuar con esta acción?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} color="secondary">Cancelar</Button>
+          <Button onClick={handleConfirm} color="primary" variant="contained">Confirmar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar de éxito */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={4000}
+        onClose={() => setSuccessMessage('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccessMessage('')} severity="success" sx={{ width: '100%' }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Snackbar de error (usa estado error existente) */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={5000}
+        onClose={() => setError('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setError('')} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

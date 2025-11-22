@@ -1,5 +1,23 @@
-// front-end/src/services/securityService.js
 import DOMPurify from 'dompurify';
+
+// central mapping for security-related payloads
+export function mapRegistrationPayload(formData) {
+  // formData comes from AuthForm.formData
+  const payload = {
+    username: formData.atr_usuario,
+    name: formData.atr_nombre_usuario,
+    email: formData.atr_correo_electronico,
+    password: formData.atr_contrasena,
+    confirmPassword: formData.confirmPassword,
+    // Keep the friendly frontend key and also add backend key for robustness
+    dos_fa_enabled: Boolean(formData.dos_fa_enabled),
+    atr_2fa_enabled: Boolean(formData.dos_fa_enabled)
+  };
+  return payload;
+}
+
+// mapRegistrationPayload is exported as a named export above
+// front-end/src/services/securityService.js
 
 // Configuración de seguridad
 const SECURITY_CONFIG = {
@@ -122,6 +140,13 @@ export const withSecurity = (formData, type = 'general') => {
     }
     if (sanitized.telefono && !validateSensitiveData(sanitized.telefono, 'phone')) {
       throw new Error('Teléfono inválido');
+    }
+    // Mapear campo frontend legible a la forma que espera el backend
+    // dos_fa_enabled -> atr_2fa_enabled
+    if (sanitized.dos_fa_enabled !== undefined) {
+      sanitized.atr_2fa_enabled = Boolean(sanitized.dos_fa_enabled);
+      // opcional: eliminar la clave frontend para evitar duplicados
+      delete sanitized.dos_fa_enabled;
     }
   }
   

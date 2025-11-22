@@ -77,9 +77,10 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
       PaperProps={{
         sx: {
           borderRadius: isMobile ? 0 : 3,
-          background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+          backgroundColor: 'background.paper',
+          color: 'accent.main',
           border: '1px solid',
-          borderColor: 'primary.200',
+          borderColor: 'brand.paleL2',
           minHeight: isMobile ? '100vh' : 'auto',
           maxHeight: isMobile ? '100vh' : '90vh',
           overflow: 'hidden'
@@ -94,7 +95,7 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
         pb: 1,
         borderBottom: '1px solid',
         borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)'
+        backgroundColor: 'background.paper'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <PersonIcon sx={{ mr: 1 }} />
@@ -130,10 +131,10 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
             borderRadius: '4px',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            background: 'brand.pale',
             borderRadius: '4px',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              background: 'brand.paleDark',
             },
           },
         }}
@@ -142,11 +143,11 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
           {/* Información Personal */}
           <Grid item xs={12} md={6}>
             <Card sx={{ 
-              borderRadius: 2,
-              background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
-              border: '1px solid',
-              borderColor: 'primary.200'
-            }}>
+                borderRadius: 2,
+                backgroundColor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'brand.paleL2'
+              }}>
               <CardContent>
                 <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                   <PersonIcon sx={{ mr: 1 }} />
@@ -221,11 +222,11 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
           {/* Información de Contacto */}
           <Grid item xs={12} md={6}>
             <Card sx={{ 
-              borderRadius: 2,
-              background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
-              border: '1px solid',
-              borderColor: 'primary.200'
-            }}>
+                borderRadius: 2,
+                backgroundColor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'brand.paleL2'
+              }}>
               <CardContent>
                 <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                   <PhoneIcon sx={{ mr: 1 }} />
@@ -273,9 +274,9 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
@@ -344,9 +345,9 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
@@ -368,8 +369,9 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
         p: 3, 
         pt: 1,
         borderTop: '1px solid',
-        borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)',
+        borderColor: 'brand.paleL2',
+        backgroundColor: 'background.paper',
+        color: 'accent.main',
         flexWrap: 'wrap',
         gap: 1
       }}>
@@ -425,12 +427,13 @@ const PatientDetailsModal = ({ open, onClose, patient, onEditPatient }) => {
           variant="contained"
           onClick={onClose}
           sx={{
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            backgroundColor: 'brand.pale',
+            color: 'accent.main',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              backgroundColor: 'brand.paleDark',
               transform: 'translateY(-1px)',
             },
-            boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+            boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
           }}
         >
           Cerrar

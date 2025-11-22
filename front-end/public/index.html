@@ -10,8 +10,17 @@
       content="Sistema de login para Dra. Alejandra Rosales"
     />
     <title>Clinica Estetica Rosale</title>
-    <link href="fullcalendar/daygrid/index.css" rel="stylesheet" />
-    <link href="fullcalendar/timegrid/index.css" rel="stylesheet" />
+  <!-- FullCalendar styles: use CDN links because the installed @fullcalendar packages
+    don't export CSS paths that the bundler can import. Pin to the installed
+    version to keep styles consistent. -->
+  <!-- Serve local CSS wrappers (which @import the actual FullCalendar CSS).
+    This ensures the server returns text/css for the initial files and
+    avoids bundler import/export problems. If you need fully offline
+    mode, replace the @import lines inside these local files with the
+    actual CSS content. -->
+  <link rel="stylesheet" href="%PUBLIC_URL%/fullcalendar/common.css">
+  <link rel="stylesheet" href="%PUBLIC_URL%/fullcalendar/daygrid.css">
+  <link rel="stylesheet" href="%PUBLIC_URL%/fullcalendar/timegrid.css">
   </head>
   <body>
     <noscript>Necesitas habilitar JavaScript para ejecutar esta aplicación.</noscript>

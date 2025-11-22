@@ -17,6 +17,8 @@ import {
   Save as SaveIcon
 } from '@mui/icons-material';
 import api from '../../services/api';
+import maintenanceService from '../../services/maintenanceService';
+import MaintenanceForm from '../Maintenance/MaintenanceForm';
 import './roles-permissions.css';
 
 const PermissionsManagement = ({ onNotification }) => {
@@ -35,6 +37,8 @@ const PermissionsManagement = ({ onNotification }) => {
     atr_permiso_consultar: ''
   });
   const [error, setError] = useState('');
+  const [objetoDialogOpen, setObjetoDialogOpen] = useState(false);
+  const [objetoEditing, setObjetoEditing] = useState(null);
 
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,7 +48,7 @@ const PermissionsManagement = ({ onNotification }) => {
   const itemsPerPage = 10;
 
   // Cargar datos iniciales
-  const fetchInitialData = async () => {
+  const fetchInitialData = React.useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -61,14 +65,28 @@ const PermissionsManagement = ({ onNotification }) => {
       console.log('Roles response:', rolesResponse);
       console.log('Objects response:', objectsResponse);
 
-      // El interceptor ya devuelve response.data, así que accedemos directamente
-      setRoles(rolesResponse.data || []);
-      setObjects(objectsResponse.data || []);
-      setTotalRecords(objectsResponse.meta?.total || 0);
-      setTotalPages(objectsResponse.meta?.totalPages || 1);
+      // Normalizar diferentes formatos de respuesta de la API:
+      // - respuesta directa: [{...}, {...}]
+      // - paginada/encapsulada: { data: [...], meta: { total, totalPages } }
+      const rolesPayload = rolesResponse.data;
+      const rolesArray = Array.isArray(rolesPayload)
+        ? rolesPayload
+        : (rolesPayload && (rolesPayload.data || rolesPayload.roles)) || [];
 
-      if (rolesResponse.data?.length > 0) {
-        setSelectedRole(rolesResponse.data[0].atr_id_rol.toString());
+      const objectsPayload = objectsResponse.data;
+      const objectsArray = Array.isArray(objectsPayload)
+        ? objectsPayload
+        : (objectsPayload && objectsPayload.data) || [];
+
+      const objectsMeta = (objectsPayload && objectsPayload.meta) || objectsResponse.meta || {};
+
+      setRoles(rolesArray);
+      setObjects(objectsArray);
+      setTotalRecords(objectsMeta?.total || 0);
+      setTotalPages(objectsMeta?.totalPages || objectsMeta?.total_pages || 1);
+
+      if (rolesArray.length > 0) {
+        setSelectedRole(rolesArray[0].atr_id_rol.toString());
       }
     } catch (error) {
       console.error('Error fetching initial data:', error);
@@ -77,18 +95,21 @@ const PermissionsManagement = ({ onNotification }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, onNotification]);
 
   // Cargar permisos para un rol específico
-  const fetchPermissions = async (roleId) => {
+  const fetchPermissions = React.useCallback(async (roleId) => {
     if (!roleId) return;
 
     setLoading(true);
     try {
-      const response = await api.get(`/permisos/rol/${roleId}`);
+      const response = await api.get(`/permisos/by-role/${roleId}`);
       console.log('Permissions response:', response);
-      // El interceptor ya devuelve response.data, así que accedemos directamente
-      setPermissions(response.data || []);
+      const permsPayload = response.data;
+      const permsArray = Array.isArray(permsPayload)
+        ? permsPayload
+        : (permsPayload && permsPayload.data) || [];
+      setPermissions(permsArray);
     } catch (error) {
       console.error('Error fetching permissions:', error);
       setError('Error al cargar los permisos');
@@ -96,10 +117,10 @@ const PermissionsManagement = ({ onNotification }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [onNotification]);
 
   // Cargar objetos con paginación
-  const fetchObjects = async (page = currentPage) => {
+  const fetchObjects = React.useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
       const response = await api.get('/objetos', {
@@ -108,11 +129,14 @@ const PermissionsManagement = ({ onNotification }) => {
           limit: itemsPerPage
         }
       });
-      console.log('Objects response:', response);
-      // El interceptor ya devuelve response.data, así que accedemos directamente
-      setObjects(response.data || []);
-      setTotalRecords(response.meta?.total || 0);
-      setTotalPages(response.meta?.totalPages || 1);
+  console.log('Objects response:', response);
+  const objectsPayload2 = response.data;
+  const objectsArray2 = Array.isArray(objectsPayload2) ? objectsPayload2 : (objectsPayload2 && objectsPayload2.data) || [];
+  const meta2 = (objectsPayload2 && objectsPayload2.meta) || response.meta || {};
+
+  setObjects(objectsArray2);
+  setTotalRecords(meta2?.total || 0);
+  setTotalPages(meta2?.totalPages || meta2?.total_pages || 1);
     } catch (error) {
       console.error('Error fetching objects:', error);
       setError('Error al cargar los objetos');
@@ -120,21 +144,21 @@ const PermissionsManagement = ({ onNotification }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, onNotification]);
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [fetchInitialData]);
 
   useEffect(() => {
     if (selectedRole) {
       fetchPermissions(selectedRole);
     }
-  }, [selectedRole]);
+  }, [selectedRole, fetchPermissions]);
 
   useEffect(() => {
     fetchObjects();
-  }, [currentPage, itemsPerPage]);
+  }, [fetchObjects]);
 
   // Manejar cambio de página
   const handlePageChange = (pageNumber) => {
@@ -172,11 +196,18 @@ const PermissionsManagement = ({ onNotification }) => {
 
     setSaving(true);
     try {
-      await api.post('/permisos/upsert', {
+      // Normalize permission flags: send '1' for enabled, '' for disabled
+      const normalize = (val) => (val && String(val).trim() !== '' ? '1' : '');
+      const payload = {
         atr_id_rol: parseInt(selectedRole),
         atr_id_objeto: selectedObject.atr_id_objetos,
-        ...currentPermissions
-      });
+        atr_permiso_insercion: normalize(currentPermissions.atr_permiso_insercion),
+        atr_permiso_eliminacion: normalize(currentPermissions.atr_permiso_eliminacion),
+        atr_permiso_actualizacion: normalize(currentPermissions.atr_permiso_actualizacion),
+        atr_permiso_consultar: normalize(currentPermissions.atr_permiso_consultar)
+      };
+
+      await api.post('/permisos/upsert', payload);
 
       onNotification('Permisos guardados exitosamente');
       setPermissionDialogOpen(false);
@@ -293,7 +324,7 @@ const PermissionsManagement = ({ onNotification }) => {
                 return (
                   <tr key={object.atr_id_objetos}>
                     <td>
-                      <strong>{object.atr_objeto}</strong>
+                                <strong>{object.atr_objeto}</strong>
                     </td>
                     <td>
                       <div className="description-cell">
@@ -314,13 +345,16 @@ const PermissionsManagement = ({ onNotification }) => {
                       </div>
                     </td>
                     <td>
-                      <button
-                        className="action-button security"
-                        onClick={() => openPermissionDialog(object)}
-                        title="Editar permisos"
-                      >
-                        🔐
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="action-button" onClick={() => { setObjetoEditing(object); setObjetoDialogOpen(true); }} title="Editar objeto">✏️</button>
+                        <button
+                          className="action-button security"
+                          onClick={() => openPermissionDialog(object)}
+                          title="Editar permisos"
+                        >
+                          🔐
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -440,6 +474,40 @@ const PermissionsManagement = ({ onNotification }) => {
           >
             {saving ? 'Guardando...' : 'Guardar Permisos'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo para crear/editar Objeto (Mantenimiento) */}
+      <Dialog open={objetoDialogOpen} onClose={() => { setObjetoDialogOpen(false); setObjetoEditing(null); }} maxWidth="md" fullWidth>
+        <DialogTitle>{objetoEditing ? `Editar Objeto: ${objetoEditing.atr_objeto}` : 'Nuevo Objeto'}</DialogTitle>
+        <DialogContent>
+          <MaintenanceForm
+            model="Objeto"
+            editing={objetoEditing}
+            onCancel={() => { setObjetoDialogOpen(false); setObjetoEditing(null); }}
+            onSubmit={async (values, helpers) => {
+              try {
+                if (objetoEditing && (objetoEditing.atr_id_objetos || objetoEditing.id)) {
+                  const id = objetoEditing.atr_id_objetos || objetoEditing.id;
+                  await maintenanceService.update('Objeto', id, values);
+                } else {
+                  await maintenanceService.create('Objeto', values);
+                }
+                fetchObjects();
+                onNotification('Objeto guardado correctamente');
+                setObjetoDialogOpen(false);
+                setObjetoEditing(null);
+                if (helpers && helpers.resetForm) helpers.resetForm();
+              } catch (err) {
+                console.error('Error saving objeto', err);
+                onNotification('Error guardando objeto', 'error');
+                throw err;
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setObjetoDialogOpen(false); setObjetoEditing(null); }}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </div>

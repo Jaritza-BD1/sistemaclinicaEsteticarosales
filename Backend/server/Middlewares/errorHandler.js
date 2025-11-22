@@ -98,6 +98,16 @@ const errorHandler = (err, req, res, next) => {
     return ResponseService.error(res, 'Referencia inválida', 400);
   }
 
+  // Errores de subida de archivos (Multer)
+  if (err.name === 'MulterError' || (err.code && String(err.code).startsWith('LIMIT_'))) {
+    return ResponseService.badRequest(res, err.message || 'Error en la subida de archivos');
+  }
+
+  // Errores de tipo de archivo provenientes del fileFilter
+  if (err.message && (err.message.includes('Tipo de archivo no permitido') || err.message.includes('not allowed'))) {
+    return ResponseService.badRequest(res, err.message);
+  }
+
   // Errores de CORS
   if (err.message === 'Not allowed by CORS') {
     return ResponseService.forbidden(res, 'Origen no permitido');

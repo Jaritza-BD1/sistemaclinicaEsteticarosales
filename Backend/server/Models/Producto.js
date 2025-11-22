@@ -15,7 +15,6 @@ const Producto = sequelize.define('Producto', {
     atr_nombre_producto: {
         type: DataTypes.STRING(100),
         allowNull: false,
-        unique: true,
         field: 'atr_nombre_producto'
     },
     atr_descripcion: {
@@ -26,7 +25,6 @@ const Producto = sequelize.define('Producto', {
     atr_codigo_barra: {
         type: DataTypes.STRING(50),
         allowNull: true,
-        unique: true,
         field: 'atr_codigo_barra'
     },
     atr_categoria: {
@@ -128,19 +126,7 @@ Producto.afterDestroy(async (producto, options) => {
     logger.info(`Producto eliminado: ID ${producto.atr_id_producto}, Nombre: ${producto.atr_nombre_producto}`);
 });
 
-// *** Definición de Asociaciones ***
-// Un producto fue creado por un usuario
-Producto.belongsTo(User, {
-    foreignKey: 'atr_creado_por',
-    targetKey: 'atr_id_usuario', // La clave primaria/única en el modelo User
-    as: 'creadoPor'
-});
-
-// Un producto fue modificado por un usuario
-Producto.belongsTo(User, {
-    foreignKey: 'atr_modificado_por',
-    targetKey: 'atr_id_usuario', // La clave primaria/única en el modelo User
-    as: 'modificadoPor'
-});
+// Asociaciones movidas a `Models/index.js` para centralizar definitions y evitar
+// dependencias circulares con otros modelos.
 
 module.exports = Producto;

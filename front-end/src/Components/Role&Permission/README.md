@@ -97,7 +97,7 @@ Este módulo proporciona una interfaz completa para la gestión de roles y permi
 
 ### Permisos
 - `GET /api/permisos` - Obtener todos los permisos
-- `GET /api/permisos/rol/:idRol` - Obtener permisos por rol
+- `GET /api/permisos/by-role/:idRol` - Obtener permisos por rol
 - `GET /api/permisos/:idRol/:idObjeto` - Obtener permiso específico
 - `POST /api/permisos/upsert` - Crear o actualizar permiso
 - `DELETE /api/permisos/:idRol/:idObjeto` - Eliminar permiso

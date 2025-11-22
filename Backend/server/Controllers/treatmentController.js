@@ -1,4 +1,4 @@
-const { Treatment, Patient, Doctor, User } = require('../Models');
+const { Treatment, Patient, Doctor, User, Especialidad } = require('../Models');
 const logger = require('../utils/logger');
 const ResponseService = require('../services/responseService');
 
@@ -14,7 +14,8 @@ exports.list = async (req, res) => {
         { 
           model: Doctor, 
           as: 'doctor',
-          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido', 'atr_especialidad_principal']
+          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido'],
+          include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -39,7 +40,8 @@ exports.get = async (req, res) => {
         { 
           model: Doctor, 
           as: 'doctor',
-          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido', 'atr_especialidad_principal']
+          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido'],
+          include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ]
     });
@@ -103,7 +105,8 @@ exports.create = async (req, res) => {
         { 
           model: Doctor, 
           as: 'doctor',
-          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido', 'atr_especialidad_principal']
+          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido'],
+          include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ]
     });
@@ -173,7 +176,8 @@ exports.update = async (req, res) => {
         { 
           model: Doctor, 
           as: 'doctor',
-          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido', 'atr_especialidad_principal']
+          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido'],
+          include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ]
     });
@@ -214,7 +218,8 @@ exports.getByPatient = async (req, res) => {
         { 
           model: Doctor, 
           as: 'doctor',
-          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido', 'atr_especialidad_principal']
+          attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido'],
+          include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ],
       order: [['createdAt', 'DESC']]

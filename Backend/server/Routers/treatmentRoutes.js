@@ -10,6 +10,9 @@ const limiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
 
 // Controladores
 const treatmentCtrl = require('../Controllers/treatmentController');
+const treatmentProcedureCtrl = require('../Controllers/treatmentProcedureController');
+const consultationCtrl = require('../Controllers/consultationController');
+const { uploadFields } = require('../helpers/uploadHelper');
 
 // Todas las rutas requieren JWT y roles adecuados
 router.use(authenticate);
@@ -56,5 +59,50 @@ router.put(
 );
 
 router.delete('/:id', [param('id').isInt()], validateRequest, treatmentCtrl.delete);
+
+// Actualizar sesión de tratamiento (para consultas)
+router.patch('/:id/session', [
+  param('id').isInt(),
+  body('ejecutado_el').optional().isISO8601().withMessage('Fecha de ejecución inválida'),
+  body('resultado').optional().isString().trim(),
+  body('recomendaciones').optional().isString().trim(),
+  body('imagen_pre').optional().isString().trim(),
+  body('imagen_post').optional().isString().trim()
+], validateRequest, consultationCtrl.updateTreatmentSession);
+
+// Rutas anidadas para procedimientos de un tratamiento
+router.get('/:treatmentId/procedures', [param('treatmentId').isInt()], validateRequest, treatmentProcedureCtrl.listByTreatment);
+router.get('/:treatmentId/procedures/:procId', [param('treatmentId').isInt(), param('procId').isInt()], validateRequest, treatmentProcedureCtrl.get);
+
+router.post(
+  '/:treatmentId/procedures',
+  [
+    param('treatmentId').isInt(),
+    body('atr_procedimiento_tipo').isIn(['ESTETICO','PODOLOGICO']).withMessage('Tipo de procedimiento inválido'),
+    body('atr_procedimiento_nombre').isString().notEmpty().withMessage('Nombre de procedimiento requerido'),
+    body('atr_programado_para').optional().isISO8601()
+  ],
+  validateRequest,
+  treatmentProcedureCtrl.create
+);
+
+router.put('/:treatmentId/procedures/:procId', [param('treatmentId').isInt(), param('procId').isInt()], validateRequest, treatmentProcedureCtrl.update);
+
+router.patch(
+  '/:treatmentId/procedures/:procId/execute',
+  [param('treatmentId').isInt(), param('procId').isInt()],
+  // aceptar uploads: imagen_pre e imagen_post (opcionales)
+  // guardar en subcarpeta `procedures/<treatmentId>` y validar imágenes hasta 5MB
+  uploadFields(
+    req => `procedures/${req.params.treatmentId}`,
+    [
+      { name: 'imagen_pre', maxCount: 1 },
+      { name: 'imagen_post', maxCount: 1 }
+    ],
+    { maxSize: 5 * 1024 * 1024, allowedMimes: ['image/jpeg','image/png','image/gif','image/webp','application/pdf'] }
+  ),
+  validateRequest,
+  treatmentProcedureCtrl.execute
+);
 
 module.exports = router; 

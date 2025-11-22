@@ -14,6 +14,10 @@ import {
 import EventModal from '../common/EventModal';
 import { useCalendar } from '../context/CalendarContext';
 
+// FullCalendar styles are loaded from CDN in public/index.html to avoid
+// package export/resolution issues during the build (imports like
+// '@fullcalendar/daygrid/main.css' are not exported in the installed
+// package versions).
 import './CalendarView.css';
 
 const CalendarView = () => {

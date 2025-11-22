@@ -31,8 +31,8 @@ router.post(
     body('atr_fecha_nacimiento').isISO8601().withMessage('Fecha de nacimiento es requerida'),
     body('atr_id_genero').isInt().withMessage('Género es requerido'),
     body('atr_numero_colegiado').isString().trim().withMessage('Número de colegiado es requerido'),
-    body('atr_especialidad_principal').isString().trim().withMessage('Especialidad es requerida'),
-    body('atr_estado_medico').optional().isString(),
+    body('especialidades').isArray().withMessage('Especialidades es requerida'),
+    body('especialidades.*').optional().isInt().withMessage('Cada especialidad debe ser un id entero'),
     body('telefonos').optional().isArray(),
     body('correos').optional().isArray(),
     body('direcciones').optional().isArray()
@@ -51,8 +51,8 @@ router.put(
     body('atr_fecha_nacimiento').optional().isISO8601(),
     body('atr_id_genero').optional().isInt(),
     body('atr_numero_colegiado').optional().isString().trim(),
-    body('atr_especialidad_principal').optional().isString().trim(),
-    body('atr_estado_medico').optional().isString(),
+    body('especialidades').optional().isArray(),
+    body('especialidades.*').optional().isInt().withMessage('Cada especialidad debe ser un id entero'),
     body('telefonos').optional().isArray(),
     body('correos').optional().isArray(),
     body('direcciones').optional().isArray()

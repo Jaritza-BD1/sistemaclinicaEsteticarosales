@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../Config/database');
+const sequelize = require('../Config/db');
 
 const Exam = sequelize.define('Exam', {
   atr_id_examen: {
@@ -12,15 +12,23 @@ const Exam = sequelize.define('Exam', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Patients',
+      model: 'tbl_paciente',
       key: 'atr_id_paciente'
+    }
+  },
+  atr_id_consulta: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'tbl_consulta_medica',
+      key: 'atr_id_consulta'
     }
   },
   atr_id_medico: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Doctors',
+      model: 'tbl_medico',
       key: 'atr_id_medico'
     }
   },
@@ -83,7 +91,7 @@ const Exam = sequelize.define('Exam', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Doctors',
+      model: 'tbl_medico',
       key: 'atr_id_medico'
     }
   },
@@ -139,6 +147,11 @@ Exam.associate = (models) => {
     foreignKey: 'atr_medico_resultados',
     as: 'resultsDoctor'
   });
+
+  // Asociar a consulta si existe el modelo
+  if (models.Consultation) {
+    Exam.belongsTo(models.Consultation, { foreignKey: 'atr_id_consulta', as: 'consultation' });
+  }
 };
 
 module.exports = Exam; 

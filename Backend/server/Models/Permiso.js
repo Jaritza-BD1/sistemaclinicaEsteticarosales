@@ -72,12 +72,8 @@ const Permiso = sequelize.define('Permiso', {
     id: false
 });
 
-// Definir las asociaciones
-Permiso.belongsTo(Rol, { foreignKey: 'atr_id_rol' });
-Rol.hasMany(Permiso, { foreignKey: 'atr_id_rol' });
-
-Permiso.belongsTo(Objeto, { foreignKey: 'atr_id_objeto', targetKey: 'atr_id_objetos' });
-Objeto.hasMany(Permiso, { foreignKey: 'atr_id_objeto', sourceKey: 'atr_id_objetos' });
+// Asociaciones movidas a `Models/index.js` para centralizar definitions y evitar
+// dependencias circulares con otros modelos.
 
 // Hooks para manejar fechas automáticamente
 Permiso.beforeCreate((permiso, options) => {

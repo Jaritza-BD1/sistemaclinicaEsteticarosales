@@ -1,0 +1,271 @@
+{
+  "Appointment": {
+    "fields": [
+      {"name": "atr_id_cita", "type": "integer", "primaryKey": true, "label": "ID Cita"},
+      {"name": "atr_id_paciente", "type": "integer", "label": "Paciente", "placeholder": "Seleccione paciente", "helper": "ID del paciente asociado a la cita"},
+      {"name": "atr_id_medico", "type": "integer", "label": "Médico", "placeholder": "Seleccione médico", "helper": "ID del médico asignado"},
+      {"name": "atr_id_usuario", "type": "integer", "label": "Usuario", "placeholder": "ID del usuario que registra"},
+      {"name": "atr_fecha_cita", "type": "dateonly", "label": "Fecha de cita", "placeholder": "AAAA-MM-DD"},
+      {"name": "atr_hora_cita", "type": "time", "label": "Hora de cita", "placeholder": "HH:MM"},
+      {"name": "atr_motivo_cita", "type": "string", "maxLength": 255, "label": "Motivo", "placeholder": "Motivo de la cita", "helper": "Breve descripción del motivo"},
+      {"name": "atr_id_tipo_cita", "type": "integer", "label": "Tipo de cita", "placeholder": "Seleccione tipo"},
+      {"name": "atr_id_estado", "type": "integer", "label": "Estado", "placeholder": "Seleccione estado"}
+    ]
+  },
+  "Backup": {
+    "fields": [
+      {"name": "atr_id_backup", "type": "integer", "primaryKey": true, "label": "ID Backup"},
+      {"name": "atr_file_name", "type": "string", "maxLength": 255, "label": "Nombre archivo", "placeholder": "backup_2025-01-01.zip"},
+      {"name": "atr_file_path", "type": "string", "maxLength": 1024, "label": "Ruta archivo", "helper": "Ruta donde se almacenó el backup"},
+      {"name": "atr_size", "type": "string", "maxLength": 50, "label": "Tamaño", "placeholder": "Ej: 12MB"},
+      {"name": "atr_created_at", "type": "date", "label": "Fecha creación"},
+      {"name": "atr_created_by", "type": "integer", "label": "Creado por"},
+      {"name": "atr_triggered_by", "type": "string", "maxLength": 50, "label": "Trigger", "helper": "Usuario o job que generó el backup"}
+    ]
+  },
+  "BackupCode": {
+    "fields": [
+      {"name": "atr_id_backup", "type": "integer", "primaryKey": true, "label": "ID"},
+      {"name": "atr_usuario", "type": "integer", "label": "Usuario", "placeholder": "ID usuario"},
+      {"name": "atr_codigo", "type": "string", "maxLength": 10, "label": "Código", "placeholder": "123456"},
+      {"name": "atr_utilizado", "type": "boolean", "label": "Utilizado"},
+      {"name": "atr_fecha_creacion", "type": "date", "label": "Fecha creación"},
+      {"name": "atr_fecha_utilizacion", "type": "date", "label": "Fecha utilización"}
+    ]
+  },
+  "Bitacora": {
+    "fields": [
+      {"name": "atr_id_bitacora", "type": "integer", "primaryKey": true, "label": "ID Bitácora"},
+      {"name": "atr_fecha", "type": "dateonly", "label": "Fecha"},
+      {"name": "atr_id_usuario", "type": "integer", "label": "Usuario"},
+      {"name": "atr_id_objetos", "type": "integer", "label": "Objeto"},
+      {"name": "atr_accion", "type": "string", "maxLength": 20, "label": "Acción"},
+      {"name": "atr_descripcion", "type": "string", "maxLength": 100, "label": "Descripción", "helper": "Descripción breve de la acción registrada"},
+      {"name": "ip_origen", "type": "string", "maxLength": 45, "label": "IP origen"}
+    ]
+  },
+  "Doctor": {
+    "fields": [
+      {"name": "atr_id_medico", "type": "integer", "primaryKey": true, "label": "ID Médico"},
+      {"name": "atr_nombre", "type": "string", "label": "Nombre", "placeholder": "Nombre del médico"},
+      {"name": "atr_apellido", "type": "string", "label": "Apellido", "placeholder": "Apellido"},
+      {"name": "atr_fecha_nacimiento", "type": "dateonly", "label": "Fecha de nacimiento"},
+      {"name": "atr_identidad", "type": "string", "label": "Identidad", "placeholder": "Número de identidad"},
+      {"name": "atr_id_genero", "type": "integer", "label": "Género"},
+      {"name": "atr_id_tipo_medico", "type": "integer", "label": "Tipo médico"}
+    ]
+  },
+  "DoctorAddress": {
+    "fields": [
+      {"name": "atr_id_direccion_m", "type": "integer", "primaryKey": true, "label": "ID Dirección"},
+      {"name": "atr_id_medico", "type": "integer", "label": "Médico", "placeholder": "ID del médico"},
+      {"name": "atr_direccion_completa", "type": "string", "label": "Dirección", "placeholder": "Calle, número, ciudad"}
+    ]
+  },
+  "DoctorEmail": {
+    "fields": [
+      {"name": "atr_id_correo_m", "type": "integer", "primaryKey": true, "label": "ID Correo"},
+      {"name": "atr_id_medico", "type": "integer", "label": "Médico", "placeholder": "ID del médico"},
+      {"name": "atr_correo", "type": "string", "label": "Correo electrónico", "placeholder": "correo@ejemplo.com", "helper": "Correo de contacto del médico"}
+    ]
+  },
+  "DoctorPhone": {
+    "fields": [
+      {"name": "atr_id_telefono", "type": "integer", "primaryKey": true, "label": "ID Teléfono"},
+      {"name": "atr_id_medico", "type": "integer", "label": "Médico", "placeholder": "ID del médico"},
+      {"name": "atr_telefono", "type": "string", "label": "Teléfono", "placeholder": "+504 0000-0000", "helper": "Número de contacto"}
+    ]
+  },
+  "Especialidad": {
+    "fields": [
+      {"name": "atr_id_especialidad", "type": "integer", "primaryKey": true, "label": "ID Especialidad"},
+      {"name": "atr_especialidad", "type": "string", "maxLength": 100, "unique": true, "label": "Especialidad", "placeholder": "Ej: Dermatología", "helper": "Nombre único de la especialidad"},
+      {"name": "atr_descripcion", "type": "text", "label": "Descripción", "placeholder": "Descripción breve"},
+      {"name": "atr_creado_por", "type": "string", "maxLength": 15, "label": "Creado por"},
+      {"name": "atr_fecha_creacion", "type": "date", "label": "Fecha creación"}
+    ]
+  },
+  "EstadoCita": {
+    "fields": [
+      {"name": "atr_id_estado", "type": "integer", "primaryKey": true, "label": "ID Estado"},
+      {"name": "atr_estado", "type": "boolean", "label": "Estado", "helper": "Activo / Inactivo"},
+      {"name": "atr_observacion", "type": "text", "label": "Observación", "placeholder": "Notas sobre el estado"}
+    ]
+  },
+  "EstadoRecordatorio": { "fields": [
+    {"name": "atr_id_estado_recordatorio", "type": "integer", "primaryKey": true},
+    {"name": "atr_estado_recordatorio", "type": "string", "maxLength": 50}
+  ]},
+  "Exam": {
+    "fields": [
+      {"name": "atr_id_examen", "type": "integer", "primaryKey": true, "label": "ID Examen"},
+      {"name": "atr_id_paciente", "type": "integer", "label": "Paciente", "placeholder": "ID paciente"},
+      {"name": "atr_id_medico", "type": "integer", "label": "Médico", "placeholder": "ID médico"},
+      {"name": "atr_tipo_examen", "type": "string", "maxLength": 100, "label": "Tipo de examen", "placeholder": "Ej: Laboratorio"},
+      {"name": "atr_nombre_examen", "type": "string", "maxLength": 200, "label": "Nombre examen"},
+      {"name": "atr_fecha_solicitud", "type": "date", "label": "Fecha solicitud"},
+      {"name": "atr_prioridad", "type": "enum", "label": "Prioridad", "helper": "baja, normal, alta, urgente"},
+      {"name": "atr_estado", "type": "enum", "label": "Estado"},
+      {"name": "atr_costo", "type": "decimal", "label": "Costo", "placeholder": "0.00"}
+    ]
+  },
+  "MedicoEspecialidad": {
+    "fields": [
+      {"name": "atr_id_medico", "type": "integer", "primaryKey": true, "label": "Médico"},
+      {"name": "atr_id_especialidad", "type": "integer", "primaryKey": true, "label": "Especialidad"},
+      {"name": "atr_creado_por", "type": "string", "maxLength": 15, "label": "Creado por"},
+      {"name": "atr_fecha_creacion", "type": "date", "label": "Fecha creación"}
+    ]
+  },
+  "Objeto": {
+    "fields": [
+      {"name": "atr_id_objetos", "type": "integer", "primaryKey": true},
+      {"name": "atr_objeto", "type": "string", "maxLength": 100},
+      {"name": "atr_descripcion", "type": "string", "maxLength": 100},
+      {"name": "atr_tipo_objeto", "type": "string", "maxLength": 15},
+      {"name": "atr_creado_por", "type": "string", "maxLength": 15},
+      {"name": "atr_fecha_creacion", "type": "dateonly"},
+      {"name": "atr_modificado_por", "type": "string", "maxLength": 15},
+      {"name": "atr_fecha_modificacion", "type": "dateonly"}
+    ]
+  },
+  "Parametro": {
+    "fields": [
+      {"name": "atr_id_parametro", "type": "integer", "primaryKey": true, "label": "ID Parámetro"},
+      {"name": "atr_parametro", "type": "string", "maxLength": 50, "unique": true, "label": "Parámetro", "placeholder": "NOMBRE_PARAM", "helper": "Clave única del parámetro"},
+      {"name": "atr_valor", "type": "string", "maxLength": 100, "label": "Valor", "placeholder": "Valor del parámetro"},
+      {"name": "atr_id_usuario", "type": "integer", "label": "Usuario"},
+      {"name": "atr_creado_por", "type": "string", "maxLength": 15, "label": "Creado por"},
+      {"name": "atr_fecha_creacion", "type": "date", "label": "Fecha creación"}
+    ]
+  },
+  "PasswordHistory": {
+    "fields": [
+      {"name": "atr_id_hist", "type": "integer", "primaryKey": true, "label": "ID Hist"},
+      {"name": "atr_id_usuario", "type": "integer", "label": "Usuario"},
+      {"name": "atr_contrasena", "type": "string", "maxLength": 255, "label": "Contraseña (hash)", "helper": "Valor hasheado, no mostrar en claro"},
+      {"name": "atr_fecha_creacion", "type": "date", "label": "Fecha creación"}
+    ]
+  },
+  "Patient": {
+    "fields": [
+      {"name": "atr_id_paciente", "type": "integer", "primaryKey": true, "label": "ID Paciente"},
+      {"name": "atr_nombre", "type": "string", "label": "Nombre", "placeholder": "Nombre del paciente"},
+      {"name": "atr_apellido", "type": "string", "label": "Apellido"},
+      {"name": "atr_fecha_nacimiento", "type": "dateonly", "label": "Fecha nacimiento"},
+      {"name": "atr_identidad", "type": "string", "label": "Identidad", "placeholder": "Número de identidad"},
+      {"name": "atr_numero_expediente", "type": "integer", "label": "Número expediente", "placeholder": "Número de expediente"}
+    ]
+  },
+  "PatientAddress": { "fields": [
+    {"name": "atr_id_direccion_p", "type": "integer", "primaryKey": true},
+    {"name": "atr_id_paciente", "type": "integer"},
+    {"name": "atr_direccion_completa", "type": "string"}
+  ]},
+  "PatientEmail": { "fields": [
+    {"name": "atr_id_correo_p", "type": "integer", "primaryKey": true},
+    {"name": "atr_id_paciente", "type": "integer"},
+    {"name": "atr_correo", "type": "string"}
+  ]},
+  "PatientPhone": { "fields": [
+    {"name": "atr_id_telefono", "type": "integer", "primaryKey": true},
+    {"name": "atr_id_paciente", "type": "integer"},
+    {"name": "atr_telefono", "type": "string"}
+  ]},
+  "Permiso": {
+    "fields": [
+      {"name": "atr_id_rol", "type": "integer", "primaryKey": true, "label": "Rol", "placeholder": "Seleccione rol"},
+      {"name": "atr_id_objeto", "type": "integer", "primaryKey": true, "label": "Objeto", "placeholder": "Seleccione objeto"},
+      {"name": "atr_permiso_insercion", "type": "string", "maxLength": 50, "label": "Permiso insertar", "placeholder": "Sí/No / descripción"},
+      {"name": "atr_permiso_eliminacion", "type": "string", "maxLength": 50, "label": "Permiso eliminar"},
+      {"name": "atr_permiso_actualizacion", "type": "string", "maxLength": 50, "label": "Permiso actualizar"},
+      {"name": "atr_permiso_consultar", "type": "string", "maxLength": 50, "label": "Permiso consultar"},
+      {"name": "atr_creado_por", "type": "string", "maxLength": 15, "label": "Creado por"},
+      {"name": "atr_fecha_creacion", "type": "dateonly", "label": "Fecha creación"}
+    ]
+  },
+  "Producto": {
+    "fields": [
+      {"name": "atr_id_producto", "type": "integer", "primaryKey": true},
+      {"name": "atr_nombre_producto", "type": "string", "maxLength": 100, "unique": true},
+      {"name": "atr_descripcion", "type": "text"},
+      {"name": "atr_codigo_barra", "type": "string", "maxLength": 50, "unique": true},
+      {"name": "atr_categoria", "type": "string", "maxLength": 50},
+      {"name": "atr_unidad_medida", "type": "string", "maxLength": 30},
+      {"name": "atr_proveedor", "type": "string", "maxLength": 100},
+      {"name": "atr_precio_venta_unitario", "type": "decimal"},
+      {"name": "atr_stock_actual", "type": "integer"},
+      {"name": "atr_stock_minimo", "type": "integer"},
+      {"name": "atr_stock_maximo", "type": "integer"},
+      {"name": "atr_activo", "type": "boolean"}
+    ]
+  },
+  "Recordatorio": {
+    "fields": [
+      {"name": "atr_id_recordatorio", "type": "integer", "primaryKey": true, "label": "ID Recordatorio"},
+      {"name": "atr_id_cita", "type": "integer", "label": "Cita", "placeholder": "ID de la cita"},
+      {"name": "atr_fecha_hora_envio", "type": "date", "label": "Fecha/Hora envío"},
+      {"name": "atr_medio", "type": "enum", "label": "Medio", "helper": "sms, email, notificación app"},
+      {"name": "atr_contenido", "type": "string", "maxLength": 100, "label": "Contenido", "placeholder": "Mensaje del recordatorio"},
+      {"name": "atr_id_estado_recordatorio", "type": "integer", "label": "Estado"},
+      {"name": "atr_cancelacion", "type": "boolean", "label": "Cancelado"}
+    ]
+  },
+  "Rol": {
+    "fields": [
+      {"name": "atr_id_rol", "type": "integer", "primaryKey": true},
+      {"name": "atr_rol", "type": "string", "maxLength": 30},
+      {"name": "atr_descripcion", "type": "string", "maxLength": 100},
+      {"name": "atr_creado_por", "type": "string", "maxLength": 15},
+      {"name": "atr_fecha_creacion", "type": "dateonly"}
+    ]
+  },
+  "TipoCita": {
+    "fields": [
+      {"name": "atr_id_tipo_cita", "type": "integer", "primaryKey": true, "label": "ID Tipo Cita"},
+      {"name": "atr_nombre_tipo_cita", "type": "string", "maxLength": 100, "label": "Nombre tipo cita", "placeholder": "Consulta/Procedimiento"}
+    ]
+  },
+  "TipoMedico": {
+    "fields": [
+      {"name": "atr_id_tipo_medico", "type": "integer", "primaryKey": true, "label": "ID Tipo Médico"},
+      {"name": "atr_nombre_tipo_medico", "type": "string", "maxLength": 100, "label": "Nombre tipo médico"},
+      {"name": "atr_descripcion", "type": "text", "label": "Descripción"}
+    ]
+  },
+  "Token": {
+    "fields": [
+      {"name": "atr_id_token", "type": "integer", "primaryKey": true, "label": "ID Token"},
+      {"name": "atr_id_usuario", "type": "integer", "label": "Usuario"},
+      {"name": "atr_codigo", "type": "string", "maxLength": 6, "label": "Código", "placeholder": "6 dígitos"},
+      {"name": "atr_tipo", "type": "enum", "label": "Tipo token"},
+      {"name": "atr_fecha_expiracion", "type": "date", "label": "Expiración"},
+      {"name": "atr_utilizado", "type": "boolean", "label": "Utilizado"}
+    ]
+  },
+  "Treatment": {
+    "fields": [
+      {"name": "atr_id_tratamiento", "type": "integer", "primaryKey": true, "label": "ID Tratamiento"},
+      {"name": "atr_id_paciente", "type": "integer", "label": "Paciente"},
+      {"name": "atr_id_medico", "type": "integer", "label": "Médico"},
+      {"name": "atr_fecha_inicio", "type": "dateonly", "label": "Fecha inicio"},
+      {"name": "atr_fecha_fin", "type": "dateonly", "label": "Fecha fin"},
+      {"name": "atr_diagnostico", "type": "text", "label": "Diagnóstico"}
+    ]
+  },
+  "User": {
+    "fields": [
+      {"name": "atr_id_usuario", "type": "integer", "primaryKey": true, "label": "ID Usuario"},
+      {"name": "atr_usuario", "type": "string", "maxLength": 15, "unique": true, "label": "Usuario", "placeholder": "Nombre de usuario (4-15 caracteres)"},
+      {"name": "atr_nombre_usuario", "type": "string", "maxLength": 100, "label": "Nombre completo"},
+      {"name": "atr_estado_usuario", "type": "enum", "label": "Estado usuario", "helper": "ACTIVO, BLOQUEADO, etc."},
+      {"name": "atr_contrasena", "type": "string", "maxLength": 200, "label": "Contraseña", "helper": "Se guardará hasheada; mínimo 8 caracteres"},
+      {"name": "atr_id_rol", "type": "integer", "label": "Rol"},
+      {"name": "atr_correo_electronico", "type": "string", "maxLength": 50, "unique": true, "label": "Correo electrónico", "placeholder": "correo@ejemplo.com"},
+      {"name": "atr_primer_ingreso", "type": "boolean", "label": "Primer ingreso"},
+      {"name": "atr_is_verified", "type": "boolean", "label": "Verificado"},
+      {"name": "atr_2fa_enabled", "type": "boolean", "label": "2FA activado"},
+      {"name": "atr_avatar", "type": "string", "label": "Avatar", "placeholder": "URL del avatar"}
+    ]
+  }
+}

@@ -13,7 +13,6 @@ const User = sequelize.define('tbl_ms_usuario', {
   atr_usuario: {
     type: DataTypes.STRING(15),
     allowNull: false,
-    unique: true,
     field: 'atr_usuario',
     set(value) {
       this.setDataValue('atr_usuario', value.toUpperCase());
@@ -47,8 +46,14 @@ const User = sequelize.define('tbl_ms_usuario', {
     field: 'atr_contrasena',
     set(value) {
       if (value && value.trim() !== '') {
-        const hash = bcrypt.hashSync(value, 10);
-        this.setDataValue('atr_contrasena', hash);
+        // Evitar volver a hashear si ya se recibe un hash bcrypt
+        // Los hashes bcrypt comienzan típicamente con $2a$, $2b$ o $2y$
+        if (typeof value === 'string' && /^\$2[aby]\$/.test(value)) {
+          this.setDataValue('atr_contrasena', value);
+        } else {
+          const hash = bcrypt.hashSync(value, 10);
+          this.setDataValue('atr_contrasena', hash);
+        }
       }
     }
   },
@@ -74,7 +79,6 @@ const User = sequelize.define('tbl_ms_usuario', {
   atr_correo_electronico: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    unique: true,
     field: 'atr_correo_electronico',
     validate: {
       isEmail: {

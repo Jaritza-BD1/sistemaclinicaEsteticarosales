@@ -16,10 +16,10 @@ const Dashboard = () => {
       </Box>
       <StatsSummary />
       <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={8}>
+        <Grid xs={12} md={8}>
           <RecentAppointments />
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <UpcomingSchedule />
         </Grid>
       </Grid>

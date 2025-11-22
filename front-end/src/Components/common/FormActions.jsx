@@ -152,16 +152,15 @@ const FormActions = ({
           onClick={onSave}
           disabled={disabled || isSubmitting || hasErrors}
           sx={{
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            backgroundColor: '#FCE4EC',
+            color: '#212845',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-              transform: 'translateY(-1px)',
+              backgroundColor: '#F8BBD0',
             },
             '&:disabled': {
-              background: 'grey.300',
-              transform: 'none',
+              backgroundColor: 'grey.300',
             },
-            boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+            boxShadow: 'none',
           }}
         >
           <SaveIcon sx={{ mr: 1 }} />

@@ -6,12 +6,7 @@ import {
   PersonAdd as PersonAddIcon, Search as SearchIcon, Visibility as VisibilityIcon, Edit as EditIcon, Delete as DeleteIcon
 } from '@mui/icons-material';
 import DoctorRegistrationForm from './DoctorRegistrationForm';
-
-// Datos de ejemplo para las especialidades (repetido para simplicidad, idealmente vendría de un contexto o API)
-const especialidades = [
-  'Cardiología', 'Dermatología', 'Pediatría', 'Medicina General', 'Neurología',
-  'Ginecología', 'Oftalmología', 'Ortopedia', 'Urología', 'Psiquiatría'
-];
+import useEspecialidades from '../../hooks/useEspecialidades';
 
 // Componente de la pantalla de lista de médicos
 const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors: initialDoctors, onDelete }) => {
@@ -25,6 +20,9 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors: initialDo
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // Hook para cargar especialidades
+  const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
   // Abrir modal para registrar nuevo médico
   const handleOpenRegisterModal = () => {
@@ -56,13 +54,22 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors: initialDo
 
   // Filtra los médicos basándose en el término de búsqueda y la especialidad
   const filteredDoctors = (doctors || []).filter(doctor => {
-    const matchesSearch = searchTerm === '' ||
-      doctor.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.especialidad.some(esp => esp.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Normalizar nombres de especialidades desde diferentes formas de datos
+    const especialistaNames = (() => {
+      if (Array.isArray(doctor.Especialidades) && doctor.Especialidades.length > 0) {
+        return doctor.Especialidades.map(e => (e.atr_especialidad || e.atr_nombre || e.name || '')).filter(Boolean);
+      }
+      if (Array.isArray(doctor.especialidad) && doctor.especialidad.length > 0) return doctor.especialidad;
+      if (typeof doctor.especialidad === 'string' && doctor.especialidad.trim() !== '') return [doctor.especialidad];
+      return [];
+    })();
 
-    const matchesEspecialidad = filterEspecialidad === '' ||
-      doctor.especialidad.includes(filterEspecialidad);
+    const matchesSearch = searchTerm === '' ||
+      (doctor.nombre && doctor.nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (doctor.apellido && doctor.apellido.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      especialistaNames.some(esp => esp.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesEspecialidad = filterEspecialidad === '' || especialistaNames.includes(filterEspecialidad);
 
     return matchesSearch && matchesEspecialidad;
   });
@@ -126,9 +133,9 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors: initialDo
                   label="Filtrar por Especialidad"
                 >
                   <MenuItem value=""><em>Todas</em></MenuItem>
-                  {especialidades.map((esp) => (
-                    <MenuItem key={esp} value={esp}>
-                      {esp}
+                  {especialidadesOptions && especialidadesOptions.map((esp) => (
+                    <MenuItem key={esp.id} value={esp.name}>
+                      {esp.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -173,7 +180,14 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors: initialDo
                   <TableRow key={doctor.id} className="hover:bg-gray-50">
                     <TableCell>{doctor.colegiado}</TableCell>
                     <TableCell>{doctor.nombre} {doctor.apellido}</TableCell>
-                    <TableCell>{doctor.especialidad.join(', ')}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const names = Array.isArray(doctor.Especialidades) && doctor.Especialidades.length > 0
+                          ? doctor.Especialidades.map(e => e.atr_especialidad || e.atr_nombre || e.name).filter(Boolean)
+                          : (Array.isArray(doctor.especialidad) ? doctor.especialidad : (doctor.especialidad ? [doctor.especialidad] : []));
+                        return names.length > 0 ? names.join(', ') : '-';
+                      })()}
+                    </TableCell>
                     <TableCell>{doctor.telefono}</TableCell>
                     <TableCell>{doctor.correo}</TableCell>
                     <TableCell>

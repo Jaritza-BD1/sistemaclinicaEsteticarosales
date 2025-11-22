@@ -4,7 +4,11 @@ const { body, param } = require('express-validator');
 const { authenticate, isAdmin } = require('../Middlewares/authMiddleware');
 const { authorizeAppointment } = require('../Middlewares/appointmentMiddleware');
 const { validateRequest } = require('../Middlewares/validation');
+const { create, update, reschedule } = require('../Middlewares/appointmentValidation');
 const rateLimit = require('express-rate-limit');
+const { ESTADOS_RECORDATORIO } = require('../utils/reminderUtils');
+const authMiddleware = require('../Middlewares/authMiddlewares');
+const adminMiddleware = require('../Middlewares/adminMiddleware');
 
 // Limitar peticiones para evitar brute-force
 const limiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
@@ -20,42 +24,35 @@ router.use(limiter);
 // Rutas para obtener datos de formulario
 router.get('/patients', appointmentCtrl.getPatients);
 router.get('/doctors', appointmentCtrl.getDoctors);
+router.get('/states', appointmentCtrl.getAppointmentStates);
+router.get('/types', appointmentCtrl.getAppointmentTypes);
+router.get('/today', appointmentCtrl.getTodayAppointments);
+router.get('/calendar', appointmentCtrl.getCalendarAppointments);
 
 // Rutas CRUD principales
 router.post(
   '/',
-  [
-    body('atr_id_paciente').isInt().withMessage('ID de paciente es requerido'),
-    body('atr_id_medico').isInt().withMessage('ID de médico es requerido'),
-    body('atr_fecha_cita').isISO8601().withMessage('Fecha de cita es requerida'),
-    body('atr_hora_cita').matches(/^\d{2}:\d{2}$/).withMessage('Hora de cita es requerida'),
-    body('atr_id_tipo_cita').isInt().withMessage('Tipo de cita es requerido'),
-    body('atr_motivo_cita').isString().trim().escape().withMessage('Motivo de cita es requerido'),
-    body('atr_id_estado').optional().isInt(),
-    body('reminder').optional().isISO8601()
-  ],
-  validateRequest,
-  appointmentCtrl.create
+  create,
+  appointmentCtrl.createAppointment
 );
 
-router.get('/', appointmentCtrl.list);
+router.get('/', appointmentCtrl.listAppointments);
 router.get('/:id', [param('id').isInt()], validateRequest, appointmentCtrl.getById);
 
 router.put(
   '/:id',
-  [
-    param('id').isInt(),
-    body('atr_id_paciente').optional().isInt(),
-    body('atr_id_medico').optional().isInt(),
-    body('atr_fecha_cita').optional().isISO8601(),
-    body('atr_hora_cita').optional().matches(/^\d{2}:\d{2}$/),
-    body('atr_id_tipo_cita').optional().isInt(),
-    body('atr_motivo_cita').optional().isString().trim().escape(),
-    body('atr_id_estado').optional().isInt(),
-    body('reminder').optional().isISO8601()
-  ],
+  [param('id').isInt()],
+  update,
+  appointmentCtrl.updateAppointment
+);
+
+router.patch('/:id/status', [param('id').isInt()], appointmentCtrl.updateStatus);
+
+router.post(
+  '/:id/start-consultation',
+  [param('id').isInt()],
   validateRequest,
-  appointmentCtrl.update
+  appointmentCtrl.startConsultation
 );
 
 router.delete('/:id', [param('id').isInt()], validateRequest, appointmentCtrl.delete);
@@ -63,15 +60,87 @@ router.delete('/:id', [param('id').isInt()], validateRequest, appointmentCtrl.de
 // Rutas para operaciones específicas
 router.put('/:id/confirm', [param('id').isInt()], validateRequest, appointmentCtrl.confirm);
 
-router.put(
-  '/:id/reschedule',
+router.post(
+  '/:id/register-confirmation',
   [
     param('id').isInt(),
-    body('atr_fecha_cita').isISO8601().withMessage('Nueva fecha es requerida'),
-    body('atr_hora_cita').matches(/^\d{2}:\d{2}$/).withMessage('Nueva hora es requerida'),
-    body('atr_motivo_cita').optional().isString().trim().escape()
+    body('medio').isIn(['llamada', 'WhatsApp', 'email', 'otro']),
+    body('notas').optional().isString().trim().escape()
   ],
   validateRequest,
+  appointmentCtrl.registerConfirmation
+);
+
+router.post(
+  '/:id/register-reminder',
+  [
+    param('id').isInt(),
+    body('fechaHoraEnvio').isISO8601(),
+    body('medio').isIn(['sms', 'email', 'notificación app'])
+  ],
+  validateRequest,
+  appointmentCtrl.registerReminder
+);
+
+router.post(
+  '/:id/reminders',
+  [
+    param('id').isInt(),
+    body('medio').optional().isIn(['sms', 'email', 'notificación app'])
+  ],
+  validateRequest,
+  appointmentCtrl.createReminder
+);
+
+router.get(
+  '/:id/reminders',
+  [param('id').isInt()],
+  validateRequest,
+  appointmentCtrl.getReminders
+);
+
+router.put(
+  '/:id/reminders/:reminderId/cancel',
+  [
+    param('id').isInt(),
+    param('reminderId').isInt(),
+    body('reason').optional().isString().trim().escape()
+  ],
+  validateRequest,
+  appointmentCtrl.cancelReminder
+);
+
+router.put(
+  '/:id/reminders/:reminderId/status',
+  [
+    param('id').isInt(),
+    param('reminderId').isInt(),
+    body('estado').isIn(Object.values(ESTADOS_RECORDATORIO)),
+    body('contenido').optional().isString().trim().escape()
+  ],
+  validateRequest,
+  appointmentCtrl.updateReminderStatus
+);
+
+// Ruta para check-in de pacientes
+router.post(
+  '/:id/checkin',
+  [param('id').isInt()],
+  validateRequest,
+  appointmentCtrl.checkIn
+);
+
+router.patch(
+  '/:id/checkin',
+  [param('id').isInt()],
+  validateRequest,
+  appointmentCtrl.checkInAppointment
+);
+
+router.post(
+  '/:id/reschedule',
+  [param('id').isInt()],
+  reschedule,
   appointmentCtrl.reschedule
 );
 
@@ -83,6 +152,24 @@ router.post(
   ],
   validateRequest,
   appointmentCtrl.cancel
+);
+
+// Rutas para pagos
+// Lista de citas en PENDIENTE_PAGO
+router.get(
+  '/pending-payment',
+  authenticate,
+  // opcional: middleware de rol caja:
+  // cajaMiddleware,
+  appointmentCtrl.getPendingPaymentAppointments
+);
+
+// Marcar cita como pagada (FINALIZADA)
+router.post(
+  '/:id/pay',
+  authenticate,
+  // opcional: cajaMiddleware,
+  appointmentCtrl.payAppointment
 );
 
 module.exports = router;

@@ -55,6 +55,36 @@ const templates = {
       </div>
     `
   }),
+  verificationCode: (email, code, name) => ({
+    to: email,
+    subject: 'Código de verificación - Clínica Estética Rosales',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Código de verificación</h2>
+        <p>Hola ${name},</p>
+        <p>Tu código de verificación es:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <div style="display: inline-block; background: #f8f9fa; padding: 12px 18px; border-radius: 6px; font-family: monospace; font-size: 28px; font-weight: 700; letter-spacing: 4px;">${code}</div>
+        </div>
+        <p>El código expira en 24 horas. Si no solicitaste este código, ignora este mensaje.</p>
+      </div>
+    `
+  }),
+  passwordResetCode: (email, code, name) => ({
+    to: email,
+    subject: 'Código de restablecimiento de contraseña - Clínica Estética Rosales',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Código para restablecer tu contraseña</h2>
+        <p>Hola ${name},</p>
+        <p>Has solicitado restablecer tu contraseña. Ingresa el siguiente código en la aplicación para continuar:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <div style="display: inline-block; background: #fff3f0; padding: 12px 18px; border-radius: 6px; font-family: monospace; font-size: 28px; font-weight: 700; letter-spacing: 4px; color: #b91c1c;">${code}</div>
+        </div>
+        <p>El código expira en 10 minutos. Si no solicitaste esto, ignora este correo.</p>
+      </div>
+    `
+  }),
   approval: (email) => ({
     to: email,
     subject: 'Cuenta Aprobada - Clínica Estética Rosales',
@@ -103,6 +133,20 @@ async function sendVerificationEmail(email, token, name) {
     console.log(`URL de verificación: ${FRONTEND_URL}/email-verified?token=${token}`);
   } catch (error) {
     console.error('Error enviando email de verificación:', error);
+    throw error;
+  }
+}
+
+async function sendVerificationCodeEmail(email, code, name) {
+  try {
+    const mailOptions = templates.verificationCode(email, code, name);
+    await transporter.sendMail({
+      from: `"Clínica Estética Rosales" <${process.env.SMTP_USER || 'clinicaesteticarosales@gmail.com'}>`,
+      ...mailOptions
+    });
+    console.log(`Código de verificación enviado a: ${email}`);
+  } catch (error) {
+    console.error('Error enviando código de verificación:', error);
     throw error;
   }
 }
@@ -193,6 +237,21 @@ async function send2FAEmailCode(email, code, nombre) {
   }
 }
 
+// Envío de código de restablecimiento de contraseña (OTP)
+async function sendPasswordResetCodeEmail(email, code, nombre) {
+  try {
+    const mailOptions = templates.passwordResetCode(email, code, nombre);
+    await transporter.sendMail({
+      from: `"Clínica Estética Rosales" <${process.env.SMTP_USER || 'clinicaesteticarosales@gmail.com'}>`,
+      ...mailOptions
+    });
+    console.log(`Código de restablecimiento enviado a: ${email}`);
+  } catch (error) {
+    console.error('Error enviando código de restablecimiento por email:', error);
+    throw error;
+  }
+}
+
 // Exportar todas las funciones
 module.exports = { 
   sendResetEmail,
@@ -200,5 +259,7 @@ module.exports = {
   sendApprovalEmail,
   send2FABackupCodesEmail,
   sendPasswordChangeEmail,
-  send2FAEmailCode
+  send2FAEmailCode,
+  sendPasswordResetCodeEmail,
+  sendVerificationCodeEmail
 };

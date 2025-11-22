@@ -30,6 +30,15 @@ const Treatment = sequelize.define('tbl_tratamiento', {
             key: 'atr_id_medico'
         }
     },
+    atr_id_consulta: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'atr_id_consulta',
+        references: {
+            model: 'tbl_consulta_medica',
+            key: 'atr_id_consulta'
+        }
+    },
     atr_fecha_inicio: {
         type: DataTypes.DATEONLY,
         allowNull: false,
@@ -49,35 +58,24 @@ const Treatment = sequelize.define('tbl_tratamiento', {
         type: DataTypes.TEXT,
         allowNull: true,
         field: 'atr_observaciones'
+    },
+    atr_numero_sesiones: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'atr_numero_sesiones',
+        defaultValue: 1
+    },
+    atr_tipo_tratamiento: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        field: 'atr_tipo_tratamiento'
     }
 }, {
     tableName: 'tbl_tratamiento',
     timestamps: false
 });
 
-// Definir las relaciones
-Treatment.belongsTo(Patient, {
-    foreignKey: 'atr_id_paciente',
-    targetKey: 'atr_id_paciente',
-    as: 'patient'
-});
-
-Treatment.belongsTo(Doctor, {
-    foreignKey: 'atr_id_medico',
-    targetKey: 'atr_id_medico',
-    as: 'doctor'
-});
-
-Patient.hasMany(Treatment, {
-    foreignKey: 'atr_id_paciente',
-    sourceKey: 'atr_id_paciente',
-    as: 'treatments'
-});
-
-Doctor.hasMany(Treatment, {
-    foreignKey: 'atr_id_medico',
-    sourceKey: 'atr_id_medico',
-    as: 'treatments'
-});
+// Relaciones movidas a `Models/index.js` para centralizar definitions y evitar
+// dependencias circulares con otros modelos.
 
 module.exports = Treatment; 

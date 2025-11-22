@@ -4,7 +4,130 @@ const { Op } = require('sequelize');
 const User = require('../Models/User');
 const PasswordHistory = require('../Models/PasswordHistory');
 const Bitacora = require('../Models/Bitacora');
-const { sendApprovalEmail } = require('../utils/mailer'); // Ajusta la ruta si es necesario
+const Token = require('../Models/tokenmodel');
+const BitacoraService = require('../services/bitacoraService');
+const { sendApprovalEmail, sendPasswordResetCodeEmail } = require('../utils/mailer'); // Ajusta la ruta si es necesario
+const cleanupJob = require('../Jobs/cleanupUploads.job');
+const ResponseService = require('../services/responseService');
+const path = require('path');
+const fs = require('fs').promises;
+const { CleanupRun } = require('../Models');
+
+// List files in trash (admin)
+async function listTrash(req, res, next) {
+  try {
+    const trashRoot = path.join(__dirname, '..', 'uploads', 'trash');
+    try { await fs.access(trashRoot); } catch (e) { return ResponseService.success(res, []); }
+
+    // Walk trash folder
+    async function walk(dir) {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const out = [];
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          const nested = await walk(full);
+          out.push(...nested);
+        } else if (e.isFile()) {
+          const stats = await fs.stat(full);
+          out.push({ path: full, name: e.name, size: stats.size, mtime: stats.mtime });
+        }
+      }
+      return out;
+    }
+
+    const files = await walk(trashRoot);
+    return ResponseService.success(res, files);
+  } catch (e) {
+    console.error('Error listando trash:', e);
+    next(e);
+  }
+}
+
+// Restore a file from trash to given destination (or default restored folder)
+async function restoreTrashFile(req, res, next) {
+  try {
+    const { trashPath, destRelative } = req.body; // trashPath must be absolute on server or relative to uploads/trash
+    if (!trashPath) return ResponseService.badRequest(res, 'trashPath es requerido');
+
+    const uploadsRoot = path.join(__dirname, '..', 'uploads');
+    let absoluteTrashPath = trashPath;
+    if (!path.isAbsolute(trashPath)) {
+      absoluteTrashPath = path.join(uploadsRoot, 'trash', trashPath);
+    }
+
+    try { await fs.access(absoluteTrashPath); } catch (e) { return ResponseService.notFound(res, 'Archivo en trash no encontrado'); }
+
+    const dest = destRelative ? path.join(uploadsRoot, destRelative) : path.join(uploadsRoot, 'restored', new Date().toISOString().slice(0,10));
+    await fs.mkdir(dest, { recursive: true });
+    const destPath = path.join(dest, path.basename(absoluteTrashPath));
+    await fs.rename(absoluteTrashPath, destPath);
+
+    // Log run in DB
+    try {
+      const CleanupRun = require('../Models').CleanupRun;
+      if (CleanupRun) {
+        await CleanupRun.create({ atr_tipo: 'restore', atr_ejecutado_por: req.user?.atr_id_usuario || null, atr_details: { from: absoluteTrashPath, to: destPath } });
+      }
+    } catch (e) { /* ignore logging errors */ }
+
+    return ResponseService.success(res, { restoredTo: destPath });
+  } catch (e) {
+    console.error('Error restaurando file del trash:', e);
+    next(e);
+  }
+}
+
+// Permanently delete a file from trash
+async function deleteTrashFile(req, res, next) {
+  try {
+    const { trashPath } = req.body;
+    if (!trashPath) return ResponseService.badRequest(res, 'trashPath es requerido');
+    const uploadsRoot = path.join(__dirname, '..', 'uploads');
+    let absoluteTrashPath = trashPath;
+    if (!path.isAbsolute(trashPath)) absoluteTrashPath = path.join(uploadsRoot, 'trash', trashPath);
+    try { await fs.access(absoluteTrashPath); } catch (e) { return ResponseService.notFound(res, 'Archivo en trash no encontrado'); }
+    await fs.unlink(absoluteTrashPath);
+
+    try {
+      const CleanupRun = require('../Models').CleanupRun;
+      if (CleanupRun) {
+        await CleanupRun.create({ atr_tipo: 'delete_trash', atr_ejecutado_por: req.user?.atr_id_usuario || null, atr_deleted_count: 1, atr_details: { file: absoluteTrashPath } });
+      }
+    } catch (e) { /* ignore */ }
+
+    return ResponseService.success(res, { message: 'Archivo eliminado del trash' });
+  } catch (e) {
+    console.error('Error eliminando file del trash:', e);
+    next(e);
+  }
+}
+
+// List CleanupRun executions with pagination and optional filters
+async function listCleanupRuns(req, res, next) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 20);
+    const offset = (page - 1) * limit;
+    const where = {};
+
+    if (req.query.type) {
+      where.atr_tipo = req.query.type;
+    }
+    if (req.query.from || req.query.to) {
+      where.atr_fecha_ejecucion = {};
+      if (req.query.from) where.atr_fecha_ejecucion['$gte'] = new Date(req.query.from);
+      if (req.query.to) where.atr_fecha_ejecucion['$lte'] = new Date(req.query.to);
+    }
+
+    const { rows, count } = await CleanupRun.findAndCountAll({ where, order: [['atr_fecha_ejecucion', 'DESC']], limit, offset });
+
+    return ResponseService.paginated(res, rows, page, limit, count);
+  } catch (e) {
+    console.error('Error listando CleanupRun:', e);
+    next(e);
+  }
+}
 
 // Helper para generar una contraseña aleatoria
 function generarContraseña(length = 12) {
@@ -71,6 +194,11 @@ async function createUser(req, res, next) {
       Date.now() + (parseInt(process.env.ADMIN_DIAS_VIGENCIA, 10) || 30) * 86400000
     );
 
+    // Mapear posibles claves que vengan del frontend
+    const atr2fa = req.body.dos_fa_enabled !== undefined
+      ? Boolean(req.body.dos_fa_enabled)
+      : (req.body.atr_2fa_enabled !== undefined ? Boolean(req.body.atr_2fa_enabled) : false);
+
     const user = await User.create({
       atr_usuario: username.toUpperCase(),
       atr_nombre_usuario: name,
@@ -79,7 +207,8 @@ async function createUser(req, res, next) {
       atr_fecha_vencimiento: expiresAt,
       atr_estado_usuario: 'ACTIVO',
       atr_primer_ingreso: true,
-      atr_id_rol: 2
+      atr_id_rol: 2,
+      atr_2fa_enabled: atr2fa
     });
 
     await PasswordHistory.create({
@@ -120,25 +249,57 @@ async function resetUserPassword(req, res, next) {
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const nuevaPlain = generarContraseña();
-    const hash = await bcrypt.hash(nuevaPlain, 12);
+    // Nuevo flujo: en vez de cambiar la contraseña aquí, generamos un OTP de restablecimiento
+    // y lo enviamos por email al usuario (mismo flujo que forgotPassword).
 
-    await user.update({
-      atr_contrasena: hash,
-      atr_primer_ingreso: true
+    // Invalidar OTPs anteriores del mismo tipo
+    await Token.update({ atr_utilizado: true }, {
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_tipo: 'PASSWORD_RESET_OTP',
+        atr_utilizado: false
+      }
     });
 
-    await PasswordHistory.create({
+    // Generar OTP y expiración (10 minutos)
+    const otpCode = Token.generateOTP();
+    const expiration = Token.generateExpirationDate(10);
+
+    // Crear nuevo token OTP para restablecimiento de contraseña
+    await Token.create({
       atr_id_usuario: user.atr_id_usuario,
-      atr_contrasena: hash,
-      atr_creado_por: req.user.atr_usuario
+      atr_codigo: otpCode,
+      atr_tipo: 'PASSWORD_RESET_OTP',
+      atr_fecha_expiracion: expiration,
+      atr_creado_por: req.user?.atr_usuario || 'ADMIN'
     });
 
-    res.json({
-      success: true,
-      message: 'Contraseña reseteada correctamente',
-      nuevaContraseña: nuevaPlain
-    });
+    // Limpiar intentos de login y expiraciones previas para evitar bloqueos inmediatos
+    await user.update({ atr_intentos_fallidos: 0, atr_reset_expiry: null });
+
+    // Enviar el OTP por email
+    try {
+      await sendPasswordResetCodeEmail(user.atr_correo_electronico, otpCode, user.atr_nombre_usuario || user.atr_usuario);
+    } catch (mailErr) {
+      console.error('Error enviando OTP por email en resetUserPassword:', mailErr);
+      return res.status(500).json({ error: 'Error enviando el código por email' });
+    }
+
+    // Registrar en bitácora que el admin solicitó restablecimiento para el usuario
+    try {
+      await BitacoraService.registrarEvento({
+        atr_id_usuario: req.user?.atr_id_usuario || null,
+        atr_id_objetos: 1,
+        atr_accion: 'ResetPasswordRequest',
+        atr_descripcion: `Admin ${req.user?.atr_usuario || 'ADMIN'} generó OTP de restablecimiento para usuario ${user.atr_usuario}`,
+        ip_origen: req.ip
+      });
+    } catch (e) {
+      // No bloquear el flujo si falla la bitácora
+      console.error('No se pudo registrar en bitácora el reset por admin:', e);
+    }
+
+    return res.json({ success: true, message: 'Código OTP enviado al correo del usuario' });
   } catch (err) {
     console.error('Error al resetear contraseña:', err);
     next(err);
@@ -286,6 +447,32 @@ async function deleteUser(req, res, next) {
   }
 }
 
+// -> Preview orphan uploads candidates (admin)
+async function uploadsPreview(req, res, next) {
+  try {
+    const candidates = await cleanupJob.findOrphanFiles();
+    // Return limited metadata to admin
+    const safe = candidates.map(c => ({ path: c.path, basename: c.basename, size: c.size, mtime: c.mtime }));
+    return ResponseService.success(res, safe);
+  } catch (e) {
+    console.error('Error obteniendo preview uploads:', e);
+    next(e);
+  }
+}
+
+// -> Move orphan files to trash (admin trigger)
+async function runUploadsCleanup(req, res, next) {
+  try {
+    const candidates = await cleanupJob.findOrphanFiles();
+    if (!candidates || candidates.length === 0) return ResponseService.success(res, { moved: 0, message: 'No hay archivos candidatos' });
+    const result = await cleanupJob.moveFilesToTrash(candidates);
+    return ResponseService.success(res, { moved: result.moved });
+  } catch (e) {
+    console.error('Error ejecutando cleanup uploads por admin:', e);
+    next(e);
+  }
+}
+
 module.exports = {
   listUsers,
   createUser,
@@ -297,6 +484,14 @@ module.exports = {
   approveUser,
   unblockUser,
   deleteUser
+  ,
+  uploadsPreview,
+  runUploadsCleanup,
+  listTrash,
+  restoreTrashFile,
+  deleteTrashFile
+  ,
+  listCleanupRuns
 };
 
 

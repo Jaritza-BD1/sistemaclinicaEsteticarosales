@@ -59,7 +59,17 @@ class GlobalErrorBoundary extends React.Component {
         }
       });
       
-      // Recargar después de un breve delay
+      // Recargar después de un breve delay — con guardia para evitar bucles
+      try {
+        const attempts = Number(sessionStorage.getItem('__app_reload_attempts__') || 0);
+        if (attempts >= 2) {
+          console.warn('Máximo de recargas automáticas alcanzado, no recargando para evitar bucle.');
+          return;
+        }
+        sessionStorage.setItem('__app_reload_attempts__', String(attempts + 1));
+      } catch (e) {
+        // ignore sessionStorage errors
+      }
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -101,7 +111,7 @@ class GlobalErrorBoundary extends React.Component {
             minHeight: '100vh',
             p: 4,
             textAlign: 'center',
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: '#FCE4EC',
           }}
         >
           <Alert severity="error" sx={{ mb: 3, maxWidth: 600 }}>
@@ -137,9 +147,10 @@ class GlobalErrorBoundary extends React.Component {
                 variant="contained"
                 onClick={this.handleReset}
                 sx={{
-                  background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+                  backgroundColor: '#FCE4EC',
+                  color: '#212845',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                    backgroundColor: '#F8BBD0',
                   },
                 }}
               >

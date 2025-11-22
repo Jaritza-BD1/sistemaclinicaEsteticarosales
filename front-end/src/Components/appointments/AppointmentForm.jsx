@@ -1,138 +1,290 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { createAppointment, updateAppointment } from '../../services/appointmentService';
-import { fetchPatients } from '../../services/patientService';
-import { fetchDoctors } from '../../services/doctorService';
+import {
+  TextField,
+  Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Box,
+  Typography,
+  Alert,
+  CircularProgress
+} from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { es } from 'date-fns/locale';
+import useAppointments from '../../hooks/useAppointments';
+import { APPOINTMENT_STATUS } from '../../config/appointmentStatus';
+import { getAppointmentTypes } from '../../services/appointmentService';
 
-const validationSchema = Yup.object({
-  title: Yup.string().required('El motivo es obligatorio'),
-  start: Yup.date().required('La fecha y hora es obligatoria').min(new Date(), 'Debe ser futura'),
-  status: Yup.string().required('El estado es obligatorio'),
-  patientId: Yup.string().required('El paciente es obligatorio'),
-  doctorId: Yup.string().required('El médico es obligatorio'),
-});
+import { appointmentValidationSchema } from '../../utils/validationSchemas';
 
-const AppointmentForm = ({ initialData = {}, onSuccess }) => {
-  const [patients, setPatients] = useState([]);
-  const [doctors, setDoctors] = useState([]);
+const AppointmentForm = ({ 
+  initialData = {}, 
+  onSuccess, 
+  onError, 
+  onSubmit: externalOnSubmit,
+  submitButtonText = 'Agendar Cita',
+  title = 'Agendar Nueva Cita',
+  onCancel
+}) => {
+  const {
+    patients,
+    doctors,
+    createAppointment: createApp,
+    loading,
+    error
+  } = useAppointments();
+
+  const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
 
   useEffect(() => {
-    fetchPatients().then(res => setPatients(res.data));
-    fetchDoctors().then(res => setDoctors(res.data));
+    const loadTypes = async () => {
+      try {
+        const response = await getAppointmentTypes();
+        setAppointmentTypes(response.data?.data || []);
+      } catch (err) {
+        console.error('Error loading appointment types:', err);
+      }
+    };
+    loadTypes();
   }, []);
 
   const formik = useFormik({
     initialValues: {
-      title: initialData.title || '',
-      start: initialData.start || '',
-      status: initialData.status || '',
-      patientId: initialData.patientId || '',
-      doctorId: initialData.doctorId || '',
+      motivo: initialData.motivo || '',
+      fecha: initialData.fecha ? new Date(initialData.fecha) : null,
+      hora: initialData.hora || null,
+      estado: initialData.estado || 'PROGRAMADA',
+      pacienteId: initialData.pacienteId || '',
+      medicoId: initialData.medicoId || '',
+      tipoCitaId: initialData.tipoCitaId || '',
+      duracion: initialData.duracion || 60,
     },
-    validationSchema,
+    validationSchema: appointmentValidationSchema,
     enableReinitialize: true,
     onSubmit: async (values, { setSubmitting }) => {
-      if (initialData.id) {
-        await updateAppointment({ id: initialData.id, updatedData: values });
-      } else {
-        await createAppointment(values);
+      try {
+        const payload = {
+          ...values,
+          fecha: values.fecha.toISOString().split('T')[0], // YYYY-MM-DD
+          hora: values.hora ? `${String(values.hora.getHours()).padStart(2, '0')}:${String(values.hora.getMinutes()).padStart(2, '0')}` : '',
+        };
+        
+        if (externalOnSubmit) {
+          await externalOnSubmit(payload);
+        } else {
+          await createApp(payload);
+          if (onSuccess) onSuccess();
+        }
+      } catch (err) {
+        if (onError) onError(err);
+      } finally {
+        setSubmitting(false);
       }
-      setSubmitting(false);
-      if (onSuccess) onSuccess();
     },
   });
 
+  const durationOptions = [
+    { value: 30, label: '30 minutos' },
+    { value: 45, label: '45 minutos' },
+    { value: 60, label: '1 hora' },
+    { value: 90, label: '1.5 horas' },
+    { value: 120, label: '2 horas' },
+  ];
+
   return (
-    <form onSubmit={formik.handleSubmit} className="app-form">
-      <div className="form-group">
-        <label>Motivo</label>
-        <input
-          name="title"
-          value={formik.values.title}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          className={formik.touched.title && formik.errors.title ? 'input-error' : ''}
-          placeholder="Motivo"
-        />
-        {formik.touched.title && formik.errors.title && (
-          <div className="error">{formik.errors.title}</div>
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+      <Box component="form" onSubmit={formik.handleSubmit} sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {title}
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
-      </div>
-      <div className="form-group">
-        <label>Fecha y hora</label>
-        <input
-          name="start"
-          type="datetime-local"
-          value={formik.values.start}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          className={formik.touched.start && formik.errors.start ? 'input-error' : ''}
-          placeholder="Fecha y hora"
-        />
-        {formik.touched.start && formik.errors.start && (
-          <div className="error">{formik.errors.start}</div>
-        )}
-      </div>
-      <div className="form-group">
-        <label>Estado</label>
-        <input
-          name="status"
-          value={formik.values.status}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          className={formik.touched.status && formik.errors.status ? 'input-error' : ''}
-          placeholder="Estado"
-        />
-        {formik.touched.status && formik.errors.status && (
-          <div className="error">{formik.errors.status}</div>
-        )}
-      </div>
-      <div className="form-group">
-        <label>Paciente</label>
-        <select
-          name="patientId"
-          value={formik.values.patientId}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          className={formik.touched.patientId && formik.errors.patientId ? 'input-error' : ''}
-        >
-          <option value="">Selecciona un paciente</option>
-          {patients.map(p => (
-            <option key={p.atr_id_paciente} value={p.atr_id_paciente}>
-              {p.atr_nombre} {p.atr_apellido} (ID: {p.atr_id_paciente})
-            </option>
-          ))}
-        </select>
-        {formik.touched.patientId && formik.errors.patientId && (
-          <div className="error">{formik.errors.patientId}</div>
-        )}
-      </div>
-      <div className="form-group">
-        <label>Médico</label>
-        <select
-          name="doctorId"
-          value={formik.values.doctorId}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          className={formik.touched.doctorId && formik.errors.doctorId ? 'input-error' : ''}
-        >
-          <option value="">Selecciona un médico</option>
-          {doctors.map(d => (
-            <option key={d.atr_id_medico} value={d.atr_id_medico}>
-              {d.atr_nombre} {d.atr_apellido} (ID: {d.atr_id_medico})
-            </option>
-          ))}
-        </select>
-        {formik.touched.doctorId && formik.errors.doctorId && (
-          <div className="error">{formik.errors.doctorId}</div>
-        )}
-      </div>
-      <button type="submit" className="btn btn-primary" disabled={formik.isSubmitting}>
-        Guardar
-      </button>
-    </form>
+
+        <Box sx={{ mb: 2 }}>
+          <Autocomplete
+            options={patients}
+            getOptionLabel={(option) => `${option.atr_nombre} ${option.atr_apellido} (ID: ${option.atr_id_paciente})`}
+            value={selectedPatient}
+            onChange={(event, newValue) => {
+              setSelectedPatient(newValue);
+              formik.setFieldValue('pacienteId', newValue ? newValue.atr_id_paciente : '');
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Paciente"
+                required
+                error={formik.touched.pacienteId && Boolean(formik.errors.pacienteId)}
+                helperText={formik.touched.pacienteId && formik.errors.pacienteId}
+              />
+            )}
+          />
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <FormControl fullWidth required error={formik.touched.medicoId && Boolean(formik.errors.medicoId)}>
+            <InputLabel>Médico</InputLabel>
+            <Select
+              name="medicoId"
+              value={formik.values.medicoId}
+              onChange={(e) => {
+                formik.handleChange(e);
+                const doctor = doctors.find(d => d.atr_id_medico === e.target.value);
+                setSelectedDoctor(doctor);
+              }}
+              onBlur={formik.handleBlur}
+            >
+              {doctors.map(d => (
+                <MenuItem key={d.atr_id_medico} value={d.atr_id_medico}>
+                  {d.atr_nombre} {d.atr_apellido} - {d.atr_especialidad}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <DatePicker
+            label="Fecha de la Cita"
+            value={formik.values.fecha}
+            onChange={(newValue) => formik.setFieldValue('fecha', newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                required
+                error={formik.touched.fecha && Boolean(formik.errors.fecha)}
+                helperText={formik.touched.fecha && formik.errors.fecha}
+              />
+            )}
+          />
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <TimePicker
+            label="Hora de la Cita"
+            value={formik.values.hora}
+            onChange={(newValue) => formik.setFieldValue('hora', newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                required
+                error={formik.touched.hora && Boolean(formik.errors.hora)}
+                helperText={formik.touched.hora && formik.errors.hora}
+              />
+            )}
+          />
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <FormControl fullWidth required error={formik.touched.tipoCitaId && Boolean(formik.errors.tipoCitaId)}>
+            <InputLabel>Tipo de Cita</InputLabel>
+            <Select
+              name="tipoCitaId"
+              value={formik.values.tipoCitaId}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            >
+              {appointmentTypes.map(type => (
+                <MenuItem key={type.atr_id_tipo_cita} value={type.atr_id_tipo_cita}>
+                  {type.atr_nombre_tipo_cita}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            name="motivo"
+            label="Motivo de la Cita"
+            multiline
+            rows={3}
+            value={formik.values.motivo}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            required
+            error={formik.touched.motivo && Boolean(formik.errors.motivo)}
+            helperText={formik.touched.motivo && formik.errors.motivo}
+          />
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <FormControl fullWidth required error={formik.touched.duracion && Boolean(formik.errors.duracion)}>
+            <InputLabel>Duración</InputLabel>
+            <Select
+              name="duracion"
+              value={formik.values.duracion}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            >
+              {durationOptions.map(option => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <FormControl fullWidth required error={formik.touched.estado && Boolean(formik.errors.estado)}>
+            <InputLabel>Estado</InputLabel>
+            <Select
+              name="estado"
+              value={formik.values.estado}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            >
+              {Object.keys(APPOINTMENT_STATUS).map(key => (
+                <MenuItem key={key} value={key}>
+                  {key.replace('_', ' ')}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={onCancel}
+              disabled={formik.isSubmitting || loading}
+              sx={{ flex: 1 }}
+            >
+              Cancelar
+            </Button>
+          )}
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={formik.isSubmitting || loading}
+            sx={{ flex: 1 }}
+          >
+            {loading ? <CircularProgress size={24} /> : submitButtonText}
+          </Button>
+        </Box>
+      </Box>
+    </LocalizationProvider>
   );
 };
 
-export default AppointmentForm; 
+export default AppointmentForm;

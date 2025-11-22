@@ -7,7 +7,10 @@ const PasswordHistory = require('../Models/PasswordHistory');
 const config = require('../config/environment');
 const logger = require('../utils/logger');
 const { generateToken } = require('../helpers/tokenHelper');
-const { sendVerificationEmail, sendResetEmail } = require('../utils/mailer');
+const { send2FAEmailCode,sendVerificationEmail, sendResetEmail } = require('../utils/mailer');
+const Token = require('../Models/tokenmodel');
+const { OTP } = require('../Config/security');
+
 
 class AuthService {
   static async register(userData) {
@@ -60,6 +63,128 @@ class AuthService {
       message: 'Registro exitoso. Revisa tu email para verificar tu cuenta.',
       userId: user.atr_id_usuario
     };
+  }
+
+  /**
+   * Genera un código OTP y lo envía al usuario
+   * @param {number} userId - ID del usuario
+   * @param {string} purpose - Propósito del OTP (ej: 'LOGIN_OTP', 'PASSWORD_RESET_OTP')
+   * @returns {Promise<Object>} Información del token generado
+   */
+  static async generateAndSendOtp(userId, purpose = 'LOGIN_OTP') {
+    try {
+      // 1. Invalidar cualquier OTP previo no utilizado
+      await Token.update(
+        { 
+          atr_utilizado: true,
+          atr_fecha_modificacion: new Date(),
+          atr_modificado_por: 'SISTEMA'
+        },
+        { 
+          where: { 
+            atr_id_usuario: userId,
+            atr_tipo: purpose,
+            atr_utilizado: false
+          } 
+        }
+      );
+
+      // 2. Generar nuevo OTP
+      const otpCode = Token.generateOTP();
+      const expirationTime = Token.generateExpirationDate(OTP.EXPIRATION_MINUTES);
+
+      // 3. Guardar en la base de datos
+      const token = await Token.create({
+        atr_id_usuario: userId,
+        atr_codigo: otpCode,
+        atr_tipo: purpose,
+        atr_fecha_expiracion: expirationTime,
+        atr_creado_por: 'SISTEMA'
+      });
+
+      // 4. Obtener información del usuario para el correo
+      const user = await User.findByPk(userId, {
+        attributes: ['atr_correo_electronico', 'atr_nombre_usuario', 'atr_usuario']
+      });
+
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      // 5. Enviar por correo
+      await send2FAEmailCode(
+        user.atr_correo_electronico,
+        otpCode,
+        user.atr_nombre_usuario || user.atr_usuario,
+        purpose
+      );
+
+      logger.info(`OTP generado y enviado para usuario ID: ${userId}, propósito: ${purpose}`);
+
+      return {
+        success: true,
+        expiresAt: expirationTime,
+        purpose,
+        message: 'Código de verificación enviado exitosamente'
+      };
+
+    } catch (error) {
+      logger.error(`Error al generar OTP para usuario ${userId}:`, error);
+      throw new Error('Error al generar el código de verificación');
+    }
+  }
+
+  /**
+   * Verifica un código OTP
+   * @param {number} userId - ID del usuario
+   * @param {string} otpCode - Código OTP a verificar
+   * @param {string} purpose - Propósito del OTP (ej: 'LOGIN_OTP', 'PASSWORD_RESET_OTP')
+   * @returns {Promise<Object>} Objeto con isValid y opcionalmente un mensaje de error
+   */
+  static async verifyOtp(userId, otpCode, purpose = 'LOGIN_OTP') {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      // 1. Buscar el token no utilizado y no expirado
+      const token = await Token.findOne({
+        where: {
+          atr_id_usuario: userId,
+          atr_codigo: otpCode,
+          atr_tipo: purpose,
+          atr_utilizado: false,
+          atr_fecha_expiracion: { [Op.gt]: new Date() }
+        },
+        transaction
+      });
+
+      if (!token) {
+        await transaction.rollback();
+        return { 
+          isValid: false, 
+          error: 'Código inválido o expirado' 
+        };
+      }
+
+      // 2. Marcar el token como utilizado
+      await token.update(
+        { 
+          atr_utilizado: true,
+          atr_modificado_por: 'SISTEMA',
+          atr_fecha_modificacion: new Date()
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+      
+      logger.info(`OTP verificado exitosamente para usuario ID: ${userId}, propósito: ${purpose}`);
+      return { isValid: true };
+
+    } catch (error) {
+      await transaction.rollback();
+      logger.error(`Error al verificar OTP para usuario ${userId}:`, error);
+      throw new Error('Error al verificar el código de verificación');
+    }
   }
 
   static async verifyEmail(token) {

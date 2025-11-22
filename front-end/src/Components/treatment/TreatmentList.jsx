@@ -184,7 +184,7 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ 
             borderRadius: 2,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: '#FCE4EC',
             border: '1px solid',
             borderColor: 'primary.200'
           }}>
@@ -205,7 +205,7 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ 
             borderRadius: 2,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: '#FCE4EC',
             border: '1px solid',
             borderColor: 'primary.200'
           }}>
@@ -226,7 +226,7 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ 
             borderRadius: 2,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: '#FCE4EC',
             border: '1px solid',
             borderColor: 'primary.200'
           }}>
@@ -247,7 +247,7 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ 
             borderRadius: 2,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: '#FCE4EC',
             border: '1px solid',
             borderColor: 'primary.200'
           }}>
@@ -547,12 +547,13 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
           position: 'fixed',
           bottom: 16,
           right: 16,
-          background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+          backgroundColor: 'brand.pale',
+          color: 'accent.main',
           '&:hover': {
-            background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+            backgroundColor: 'brand.paleDark',
             transform: 'scale(1.1)',
           },
-          boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+          boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
         }}
       >
         <AddIcon />
@@ -567,9 +568,10 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
         PaperProps={{
           sx: {
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+            backgroundColor: 'background.paper',
+            color: 'accent.main',
             border: '1px solid',
-            borderColor: 'primary.200'
+            borderColor: 'brand.paleL2'
           }
         }}
       >
@@ -684,11 +686,13 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ 
+          <DialogActions sx={{ 
           p: 3, 
           pt: 1,
           borderTop: '1px solid',
-          borderColor: 'primary.200'
+          borderColor: 'brand.paleL2',
+          backgroundColor: 'background.paper',
+          color: 'accent.main'
         }}>
           <Button
             onClick={handleEditClose}
@@ -710,12 +714,13 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
             variant="contained"
             disabled={editLoading}
             sx={{
-              background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+              backgroundColor: 'brand.pale',
+              color: 'accent.main',
               '&:hover': {
-                background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                backgroundColor: 'brand.paleDark',
                 transform: 'translateY(-1px)',
               },
-              boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+              boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
             }}
           >
             {editLoading ? 'Guardando...' : 'Guardar Cambios'}

@@ -63,11 +63,11 @@ const TestForm = () => {
       </Box>
 
       <Paper 
-        elevation={3} 
+        elevation={0} 
         sx={{ 
           p: 4, 
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+          backgroundColor: '#FCE4EC',
           border: '1px solid',
           borderColor: 'primary.200'
         }}
@@ -188,12 +188,12 @@ const TestForm = () => {
               size="large"
               endIcon={<SaveIcon />}
               sx={{
-                background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+                backgroundColor: '#FCE4EC',
+                color: '#212845',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-                  transform: 'translateY(-1px)',
+                  backgroundColor: '#F8BBD0',
                 },
-                boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+                boxShadow: 'none',
               }}
             >
               Guardar

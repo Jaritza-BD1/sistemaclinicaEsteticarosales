@@ -145,6 +145,16 @@ async function runMigrations() {
         ('VERIFICATION_TOKEN_EXPIRY', '24');
     `);
 
+    // Asegurar índice UNIQUE en la columna de parámetros (si la tabla existe)
+    try {
+      await connection.query(`ALTER TABLE tbl_ms_parametros ADD UNIQUE INDEX ux_tbl_ms_parametros_atr_parametro (atr_parametro);`);
+      console.log('Índice UNIQUE agregado a tbl_ms_parametros.atr_parametro');
+    } catch (e) {
+      // Si el índice ya existe o la tabla no existe, ignorar el error
+      // Loguear a debug
+      // console.warn('No se pudo crear índice UNIQUE en tbl_ms_parametros.atr_parametro (posiblemente ya existe):', e.message);
+    }
+
     // Insertar usuario admin si no existe
     const [rows] = await connection.query(
       'SELECT atr_id_usuario FROM tbl_ms_usuario WHERE atr_usuario = ?', 
@@ -187,3 +197,38 @@ async function runMigrations() {
 }
 
 runMigrations();
+
+// Crear tabla de backups si no existe (compatible con esquema usado por Backup model)
+// Nota: si prefieres usar migrations separadas, podemos mover esto a un archivo independiente.
+async function ensureBackupsTable() {
+  let connection;
+  try {
+    connection = await mysql.createConnection({
+      host: process.env.MYSQL_HOST,
+      user: process.env.MYSQL_USER,
+      password: process.env.MYSQL_PASSWORD,
+      database: process.env.MYSQL_DATABASE
+    });
+
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS tbl_ms_backups (
+        atr_id_backup INT AUTO_INCREMENT PRIMARY KEY,
+        atr_file_name VARCHAR(255) NOT NULL,
+        atr_file_path VARCHAR(1024) NOT NULL,
+        atr_size VARCHAR(50),
+        atr_created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        atr_created_by INT NULL,
+        atr_triggered_by VARCHAR(50) NULL
+      ) ENGINE=InnoDB;
+    `);
+
+    console.log('Tabla tbl_ms_backups asegurada');
+  } catch (err) {
+    console.error('Error asegurando tabla tbl_ms_backups', err);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+// Ejecutar aseguramiento de tabla
+ensureBackupsTable();

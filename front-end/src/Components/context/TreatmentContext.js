@@ -29,7 +29,8 @@ export const TreatmentProvider = ({ children }) => {
   }, []);
 
   const addTreatment = async (treatmentData) => {
-    const newTreatment = await createTreatment(treatmentData);
+    const resp = await createTreatment(treatmentData);
+    const newTreatment = resp?.data || resp;
     setTreatments(prev => [newTreatment, ...prev]);
     return newTreatment;
   };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -24,6 +24,8 @@ import {
   Chip,
   Autocomplete
 } from '@mui/material';
+import { CircularProgress } from '@mui/material';
+import useEspecialidades from '../../hooks/useEspecialidades';
 import {
   Person as PersonIcon,
   Email as EmailIcon,
@@ -38,7 +40,15 @@ import {
   Work as WorkIcon
 } from '@mui/icons-material';
 
-const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
+const DoctorModal = (props) => {
+  // Support multiple prop names for backwards compatibility with different callers
+  const open = props.open ?? props.show ?? false;
+  const onClose = props.onClose ?? props.onHide ?? (() => {});
+  const doctor = props.doctor ?? props.initialData ?? null;
+  const onSave = props.onSave ?? props.onSuccess ?? null;
+  const onUpdate = props.onUpdate ?? props.onSuccess ?? null;
+  const onError = props.onError ?? props.onFailure ?? null;
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
@@ -53,7 +63,6 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
     direccion: '',
     colegiado: '',
     especialidad: [],
-    universidad: '',
     fecha_graduacion: '',
     experiencia_anios: '',
     estado: 'activo',
@@ -64,41 +73,8 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
   const [notification, setNotification] = useState(null);
 
   // Datos simulados para selectores
-  const especialidades = [
-    'Cardiología',
-    'Dermatología',
-    'Pediatría',
-    'Medicina General',
-    'Neurología',
-    'Ginecología',
-    'Oftalmología',
-    'Ortopedia',
-    'Urología',
-    'Psiquiatría',
-    'Endocrinología',
-    'Gastroenterología',
-    'Oncología',
-    'Radiología',
-    'Anestesiología',
-    'Traumatología',
-    'Reumatología',
-    'Inmunología',
-    'Hematología',
-    'Nefrología'
-  ];
-
-  const universidades = [
-    'Universidad Nacional Autónoma de Honduras',
-    'Universidad Católica de Honduras',
-    'Universidad Tecnológica de Honduras',
-    'Universidad José Cecilio del Valle',
-    'Universidad Pedagógica Nacional Francisco Morazán',
-    'Universidad de San Pedro Sula',
-    'Universidad de El Zamorano',
-    'Universidad Tecnológica Centroamericana',
-    'Universidad Metropolitana de Honduras',
-    'Universidad Politécnica de Ingeniería'
-  ];
+  // (Removed mock `especialidades` array - using `useEspecialidades` hook instead)
+  const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
   const generos = [
     { value: 'masculino', label: 'Masculino' },
@@ -113,69 +89,38 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
     { value: 'licencia', label: 'Licencia' }
   ];
 
+  // If an existing doctor is provided, populate the form fields
   React.useEffect(() => {
     if (doctor) {
       setFormData({
-        nombre: doctor.nombre || '',
-        apellido: doctor.apellido || '',
-        identidad: doctor.identidad || '',
-        fecha_nacimiento: doctor.fecha_nacimiento || '',
-        genero: doctor.genero || '',
-        telefono: doctor.telefono || '',
-        correo: doctor.correo || '',
-        direccion: doctor.direccion || '',
-        colegiado: doctor.colegiado || '',
-        especialidad: doctor.especialidad || [],
-        universidad: doctor.universidad || '',
+        nombre: doctor.atr_nombre || doctor.nombre || '',
+        apellido: doctor.atr_apellido || doctor.apellido || '',
+        identidad: doctor.atr_identidad || doctor.identidad || '',
+        fecha_nacimiento: doctor.atr_fecha_nacimiento || doctor.fecha_nacimiento || '',
+        genero: doctor.atr_id_genero || doctor.genero || '',
+        telefono: (doctor.telefonos && doctor.telefonos[0]?.atr_telefono) || doctor.telefono || '',
+        correo: (doctor.correos && doctor.correos[0]?.atr_correo) || doctor.correo || '',
+        direccion: (doctor.direcciones && doctor.direcciones[0]?.atr_direccion_completa) || doctor.direccion || '',
+        colegiado: doctor.atr_numero_colegiado || doctor.colegiado || '',
+        especialidad: (doctor.Especialidades || doctor.especialidades || []).map(e => e.atr_especialidad || e.name || e) || [],
         fecha_graduacion: doctor.fecha_graduacion || '',
         experiencia_anios: doctor.experiencia_anios || '',
         estado: doctor.estado || 'activo',
         observaciones: doctor.observaciones || ''
       });
-    } else {
-      setFormData({
-        nombre: '',
-        apellido: '',
-        identidad: '',
-        fecha_nacimiento: '',
-        genero: '',
-        telefono: '',
-        correo: '',
-        direccion: '',
-        colegiado: '',
-        especialidad: [],
-        universidad: '',
-        fecha_graduacion: '',
-        experiencia_anios: '',
-        estado: 'activo',
-        observaciones: ''
-      });
     }
-    setErrors({});
-  }, [doctor, open]);
+  }, [doctor, especialidadesOptions]);
 
   const validateForm = () => {
     const newErrors = {};
     const hoy = new Date();
-    
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es requerido';
-    } else if (formData.nombre.length < 2) {
-      newErrors.nombre = 'Debe tener al menos 2 caracteres';
-    }
-    
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'El apellido es requerido';
-    } else if (formData.apellido.length < 2) {
-      newErrors.apellido = 'Debe tener al menos 2 caracteres';
-    }
-    
-    if (!formData.identidad.trim()) {
+
+    if (!formData.identidad || !formData.identidad.toString().trim()) {
       newErrors.identidad = 'El número de identidad es requerido';
-    } else if (!/^\d{13}$/.test(formData.identidad.replace(/\D/g, ''))) {
+    } else if (!/^\d{13}$/.test(formData.identidad.toString().replace(/\D/g, ''))) {
       newErrors.identidad = 'El número de identidad debe tener 13 dígitos';
     }
-    
+
     if (!formData.fecha_nacimiento) {
       newErrors.fecha_nacimiento = 'La fecha de nacimiento es requerida';
     } else {
@@ -183,50 +128,34 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
       if (fechaNac >= hoy) {
         newErrors.fecha_nacimiento = 'La fecha no puede ser futura';
       } else {
-        const edadMilisegundos = hoy - fechaNac;
-        const edadAnios = edadMilisegundos / (1000 * 60 * 60 * 24 * 365.25);
-        if (edadAnios < 23) {
-          newErrors.fecha_nacimiento = 'La edad mínima es 23 años';
-        }
+        const edadAnios = (hoy - fechaNac) / (1000 * 60 * 60 * 24 * 365.25);
+        if (edadAnios < 23) newErrors.fecha_nacimiento = 'La edad mínima es 23 años';
       }
     }
-    
-    if (!formData.genero) {
-      newErrors.genero = 'El género es requerido';
-    }
-    
-    if (!formData.telefono.trim()) {
+
+    if (!formData.genero) newErrors.genero = 'El género es requerido';
+
+    if (!formData.telefono || !formData.telefono.toString().trim()) {
       newErrors.telefono = 'El teléfono es requerido';
     } else if (!/^[0-9+\-\s()]{8,}$/.test(formData.telefono)) {
       newErrors.telefono = 'Formato de teléfono inválido';
     }
-    
-    if (!formData.correo.trim()) {
+
+    if (!formData.correo || !formData.correo.toString().trim()) {
       newErrors.correo = 'El correo es requerido';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
       newErrors.correo = 'Formato de correo inválido';
     }
-    
-    if (!formData.colegiado.trim()) {
-      newErrors.colegiado = 'El número de colegiado es requerido';
-    }
-    
-    if (formData.especialidad.length === 0) {
-      newErrors.especialidad = 'Debe seleccionar al menos una especialidad';
-    }
-    
-    if (!formData.universidad) {
-      newErrors.universidad = 'La universidad es requerida';
-    }
-    
-    if (!formData.fecha_graduacion) {
-      newErrors.fecha_graduacion = 'La fecha de graduación es requerida';
-    }
-    
+
+    if (!formData.colegiado || !formData.colegiado.toString().trim()) newErrors.colegiado = 'El número de colegiado es requerido';
+
+    if (!formData.especialidad || formData.especialidad.length === 0) newErrors.especialidad = 'Debe seleccionar al menos una especialidad';
+    if (!formData.fecha_graduacion) newErrors.fecha_graduacion = 'La fecha de graduación es requerida';
+
     if (formData.experiencia_anios && (isNaN(formData.experiencia_anios) || formData.experiencia_anios < 0)) {
       newErrors.experiencia_anios = 'Los años de experiencia deben ser un número positivo';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -248,19 +177,37 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      try {
-        if (doctor) {
-          onUpdate({ ...formData, id: doctor.id });
-        } else {
-          onSave(formData);
+
+    if (!validateForm()) return;
+
+    try {
+      const especialidadIds = (formData.especialidad || []).map(v => {
+        if (typeof v === 'string') {
+          const found = especialidadesOptions.find(o => o.name === v);
+          return found ? found.id : null;
         }
-        setNotification({ message: 'Médico guardado exitosamente', type: 'success', open: true });
-        onClose();
-      } catch (error) {
-        setNotification({ message: 'Error al guardar el médico', type: 'error', open: true });
+        if (v && (v.id || v.atr_id_especialidad)) return v.id || v.atr_id_especialidad;
+        return null;
+      }).filter(Boolean);
+
+      const payload = { ...formData, especialidad: especialidadIds };
+
+      // Call whichever success handler exists (onUpdate/onSave/onSuccess)
+      if (doctor) {
+        if (onUpdate) onUpdate({ ...payload, id: doctor.id });
+        if (onSave) onSave({ ...payload, id: doctor.id });
+        if (props.onSuccess) props.onSuccess({ ...payload, id: doctor.id });
+      } else {
+        if (onSave) onSave(payload);
+        if (props.onSuccess) props.onSuccess(payload);
       }
+
+      setNotification({ message: 'Médico guardado exitosamente', type: 'success', open: true });
+      onClose();
+    } catch (err) {
+      setNotification({ message: 'Error al guardar el médico', type: 'error', open: true });
+      if (onError) onError(err);
+      if (props.onError) props.onError(err);
     }
   };
 
@@ -280,7 +227,6 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
       direccion: '',
       colegiado: '',
       especialidad: [],
-      universidad: '',
       fecha_graduacion: '',
       experiencia_anios: '',
       estado: 'activo',
@@ -300,9 +246,10 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
       PaperProps={{
         sx: {
           borderRadius: isMobile ? 0 : 3,
-          background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+          backgroundColor: 'background.paper',
+          color: 'accent.main',
           border: '1px solid',
-          borderColor: 'primary.200',
+          borderColor: 'brand.paleL2',
           minHeight: isMobile ? '100vh' : 'auto',
           maxHeight: isMobile ? '100vh' : '90vh',
           overflow: 'hidden'
@@ -310,14 +257,14 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
       }}
     >
       <DialogTitle sx={{ 
-        color: 'primary.main', 
+        color: 'accent.main', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
         pb: 1,
         borderBottom: '1px solid',
-        borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)'
+        borderColor: 'brand.paleL2',
+        backgroundColor: 'background.paper'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <MedicalServicesIcon sx={{ mr: 1 }} />
@@ -328,9 +275,9 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
         <IconButton 
           onClick={handleClose} 
           sx={{ 
-            color: 'primary.main',
+            color: 'accent.main',
             '&:hover': {
-              backgroundColor: 'primary.50',
+              backgroundColor: 'brand.paleL3',
               transform: 'scale(1.1)',
             },
             transition: 'all 0.2s ease-in-out'
@@ -345,6 +292,8 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
         sx={{ 
           p: 3,
           overflowY: 'auto',
+          backgroundColor: 'background.paper',
+          color: 'accent.main',
           '&::-webkit-scrollbar': {
             width: '8px',
           },
@@ -353,10 +302,10 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
             borderRadius: '4px',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            background: 'brand.pale',
             borderRadius: '4px',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              background: 'brand.paleDark',
             },
           },
         }}
@@ -367,12 +316,12 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ color: 'accent.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                     <PersonIcon sx={{ mr: 1 }} />
                     Información Personal
                   </Typography>
@@ -537,12 +486,12 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ color: 'accent.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                     <PhoneIcon sx={{ mr: 1 }} />
                     Información de Contacto
                   </Typography>
@@ -626,12 +575,12 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ color: 'accent.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                     <WorkIcon sx={{ mr: 1 }} />
                     Información Profesional
                   </Typography>
@@ -685,47 +634,66 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
                     </Grid>
                     
                     <Grid item xs={12}>
-                      <Autocomplete
-                        multiple
-                        options={especialidades}
-                        value={formData.especialidad}
-                        onChange={(event, newValue) => {
-                          setFormData(prev => ({ ...prev, especialidad: newValue }));
-                          if (errors.especialidad) {
-                            setErrors(prev => ({ ...prev, especialidad: '' }));
-                          }
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Especialidades"
-                            error={!!errors.especialidad}
-                            helperText={errors.especialidad}
-                            required
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                '&:hover fieldset': {
-                                  borderColor: 'primary.300',
+                        <Autocomplete
+                          multiple
+                          options={especialidadesOptions}
+                          getOptionLabel={(opt) => opt.name}
+                          value={(Array.isArray(formData.especialidad) ? formData.especialidad.map(v => {
+                            if (typeof v === 'string') return especialidadesOptions.find(o => o.name === v);
+                            if (v && (v.id || v.atr_id_especialidad)) return especialidadesOptions.find(o => o.id === (v.id || v.atr_id_especialidad));
+                            return null;
+                          }).filter(Boolean) : [])}
+                          onChange={(event, newValue) => {
+                            setFormData(prev => ({ ...prev, especialidad: newValue }));
+                            if (errors.especialidad) {
+                              setErrors(prev => ({ ...prev, especialidad: '' }));
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Especialidades"
+                              error={!!errors.especialidad}
+                              helperText={errors.especialidad}
+                              required
+                              sx={{
+                                '& .MuiOutlinedInput-root': {
+                                  '&:hover fieldset': {
+                                    borderColor: 'primary.300',
+                                  },
+                                  '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                  },
                                 },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: 'primary.main',
-                                },
-                              },
-                            }}
-                          />
-                        )}
-                        renderTags={(value, getTagProps) =>
-                          value.map((option, index) => (
-                            <Chip
-                              {...getTagProps({ index })}
-                              key={option}
-                              label={option}
-                              color="primary"
-                              size="small"
+                              }}
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {loadingEspecialidades ? <CircularProgress size={18} style={{ marginRight: 8 }} /> : null}
+                                    {params.InputProps.endAdornment}
+                                  </>
+                                )
+                              }}
                             />
-                          ))
-                        }
-                      />
+                          )}
+                          renderTags={(value, getTagProps) =>
+                            value.map((option, index) => (
+                              <Chip
+                                {...getTagProps({ index })}
+                                key={option.id}
+                                label={option.name}
+                                color="primary"
+                                size="small"
+                              />
+                            ))
+                          }
+                        />
+                        {especialidadesError && (
+                          <Typography variant="caption" color="error">
+                            Error cargando especialidades: {especialidadesError}
+                          </Typography>
+                        )}
                     </Grid>
                   </Grid>
                 </CardContent>
@@ -736,50 +704,18 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: 'primary.main', mb: 2, display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ color: 'accent.main', mb: 2, display: 'flex', alignItems: 'center' }}>
                     <SchoolIcon sx={{ mr: 1 }} />
                     Información Académica
                   </Typography>
                   <Divider sx={{ mb: 3 }} />
                   
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Autocomplete
-                        options={universidades}
-                        value={formData.universidad}
-                        onChange={(event, newValue) => {
-                          setFormData(prev => ({ ...prev, universidad: newValue }));
-                          if (errors.universidad) {
-                            setErrors(prev => ({ ...prev, universidad: '' }));
-                          }
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Universidad"
-                            error={!!errors.universidad}
-                            helperText={errors.universidad}
-                            required
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                '&:hover fieldset': {
-                                  borderColor: 'primary.300',
-                                },
-                                '&.Mui-focused fieldset': {
-                                  borderColor: 'primary.main',
-                                },
-                              },
-                            }}
-                          />
-                        )}
-                      />
-                    </Grid>
-                    
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
@@ -813,12 +749,12 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
             <Grid item xs={12}>
               <Card sx={{ 
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+                backgroundColor: 'background.paper',
                 border: '1px solid',
-                borderColor: 'primary.200'
+                borderColor: 'brand.paleL2'
               }}>
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: 'primary.main', mb: 2 }}>
+                  <Typography variant="h6" sx={{ color: 'accent.main', mb: 2 }}>
                     Observaciones
                   </Typography>
                   <Divider sx={{ mb: 3 }} />
@@ -854,18 +790,19 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
         p: 3, 
         pt: 1,
         borderTop: '1px solid',
-        borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)'
+        borderColor: 'brand.paleL2',
+        backgroundColor: 'background.paper',
+        color: 'accent.main'
       }}>
         <Button
           onClick={handleClose}
           variant="outlined"
           sx={{
-            borderColor: 'primary.300',
-            color: 'primary.main',
+            borderColor: 'brand.paleL2',
+            color: 'accent.main',
             '&:hover': {
-              borderColor: 'primary.main',
-              backgroundColor: 'primary.50',
+              borderColor: 'accent.main',
+              backgroundColor: 'brand.paleL3',
             },
           }}
         >
@@ -877,12 +814,13 @@ const DoctorModal = ({ open, onClose, doctor, onSave, onUpdate }) => {
           variant="contained"
           endIcon={<SaveIcon />}
           sx={{
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            backgroundColor: 'brand.pale',
+            color: 'accent.main',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              backgroundColor: 'brand.paleDark',
               transform: 'translateY(-1px)',
             },
-            boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+            boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
           }}
         >
           {doctor ? 'Actualizar Médico' : 'Registrar Médico'}

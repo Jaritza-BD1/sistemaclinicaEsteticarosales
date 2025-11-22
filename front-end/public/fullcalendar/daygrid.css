@@ -1,0 +1,5 @@
+/* Local wrapper for FullCalendar daygrid styles (v6.1.18).
+   See notes in common.css.
+*/
+/* Import local copy of FullCalendar daygrid CSS. Download `daygrid.min.css` into this folder. */
+@import url('./daygrid.min.css');

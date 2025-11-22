@@ -1,13 +1,13 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import PatientRegistrationForm from '../Components/patients/PatientRegistrationForm';
 import PatientList from '../Components/patients/PatientList';
+import PatientDetail from '../Components/patients/PatientDetail';
 
 export default function PacienteRoutes() {
   return (
     <Routes>
-      <Route path="registrar" element={<PatientRegistrationForm />} />
       <Route path="lista" element={<PatientList />} />
+      <Route path="detalle/:id" element={<PatientDetail />} />
     </Routes>
   );
 }

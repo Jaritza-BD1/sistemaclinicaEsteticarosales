@@ -52,48 +52,39 @@ api.interceptors.request.use(
 
 // Interceptor para manejar respuestas
 api.interceptors.response.use(
-  response => {
-    // Si la respuesta es exitosa, devolver los datos
-    if (response.data && response.data.success !== undefined) {
-      return response.data;
-    }
-    return response;
-  },
+  // Mantener el response completo (axios) para que los componentes que esperan
+  // `response.data` sigan funcionando. No devolvemos solo response.data.
+  response => response,
   error => {
-    // Manejar errores específicos
-    if (error.response?.status === 431) {
+    // Si el error proviene de axios con response, adjuntamos un mensaje legible
+    const status = error.response?.status;
+    const data = error.response?.data || {};
+
+    if (status === 431) {
       console.error('Error 431: Headers demasiado grandes');
-      // Limpiar tokens potencialmente corruptos
       localStorage.removeItem('authToken');
       localStorage.removeItem('token');
-      return Promise.reject({
-        success: false,
-        message: 'Error de configuración de headers. Por favor, recarga la página.'
-      });
+      // Adjuntar un mensaje en error.customMessage pero rechazar el error axios
+      error.customMessage = 'Error de configuración de headers. Por favor, recarga la página.';
+      return Promise.reject(error);
     }
-    
-    // Manejar errores de autenticación
-    if (error.response?.status === 401) {
+
+    if (status === 401) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // No redirigir automáticamente en el interceptor; preservar comportamiento
+      error.customMessage = data.error || data.message || 'No autenticado';
+      return Promise.reject(error);
     }
-    
-    // Manejar errores de validación
-    if (error.response?.status === 422) {
-      return Promise.reject({
-        success: false,
-        message: 'Error de validación',
-        errors: error.response.data.errors
-      });
+
+    if (status === 422) {
+      error.customMessage = 'Error de validación';
+      return Promise.reject(error);
     }
-    
-    // Manejar otros errores
-    const errorMessage = error.response?.data?.message || 'Error de conexión';
-    return Promise.reject({
-      success: false,
-      message: errorMessage
-    });
+
+    // Priorizar campos `error` y `message` que usa el backend
+    error.customMessage = data.error || data.message || 'Error de conexión';
+    return Promise.reject(error);
   }
 );
 

@@ -1,5 +1,6 @@
 // Frontend/src/components/ForgotPassword.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../asset/Style/ForgotPassword.css';
 import api from '../../services/api';
 
@@ -7,6 +8,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,14 +30,9 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/forgot-password', { 
-        email: email.trim() 
-      });
-      
-      setStatus({ 
-        type: 'success', 
-        message: response.data.message || 'Instrucciones enviadas a tu correo' 
-      });
+      const response = await api.post('/auth/forgot-password', { email: email.trim() });
+      // Navegar a la página de verificación de código, pasar el email en state
+      navigate('/forgot-password/verify', { state: { email: email.trim() } });
     } catch (error) {
       const errorMessage = error.response?.data?.error || 
                           error.response?.data?.message || 

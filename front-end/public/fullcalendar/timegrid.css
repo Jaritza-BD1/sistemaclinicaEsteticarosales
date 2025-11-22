@@ -1,0 +1,5 @@
+/* Local wrapper for FullCalendar timegrid styles (v6.1.18).
+   See notes in common.css.
+*/
+/* Import local copy of FullCalendar timegrid CSS. Download `timegrid.min.css` into this folder. */
+@import url('./timegrid.min.css');

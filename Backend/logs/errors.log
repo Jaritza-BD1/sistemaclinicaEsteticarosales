@@ -90,3 +90,5 @@ notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
 
 [2025-07-18 05:35:46] ERROR: Error al consultar bitácora: Unknown column 'b.FECHA' in 'where clause'
 
+[2025-11-12 19:15:28] ERROR: Error al registrar en bitácora: Data too long for column 'atr_accion' at row 1
+

@@ -10,6 +10,40 @@ const http = require('http');
 // Configuraciones
 const config = require('./Config/environment');
 const corsOptions = require('./Config/cors');
+// Iniciar jobs (backup automático y limpieza de tokens)
+try {
+  require('./Jobs/cleanupTokens.job');
+} catch (e) {
+  // ignore if job not available
+}
+try {
+  require('./Jobs/backup.job');
+} catch (e) {
+  // ignore if job not available
+}
+// Job para limpiar archivos huérfanos en uploads/
+try {
+  require('./Jobs/cleanupUploads.job');
+} catch (e) {
+  // ignore if job not available
+}
+try {
+  require('./Jobs/cleanupTrash.job');
+} catch (e) {
+  // ignore if job not available
+}
+// Job para recordatorios automáticos
+try {
+  require('./Jobs/reminder.job');
+} catch (e) {
+  // ignore if job not available
+}
+// Job para envío de recordatorios pendientes
+try {
+  require('./Jobs/followup.job');
+} catch (e) {
+  // ignore if job not available
+}
 
 
 
@@ -29,6 +63,9 @@ const authRoutes = require('./Routers/authRoute');
 const adminRoutes = require('./Routers/adminRoutes');
 const appointmentRoutes = require('./Routers/appointmentRoutes');
 const doctorRoutes = require('./Routers/doctorRoutes');
+const especialidadRoutes = require('./Routers/especialidadRoutes');
+const medicoHorarioRoutes = require('./Routers/medicoHorarioRoutes');
+const generoRoutes = require('./Routers/generoRoutes');
 const patientRoutes = require('./Routers/patientRoutes');
 const treatmentRoutes = require('./Routers/treatmentRoutes');
 const examRoutes = require('./Routers/examRoutes');
@@ -38,8 +75,19 @@ const permisoRoutes = require('./Routers/permisoRoutes');
 const objetoRoutes = require('./Routers/objetoRoutes');
 const backupRoutes = require('./Routers/backupRoutes');
 const schedulerRoutes = require('./Routers/schedulerRoutes');
+const maintenanceRoutes = require('./Routers/maintenanceRoutes');
+const consultationRoutes = require('./Routers/consultationRoutes');
+const prescriptionRoutes = require('./Routers/prescriptionRoutes');
+const paymentRoutes = require('./Routers/paymentRoutes');
 
 const app = express();
+
+const path = require('path');
+
+// If the app is behind a proxy (nginx, load balancer, platform), enable trust proxy
+// so middleware like express-rate-limit can rely on X-Forwarded-* headers correctly.
+// For local development this is safe; set to 1 to trust the first proxy hop.
+app.set('trust proxy', 1);
 
 // 1. CONFIGURACIÓN CORS ======================================================
 app.use(cors(corsOptions));
@@ -96,9 +144,11 @@ const authLimiter = rateLimit({
 // 5. RUTAS ==================================================================
 app.use(calendarMiddleware); // Inyecta los servicios antes de las rutas
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api/especialidades', especialidadRoutes);
+app.use('/api/medico-horarios', medicoHorarioRoutes);
+app.use('/api/generos', generoRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/treatments', treatmentRoutes);
 app.use('/api/exams', examRoutes);
@@ -106,12 +156,25 @@ app.use('/api/products', productRoutes);
 app.use('/api/roles', rolRoutes);
 app.use('/api/permisos', permisoRoutes);
 app.use('/api/objetos', objetoRoutes);
+app.use('/api/consultations', consultationRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/admin/backup', backupRoutes);
 app.use('/api/admin/scheduler', schedulerRoutes);
+// Rutas genéricas de mantenimiento (CRUD para modelos)
+// IMPORTANT: mount the maintenanceRoutes before the generic /api/admin router
+// so that requests to /api/admin/maintenance/* are handled by the maintenance
+// router and not swallowed by the adminRoutes 404 fallback.
+app.use('/api/admin/maintenance', maintenanceRoutes);
+
+app.use('/api/admin', adminRoutes);
 
 // Ruta de Bitacora
 const bitacoraRoutes = require('./Routers/BitacoraRoutes');
 app.use('/api', bitacoraRoutes);
+
+// Servir archivos subidos (carpeta uploads/) de forma segura
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Ruta de parámetros
 app.get('/api/params/:key', async (req, res) => {
@@ -151,8 +214,8 @@ const PORT = config.port;
     logger.startup('✅ Base de datos conectada');
     
     if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync();
-      logger.startup('🔃 Modelos sincronizados');
+      // await sequelize.sync({ force: false, alter: false });
+      logger.startup('🔃 Sincronización de modelos omitida - solo lógica cargada');
       
       // Crear parámetro si no existe
       const Parametro = require('./Models/Parametro');

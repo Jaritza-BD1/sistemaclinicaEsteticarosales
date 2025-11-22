@@ -60,7 +60,28 @@ class ProductService {
      */
     static async getAllProducts() {
         try {
+            // Explicitly request attributes that are known to exist in the DB schema.
+            // Some deployments may not have 'atr_categoria' column; avoid selecting it to
+            // prevent ER_BAD_FIELD_ERROR. If you want categories, add the column or
+            // update this list to match your DB schema.
             const products = await Producto.findAll({
+                attributes: [
+                    'atr_id_producto',
+                    'atr_nombre_producto',
+                    'atr_descripcion',
+                    'atr_codigo_barra',
+                    'atr_unidad_medida',
+                    'atr_proveedor',
+                    'atr_precio_venta_unitario',
+                    'atr_stock_actual',
+                    'atr_stock_minimo',
+                    'atr_stock_maximo',
+                    'atr_activo',
+                    'atr_fecha_creacion',
+                    'atr_fecha_actualizacion',
+                    'atr_creado_por',
+                    'atr_modificado_por'
+                ],
                 where: { atr_activo: true },
                 order: [['atr_nombre_producto', 'ASC']]
             });

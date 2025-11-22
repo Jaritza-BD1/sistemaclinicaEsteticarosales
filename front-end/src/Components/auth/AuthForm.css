@@ -22,6 +22,12 @@ body, .auth-page {
   position: relative;
   z-index: 1;
   text-align: center;
+  /* Hacer el contenedor limitado en altura para que el formulario pueda desplazarse
+     especialmente en dispositivos/screen pequeños. */
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden; /* prevenir que la onda o footer sobresalgan */
 }
 
 /* 3. Cabecera */
@@ -54,6 +60,36 @@ body, .auth-page {
   margin: 0 0 1.5rem;
   font-size: 1.5rem;
   color: #D35D6E;
+}
+
+/* Hacer el área del formulario desplazable cuando su contenido exceda la altura
+   disponible del contenedor. Esto agrega una barra de scroll vertical. */
+.auth-form {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* mejor scrolling en iOS */
+  padding-right: 0.25rem; /* espacio para la scrollbar en algunos navegadores */
+}
+
+/* Estilos visuales para la barra de scroll (WebKit) */
+.auth-form::-webkit-scrollbar {
+  width: 10px;
+}
+.auth-form::-webkit-scrollbar-track {
+  background: transparent;
+}
+.auth-form::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f0a6b3, #d35d6e);
+  border-radius: 8px;
+}
+.auth-form::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #d35d6e, #f0a6b3);
+}
+
+/* Scrollbar para Firefox */
+.auth-form {
+  scrollbar-width: thin;
+  scrollbar-color: #d35d6e transparent;
 }
 
 /* 5. Cada campo con espacio uniforme */

@@ -13,6 +13,8 @@ import {
   PictureAsPdf as PictureAsPdfIcon, TableChart as TableChartIcon
 } from '@mui/icons-material';
 
+import useEspecialidades from '../hooks/useEspecialidades';
+
 // NOTA: jsPDF, jspdf-autotable y xlsx se asumen disponibles globalmente a través de CDN.
 // Eliminar importaciones locales para evitar errores de "Could not resolve".
 
@@ -58,10 +60,8 @@ const theme = createTheme({
   },
 });
 
-// Datos de ejemplo para las especialidades
-const especialidades = [
- 'Estetica', 'Podologia'
-];
+
+// Opciones de especialidades (cargadas desde API)
 
 // Generador de IDs simples para médicos
 let nextDoctorId = 1;
@@ -86,6 +86,8 @@ const RegistrarMedico = ({ onSave, onCancel, generateDoctorId }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
   // Maneja los cambios en los campos del formulario
   const handleChange = (e) => {
@@ -236,11 +238,18 @@ const RegistrarMedico = ({ onSave, onCancel, generateDoctorId }) => {
                     renderValue={(selected) => selected.join(', ')}
                     required
                   >
-                    {especialidades.map((esp) => (
-                      <MenuItem key={esp} value={esp}>
-                        {esp}
-                      </MenuItem>
-                    ))}
+                      {/* opciones cargadas desde la API */}
+                      {(!especialidadesOptions || especialidadesOptions.length === 0) && loadingEspecialidades && (
+                        <MenuItem disabled> Cargando especialidades... </MenuItem>
+                      )}
+                      {especialidadesError && (
+                        <MenuItem disabled> Error cargando especialidades </MenuItem>
+                      )}
+                      {especialidadesOptions && especialidadesOptions.map((esp) => (
+                        <MenuItem key={esp.id} value={esp.name}>
+                          {esp.name}
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -416,6 +425,8 @@ const EditarMedicoModal = ({ open, onClose, doctor, onUpdate }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
+  const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
+
   // Carga los datos del médico cuando el modal se abre o el médico cambia
   useEffect(() => {
     if (doctor) {
@@ -554,9 +565,15 @@ const EditarMedicoModal = ({ open, onClose, doctor, onUpdate }) => {
                 renderValue={(selected) => selected.join(', ')}
                 required
               >
-                {especialidades.map((esp) => (
-                  <MenuItem key={esp} value={esp}>
-                    {esp}
+                {(!especialidadesOptions || especialidadesOptions.length === 0) && loadingEspecialidades && (
+                  <MenuItem disabled> Cargando especialidades... </MenuItem>
+                )}
+                {especialidadesError && (
+                  <MenuItem disabled> Error cargando especialidades </MenuItem>
+                )}
+                {especialidadesOptions && especialidadesOptions.map((esp) => (
+                  <MenuItem key={esp.id} value={esp.name}>
+                    {esp.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -639,6 +656,8 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors, onDelete,
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [doctorToDelete, setDoctorToDelete] = useState(null);
+
+  const { options: especialidadesOptions } = useEspecialidades();
 
   // Estado para el menú de reportes
   const [anchorEl, setAnchorEl] = useState(null);
@@ -783,7 +802,7 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors, onDelete,
               />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth variant="outlined" className="rounded-lg">
+                <FormControl fullWidth variant="outlined" className="rounded-lg">
                 <InputLabel>Filtrar por Especialidad</InputLabel>
                 <Select
                   value={filterEspecialidad}
@@ -791,9 +810,9 @@ const ListaMedicos = ({ onRegisterNew, onEdit, onViewDetails, doctors, onDelete,
                   label="Filtrar por Especialidad"
                 >
                   <MenuItem value=""><em>Todas</em></MenuItem>
-                  {especialidades.map((esp) => (
-                    <MenuItem key={esp} value={esp}>
-                      {esp}
+                  {especialidadesOptions && especialidadesOptions.map((esp) => (
+                    <MenuItem key={esp.id} value={esp.name}>
+                      {esp.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -1015,6 +1034,8 @@ const App = () => {
       },
     ]);
   }, []);
+
+  // Hook para traer especialidades (moved to subcomponents where needed)
 
   // Maneja el guardado de un nuevo médico
   const handleSaveDoctor = (newDoctor) => {

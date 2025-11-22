@@ -56,6 +56,14 @@ export const checkTokenStatus = () => {
 export const resetAppAfterCleanup = () => {
   cleanupAllTokens();
   console.log('🔄 Recargando aplicación en 2 segundos...');
+  try {
+    const attempts = Number(sessionStorage.getItem('__app_reload_attempts__') || 0);
+    if (attempts >= 2) {
+      console.warn('Máximo de recargas automáticas alcanzado en resetAppAfterCleanup. No se recargará.');
+      return;
+    }
+    sessionStorage.setItem('__app_reload_attempts__', String(attempts + 1));
+  } catch (e) {}
   setTimeout(() => {
     window.location.reload();
   }, 2000);

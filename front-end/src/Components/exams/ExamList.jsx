@@ -1,5 +1,6 @@
 // src/components/ExamList.jsx
 import React, { useState } from 'react';
+import { useExamModal } from '../../context/ExamModalContext';
 import {
   Button,
   TextField,
@@ -136,26 +137,22 @@ const ExamList = () => {
     setPage(0);
   };
 
+  // modal helpers
+  const { openResults: openResultsModal, openCreate: openCreateModal } = useExamModal();
+
   // Manejadores para las acciones de la tabla
-  const handleViewDetails = (id) => {
-    console.log('Ver detalles de:', id);
-    // Aquí podrías usar react-router-dom para navegar a /exam-result/:id
-    // navigate(`/exam-result/${id}`);
-  };
+  // (removed unused handleViewDetails) use openResultsModal directly where needed
 
   const handleEdit = (id) => {
     console.log('Editar examen:', id);
-    // Abrir un modal de edición o navegar a CreateExam con datos precargados
   };
 
   const handleUploadResults = (id) => {
     console.log('Cargar resultados para:', id);
-    // Abrir un modal para subir archivos de resultados
   };
 
   const handleCancel = (id) => {
     console.log('Cancelar examen:', id);
-    // Abrir un modal de confirmación antes de cancelar
   };
 
   // --- Funcionalidad de Reportes ---
@@ -380,9 +377,9 @@ const ExamList = () => {
                 <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 180 }}>Acciones</TableCell> {/* Ancho mínimo para acciones */}
               </TableRow>
             </TableHead>
-            <TableBody>
+              <TableBody>
               {filteredExams.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((exam) => (
-                <TableRow key={exam.id} hover>
+                <TableRow key={exam.id} hover onClick={() => openResultsModal && openResultsModal(exam.id)} sx={{ cursor: 'pointer' }}>
                   <TableCell>{exam.id}</TableCell>
                   <TableCell>{exam.patient}</TableCell>
                   <TableCell>{exam.exam}</TableCell>
@@ -393,16 +390,16 @@ const ExamList = () => {
                     <Chip label={exam.status} sx={getStatusColor(exam.status)} size="small" />
                   </TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleViewDetails(exam.id)} size="small" color="info" aria-label="Ver detalles">
+                    <IconButton onClick={(e) => { e.stopPropagation(); openResultsModal && openResultsModal(exam.id); }} size="small" color="info" aria-label="Ver detalles">
                       <Visibility fontSize="small" />
                     </IconButton>
-                    <IconButton onClick={() => handleEdit(exam.id)} size="small" color="primary" aria-label="Editar">
+                    <IconButton onClick={(e) => { e.stopPropagation(); handleEdit(exam.id); }} size="small" color="primary" aria-label="Editar">
                       <Edit fontSize="small" />
                     </IconButton>
-                    <IconButton onClick={() => handleUploadResults(exam.id)} size="small" color="success" aria-label="Cargar resultados">
+                    <IconButton onClick={(e) => { e.stopPropagation(); handleUploadResults(exam.id); }} size="small" color="success" aria-label="Cargar resultados">
                       <UploadFile fontSize="small" />
                     </IconButton>
-                    <IconButton onClick={() => handleCancel(exam.id)} size="small" color="error" aria-label="Cancelar">
+                    <IconButton onClick={(e) => { e.stopPropagation(); handleCancel(exam.id); }} size="small" color="error" aria-label="Cancelar">
                       <Cancel fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -440,13 +437,13 @@ const ExamList = () => {
         color="primary"
         aria-label="add"
         sx={{
-          position: 'fixed',
+          position: 'absolute',
           bottom: 30,
-          right: 30,
+          right: { xs: 30, sm: 30 },
           backgroundColor: 'primary.main',
           '&:hover': { backgroundColor: 'primary.dark' },
         }}
-        onClick={() => console.log('Abrir modal para crear nuevo examen')}
+        onClick={() => openCreateModal && openCreateModal()}
       >
         <Add />
       </Fab>

@@ -1,4 +1,5 @@
-const backupService = require('../services/backupService');
+const BackupService = require('../services/backupService');
+const backupService = new BackupService();
 const logger = require('../utils/logger');
 
 class BackupController {
@@ -50,7 +51,9 @@ class BackupController {
         user,
         password,
         backupPath,
-        fileName
+        fileName,
+        createdBy: req.user?.id || req.user?.atr_id_usuario || null,
+        triggeredBy: req.user?.username || req.user?.atr_usuario || 'manual'
       });
       
       res.json({
@@ -130,7 +133,9 @@ class BackupController {
   // Obtener historial de backups
   async getBackupHistory(req, res) {
     try {
-      const history = await backupService.getBackupHistory();
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const history = await backupService.getBackupHistory({ page, limit });
       res.json(history);
     } catch (error) {
       logger.error('Error obteniendo historial:', error);

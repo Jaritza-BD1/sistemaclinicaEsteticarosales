@@ -158,9 +158,10 @@ const ModalForm = ({
       PaperProps={{
         sx: {
           borderRadius: isMobile ? 0 : 3,
-          background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
+          backgroundColor: 'background.paper',
+          color: 'accent.main',
           border: '1px solid',
-          borderColor: 'primary.200',
+          borderColor: 'brand.paleL2',
           minHeight: isMobile ? '100vh' : 'auto',
           maxHeight: isMobile ? '100vh' : '90vh',
           overflow: 'hidden',
@@ -177,10 +178,10 @@ const ModalForm = ({
               borderRadius: '4px',
             },
             '&::-webkit-scrollbar-thumb': {
-              background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+              background: 'brand.pale',
               borderRadius: '4px',
               '&:hover': {
-                background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                background: 'brand.paleDark',
               },
             },
           }
@@ -188,14 +189,14 @@ const ModalForm = ({
       }}
     >
       <DialogTitle sx={{ 
-        color: 'primary.main', 
+        color: 'accent.main', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
         pb: 1,
         borderBottom: '1px solid',
-        borderColor: 'primary.200',
-        background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)'
+        borderColor: 'brand.paleL2',
+        backgroundColor: 'background.paper'
       }}>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           {title}
@@ -238,10 +239,10 @@ const ModalForm = ({
             borderRadius: '4px',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+            background: 'brand.pale',
             borderRadius: '4px',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+              background: 'brand.paleDark',
             },
           },
           // Prevenir errores de scroll
@@ -258,8 +259,9 @@ const ModalForm = ({
           p: 3, 
           pt: 1,
           borderTop: '1px solid',
-          borderColor: 'primary.200',
-          background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 100%)',
+          borderColor: 'brand.paleL2',
+          backgroundColor: 'background.paper',
+          color: 'accent.main',
           flexWrap: 'wrap',
           gap: 1
         }}>
@@ -292,12 +294,13 @@ const ModalForm = ({
                   variant="contained"
                   disabled={loading || disableSave}
                   sx={{
-                    background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
+                    backgroundColor: 'brand.pale',
+                    color: 'accent.main',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                      backgroundColor: 'brand.paleDark',
                       transform: 'translateY(-1px)',
                     },
-                    boxShadow: '0 4px 14px 0 rgba(236, 72, 153, 0.25)',
+                    boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
                     '&:disabled': {
                       opacity: 0.5,
                       transform: 'none'

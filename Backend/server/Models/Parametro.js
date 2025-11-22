@@ -9,6 +9,7 @@ const Parametro = db.define('tbl_ms_parametros', {
     autoIncrement: true,
   },
   atr_parametro: { type: DataTypes.STRING(50), allowNull: false },
+  atr_parametro: { type: DataTypes.STRING(50), allowNull: false, unique: true },
   atr_valor: { type: DataTypes.STRING(100), allowNull: false },
   atr_id_usuario: { type: DataTypes.INTEGER },
   atr_creado_por: { type: DataTypes.STRING(15) },

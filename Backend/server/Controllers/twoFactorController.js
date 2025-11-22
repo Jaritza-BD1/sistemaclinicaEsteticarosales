@@ -3,7 +3,9 @@ const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const jwt = require('jsonwebtoken');
 const User = require('../Models/User');
-const { BackupCode } = require('../Models/BackupCode');
+const BackupCode = require('../Models/BackupCode');
+const Token = require('../Models/tokenmodel');
+const { Op } = require('sequelize');
 const { generateToken } = require('../helpers/tokenHelper');
 const BitacoraService = require('../services/bitacoraService');
 const { send2FAEmailCode } = require('../utils/mailer');
@@ -17,11 +19,22 @@ exports.generate2FASecret = async (req, res) => {
     const secret = speakeasy.generateSecret({
       length: 20,
       name: `ClínicaEsteticaRosales:${user.atr_usuario}`,
-      issuer: 'ClínicaEsteticacRosales'
+      issuer: 'ClínicaEsteticaRosales'
     });
 
-    // Generar QR Code
-    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+    // Crear una URL otpauth explícita (digits=6, period=30) para compatibilidad con Google Authenticator
+    const otpauthUrl = speakeasy.otpauthURL({
+      secret: secret.base32,
+      label: `ClínicaEsteticaRosales:${user.atr_usuario}`,
+      issuer: 'ClínicaEsteticaRosales',
+      algorithm: 'sha1',
+      digits: 6,
+      period: 30,
+      encoding: 'base32'
+    });
+
+    // Generar QR Code usando la URL otpauth explícita
+    const qrCode = await QRCode.toDataURL(otpauthUrl);
 
     // Guardar secreto temporalmente (sin activar)
     await user.update({ 
@@ -58,12 +71,20 @@ exports.verify2FAToken = async (req, res) => {
     const { token } = req.body;
     const user = req.user;
     
-    // Verificar token
+    // Validar formato del token: debe ser cadena de 6 dígitos
+    if (!token || typeof token !== 'string' || !/^\d{6}$/.test(token)) {
+      return res.status(400).json({ error: 'Código 2FA debe ser una cadena de 6 dígitos' });
+    }
+
+    // Verificar token TOTP (configurado para compatibilidad con Google Authenticator)
     const verified = speakeasy.totp.verify({
       secret: user.atr_2fa_secret,
       encoding: 'base32',
       token: token,
-      window: 1
+      window: 1,
+      algorithm: 'sha1',
+      digits: 6,
+      step: 30
     });
     
     if (!verified) {
@@ -145,12 +166,21 @@ exports.verifyLogin2FA = async (req, res) => {
       return res.status(400).json({ error: '2FA no está habilitado para este usuario' });
     }
 
-    // Verificar token regular
+    // Validar formato del token: debe ser cadena de 6 dígitos
+    if (!token || typeof token !== 'string' || !/^\d{6}$/.test(token)) {
+      console.log('2FA token invalid format for user:', { userId, token });
+      return res.status(400).json({ error: 'Token debe ser una cadena de 6 dígitos' });
+    }
+
+    // Verificar token TOTP (compatibilidad con Google Authenticator)
     const verified = speakeasy.totp.verify({
       secret: user.atr_2fa_secret,
       encoding: 'base32',
       token: token,
-      window: 1
+      window: 1,
+      algorithm: 'sha1',
+      digits: 6,
+      step: 30
     });
 
     if (verified) {
@@ -280,18 +310,31 @@ exports.resend2FACode = async (req, res) => {
     }
 
     // Generar código de 6 dígitos
-    const emailCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Guardar el código temporalmente (podrías usar Redis en producción)
-    await user.update({ 
-      atr_email_2fa_code: emailCode,
-      atr_email_2fa_expiry: new Date(Date.now() + 10 * 60 * 1000) // 10 minutos
+    const emailCode = Token.generateOTP ? Token.generateOTP() : Math.floor(100000 + Math.random() * 900000).toString();
+    const expiration = Token.generateExpirationDate ? Token.generateExpirationDate(10) : new Date(Date.now() + 10 * 60 * 1000);
+
+    // Invalidar OTPs anteriores del mismo tipo
+    await Token.update({ atr_utilizado: true }, {
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_tipo: 'LOGIN_OTP',
+        atr_utilizado: false
+      }
+    });
+
+    // Crear nuevo token OTP para login
+    await Token.create({
+      atr_id_usuario: user.atr_id_usuario,
+      atr_codigo: emailCode,
+      atr_tipo: 'LOGIN_OTP',
+      atr_fecha_expiracion: expiration,
+      atr_creado_por: 'SISTEMA'
     });
 
     // Enviar email con el código
     await send2FAEmailCode(user.atr_correo_electronico, emailCode, user.atr_nombre_usuario);
 
-    console.log('2FA email code sent to user:', userId);
+    console.log('2FA email code (Token) created and sent to user:', userId);
     
     res.json({ message: 'Código enviado por email' });
   } catch (error) {
@@ -317,18 +360,21 @@ exports.verifyEmail2FACode = async (req, res) => {
       return res.status(400).json({ error: '2FA no está habilitado para este usuario' });
     }
 
-    // Verificar el código
-    if (user.atr_email_2fa_code !== token || 
-        !user.atr_email_2fa_expiry || 
-        user.atr_email_2fa_expiry < new Date()) {
-      return res.status(400).json({ error: 'Código inválido o expirado' });
-    }
-
-    // Limpiar el código usado
-    await user.update({ 
-      atr_email_2fa_code: null,
-      atr_email_2fa_expiry: null
+    // Buscar token válido en tbl_ms_token
+    const t = await Token.findOne({
+      where: {
+        atr_id_usuario: user.atr_id_usuario,
+        atr_codigo: token,
+        atr_tipo: 'LOGIN_OTP',
+        atr_utilizado: false,
+        atr_fecha_expiracion: { [Op.gt]: new Date() }
+      }
     });
+
+    if (!t) return res.status(400).json({ error: 'Código inválido o expirado' });
+
+    // Marcar como utilizado
+    await t.update({ atr_utilizado: true, atr_fecha_modificacion: new Date(), atr_modificado_por: 'SISTEMA' });
 
     // Generar JWT para autenticación completa
     const authToken = jwt.sign(
@@ -336,23 +382,17 @@ exports.verifyEmail2FACode = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
-    
+
     // Preparar respuesta segura
     const safeUser = user.toJSON();
     delete safeUser.atr_contrasena;
     delete safeUser.atr_2fa_secret;
     delete safeUser.atr_reset_token;
     delete safeUser.atr_reset_expiry;
-    delete safeUser.atr_email_2fa_code;
-    delete safeUser.atr_email_2fa_expiry;
-    
-    console.log('2FA email code verified successfully for user:', userId);
-    
-    return res.json({ 
-      token: authToken, 
-      user: safeUser,
-      message: 'Verificación por email exitosa' 
-    });
+
+    console.log('2FA email code (Token) verified successfully for user:', userId);
+
+    return res.json({ token: authToken, user: safeUser, message: 'Verificación por email exitosa' });
   } catch (error) {
     console.error('Error verificando código 2FA por email:', error);
     res.status(500).json({ error: 'Error en el servidor' });

@@ -37,7 +37,11 @@ import {
   CheckCircle as CheckIcon,
   Badge as BadgeIcon
 } from '@mui/icons-material';
+import { CircularProgress } from '@mui/material';
+import useEspecialidades from '../../hooks/useEspecialidades';
+import useGeneros from '../../hooks/useGeneros';
 import './DoctorRegistrationForm.css';
+import DoctorSchedule from './DoctorSchedule';
 
 function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   const theme = useTheme();
@@ -68,6 +72,18 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   };
 
   // Estado para los datos del médico
+  // Normalizar listas de contacto para que siempre tengan la forma esperada por la UI/backend
+  const normalizeContactList = (list, type) => {
+    if (!list || !Array.isArray(list) || list.length === 0) return [];
+    return list.map((item, idx) => {
+      const id = item.id || item.atr_id_telefono || item.atr_id_correo_m || item.atr_id_direccion_m || idx + 1;
+      if (type === 'telefonos') return { id, atr_telefono: item.atr_telefono || item.atr_telefono || item.value || '' };
+      if (type === 'correos') return { id, atr_correo: item.atr_correo || item.atr_correo || item.value || item.email || '' };
+      if (type === 'direcciones') return { id, atr_direccion_completa: item.atr_direccion_completa || item.address || '' };
+      return { id, ...item };
+    });
+  };
+
   const [doctor, setDoctor] = useState({
     atr_nombre: initialData.atr_nombre || '',
     atr_apellido: initialData.atr_apellido || '',
@@ -76,10 +92,32 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
     atr_id_genero: initialData.atr_id_genero || '',
     atr_numero_colegiado: initialData.atr_numero_colegiado || '',
     atr_id_tipo_medico: initialData.atr_id_tipo_medico || '',
-    telefonos: initialData.telefonos || [],
-    direcciones: initialData.direcciones || [],
-    correos: initialData.correos || [],
-    especialidades: initialData.especialidades || [{ id: 1, atr_especialidad: '' }],
+    telefonos: normalizeContactList(initialData.telefonos, 'telefonos'),
+    direcciones: normalizeContactList(initialData.direcciones, 'direcciones'),
+    correos: normalizeContactList(initialData.correos, 'correos'),
+    especialidades: (() => {
+      // Normalizar distintos formatos que puede traer `initialData`:
+      // - initialData.Especialidades (Sequelize association): [{ atr_id_especialidad, atr_especialidad }, ...]
+      // - initialData.especialidades: puede ser array de objetos, ids o nombres
+      const raw = initialData.Especialidades || initialData.especialidades || [];
+      if (!raw || !Array.isArray(raw) || raw.length === 0) return [{ id: 1, atr_id_especialidad: null, atr_especialidad: '' }];
+
+      return raw.map((e, idx) => {
+        if (typeof e === 'number') {
+          return { id: idx + 1, atr_id_especialidad: e, atr_especialidad: '' };
+        }
+        if (typeof e === 'string') {
+          return { id: idx + 1, atr_id_especialidad: null, atr_especialidad: e };
+        }
+
+        // objeto
+        const idVal = e.atr_id_especialidad || e.id || e.atr_id || e.value || null;
+        const nameVal = e.atr_especialidad || e.atr_nombre || e.name || e.label || '';
+        return { id: idx + 1, atr_id_especialidad: idVal, atr_especialidad: nameVal };
+      });
+    })(),
+    // Horarios: estructura { Lunes: [{start, end}], Martes: [...], ... }
+    horarios: (initialData.horarios && typeof initialData.horarios === 'object') ? initialData.horarios : {},
   });
 
   // Estado para el paso actual del formulario
@@ -89,12 +127,8 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   // Estado para notificaciones
   const [notification, setNotification] = useState(null);
 
-  // Datos simulados para selectores
-  const mockGeneros = [
-    { id: 1, name: 'Masculino' },
-    { id: 2, name: 'Femenino' },
-    { id: 3, name: 'Otro' },
-  ];
+  // Géneros cargados desde API
+  const { options: mockGeneros, loading: loadingGeneros } = useGeneros();
 
   const mockTiposMedico = [
     { id: 1, name: 'Médico General' },
@@ -102,24 +136,9 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
     { id: 3, name: 'Cirujano' },
     { id: 4, name: 'Residente' },
   ];
+  
 
-  const mockEspecialidades = [
-    'Cardiología',
-    'Dermatología',
-    'Pediatría',
-    'Medicina General',
-    'Neurología',
-    'Ginecología',
-    'Oftalmología',
-    'Ortopedia',
-    'Urología',
-    'Psiquiatría',
-    'Oncología',
-    'Endocrinología',
-    'Gastroenterología',
-    'Neumología',
-    'Reumatología',
-  ];
+  const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
   // Función para mostrar notificaciones
   const showNotification = (message, type = 'success') => {
@@ -131,56 +150,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
     setNotification(prev => ({ ...prev, open: false }));
   };
 
-  // Función para debug - mostrar estado actual
-  const debugFormState = () => {
-    console.log('🔍 DEBUG - Estado actual del formulario:');
-    console.log('📋 Datos del médico:', doctor);
-    console.log('📍 Paso actual:', currentStep);
-    console.log('📅 Fecha convertida:', convertDateFormat('05/06/1993'));
-  };
-
-  // Función para avanzar automáticamente (solo para pruebas)
-  const autoAdvance = () => {
-    console.log('🚀 Avanzando automáticamente a través de todos los pasos...');
-    setCurrentStep(4); // Ir directamente al paso de confirmación
-  };
-
-  // Función para ir al paso de contacto (solo para pruebas)
-  const goToContactStep = () => {
-    console.log('📞 Yendo al paso de información de contacto...');
-    setCurrentStep(3);
-  };
-
-  // Función para probar la validación directamente
-  const testValidation = () => {
-    console.log('🧪 Probando validación del paso actual...');
-    console.log('📍 Paso actual:', currentStep);
-    console.log('📋 Datos del doctor:', doctor);
-    
-    const result = validateCurrentStep();
-    console.log('✅ Resultado de la prueba:', result);
-    
-    if (result) {
-      showNotification('✅ Validación exitosa - el formulario puede avanzar', 'success');
-    } else {
-      showNotification('❌ Validación falló - revisa los campos requeridos', 'error');
-    }
-  };
-
-  // Función para forzar el avance (solo para pruebas)
-  const forceAdvance = () => {
-    console.log('🚀 Forzando avance al siguiente paso...');
-    console.log('📍 Paso actual:', currentStep);
-    
-    if (currentStep < totalSteps) {
-      console.log('✅ Forzando avance al paso:', currentStep + 1);
-      setCurrentStep(currentStep + 1);
-      showNotification(`✅ Avanzado al paso ${currentStep + 1}`, 'success');
-    } else {
-      console.log('✅ Forzando envío del formulario');
-      handleSubmit();
-    }
-  };
+  
 
   // Función para limpiar campos vacíos
   const cleanEmptyFields = () => {
@@ -251,6 +221,12 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
           showNotification('El número de identidad debe contener exactamente 13 dígitos numéricos.', 'error');
           return false;
         }
+
+        // Max length según modelo: varchar(20)
+        if (doctor.atr_identidad && doctor.atr_identidad.length > 20) {
+          showNotification('El número de identidad no puede exceder 20 caracteres.', 'error');
+          return false;
+        }
         
         // Validar que se haya seleccionado un género
         if (!doctor.atr_id_genero) {
@@ -275,6 +251,55 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         if (!doctor.atr_id_tipo_medico) {
           console.log('❌ Error: Tipo de médico no seleccionado');
           showNotification('Por favor, seleccione el tipo de médico.', 'error');
+          return false;
+        }
+
+        // Validar longitud del número de colegiado según modelo varchar(15)
+        if (doctor.atr_numero_colegiado && doctor.atr_numero_colegiado.length > 15) {
+          showNotification('El número de colegiado no puede exceder 15 caracteres.', 'error');
+          return false;
+        }
+
+        // Validar que las especialidades seleccionadas sean válidas (deben tener id)
+        const hasInvalidEspecialidad = doctor.especialidades.some(e => !e.atr_id_especialidad);
+        if (hasInvalidEspecialidad) {
+          console.log('❌ Error: Hay especialidades sin id seleccionadas');
+          showNotification('Por favor seleccione especialidades válidas desde la lista (no cree nuevas).', 'error');
+          return false;
+        }
+
+        // Validar horarios (formato HH:MM y hora inicio < hora fin)
+        const validateHorarios = () => {
+          if (!doctor.horarios || Object.keys(doctor.horarios).length === 0) return true;
+          const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+          const errors = [];
+          Object.entries(doctor.horarios).forEach(([day, intervals]) => {
+            if (!Array.isArray(intervals)) return;
+            intervals.forEach((iv, idx) => {
+              const start = iv.start;
+              const end = iv.end;
+              if (!start || !end) {
+                errors.push(`${day} intervalo ${idx + 1}: faltan horas`);
+                return;
+              }
+              if (!timeRegex.test(start) || !timeRegex.test(end)) {
+                errors.push(`${day} intervalo ${idx + 1}: formato de hora inválido`);
+                return;
+              }
+              if (start >= end) {
+                errors.push(`${day} intervalo ${idx + 1}: la hora de inicio debe ser menor que la hora de fin`);
+              }
+            });
+          });
+          if (errors.length > 0) {
+            showNotification('Horarios inválidos: ' + errors.join('; '), 'error');
+            return false;
+          }
+          return true;
+        };
+
+        if (!validateHorarios()) {
+          console.log('❌ Error: Horarios inválidos');
           return false;
         }
         
@@ -324,10 +349,28 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         
         console.log('✅ Información de Contacto válida');
         break;
-      case 4: // Confirmación
-        console.log('✅ Confirmación - sin validación');
-        break;
-    }
+        case 4: // Confirmación
+            // Antes de guardar, validar horarios también por seguridad
+            if (doctor.horarios && Object.keys(doctor.horarios).length > 0) {
+              const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+              for (const [day, intervals] of Object.entries(doctor.horarios)) {
+                if (!Array.isArray(intervals)) continue;
+                for (let i = 0; i < intervals.length; i++) {
+                  const iv = intervals[i];
+                  const start = iv.start;
+                  const end = iv.end;
+                  if (!start || !end || !timeRegex.test(start) || !timeRegex.test(end) || start >= end) {
+                    showNotification('Revise los horarios: hay intervalos inválidos antes de guardar.', 'error');
+                    return false;
+                  }
+                }
+              }
+            }
+            console.log('✅ Confirmación - sin validación adicional');
+          break;
+        default:
+          break;
+      }
     console.log('✅ Paso válido, continuando...');
     return true;
   };
@@ -386,9 +429,12 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   // Manejador de cambios para campos simples
   const handleChange = (e) => {
     const { name, value } = e.target;
+    // Coerce numeric selects to numbers so Sequelize receives correct types
+    const numericFields = ['atr_id_tipo_medico', 'atr_id_genero'];
+    const newValue = numericFields.includes(name) ? (value === '' ? '' : Number(value)) : value;
     setDoctor(prevDoctor => ({
       ...prevDoctor,
-      [name]: value
+      [name]: newValue
     }));
   };
 
@@ -403,13 +449,22 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   };
 
   const handleAddDynamicField = (type) => {
-    const newId = Math.max(...doctor[type].map(item => item.id)) + 1;
+    const newId = doctor[type].length > 0 ? Math.max(...doctor[type].map(item => item.id)) + 1 : 1;
+    const defaultItem = (type === 'especialidades')
+      ? { id: newId, atr_id_especialidad: null, atr_especialidad: '' }
+      : (type === 'telefonos')
+        ? { id: newId, atr_telefono: '' }
+        : (type === 'direcciones')
+          ? { id: newId, atr_direccion_completa: '' }
+          : (type === 'correos')
+            ? { id: newId, atr_correo: '' }
+            : { id: newId };
+
     setDoctor(prevDoctor => ({
       ...prevDoctor,
-      [type]: [...prevDoctor[type], { id: newId, [type === 'especialidades' ? 'atr_especialidad' : `atr_${type.slice(0, -1)}`]: '' }]
+      [type]: [...prevDoctor[type], defaultItem]
     }));
   };
-
   const handleRemoveDynamicField = (type, id) => {
     if (doctor[type].length > 1) {
       setDoctor(prevDoctor => ({
@@ -419,16 +474,33 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
     }
   };
 
+  // Horarios handler
+  const handleHorariosChange = (nextHorarios) => {
+    setDoctor(prev => ({ ...prev, horarios: nextHorarios }));
+  };
+
   // Función para manejar el envío del formulario
   const handleSubmit = () => {
     if (validateCurrentStep()) {
+      // Forzar parseo numérico de selects por seguridad
+      const finalDoctor = {
+        ...doctor,
+        atr_id_tipo_medico: doctor.atr_id_tipo_medico === '' || doctor.atr_id_tipo_medico === null ? null : Number(doctor.atr_id_tipo_medico),
+        atr_id_genero: doctor.atr_id_genero === '' || doctor.atr_id_genero === null ? null : Number(doctor.atr_id_genero)
+      };
+
       // Filtrar campos vacíos
       const cleanDoctor = {
-        ...doctor,
-        telefonos: doctor.telefonos.filter(t => t.atr_telefono.trim() !== ''),
-        direcciones: doctor.direcciones.filter(d => d.atr_direccion_completa.trim() !== ''),
-        correos: doctor.correos.filter(c => c.atr_correo.trim() !== ''),
-        especialidades: doctor.especialidades.filter(e => e.atr_especialidad.trim() !== ''),
+        ...finalDoctor,
+        telefonos: finalDoctor.telefonos.filter(t => t.atr_telefono && t.atr_telefono.trim() !== ''),
+        direcciones: finalDoctor.direcciones.filter(d => d.atr_direccion_completa && d.atr_direccion_completa.trim() !== ''),
+        correos: finalDoctor.correos.filter(c => c.atr_correo && c.atr_correo.trim() !== ''),
+        // Enviar 'especialidades' como array de ids tal y como espera el backend
+        especialidades: finalDoctor.especialidades
+          .map(e => (typeof e === 'number' ? e : e.atr_id_especialidad || null))
+          .filter(id => !!id),
+        // Incluir horarios en el payload (puede ser objeto con arrays por día)
+        horarios: finalDoctor.horarios || {},
       };
 
       if (onSave) {
@@ -536,9 +608,9 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       onChange={handleChange}
                       label="Género *"
                     >
-                      {mockGeneros.map(genero => (
-                        <MenuItem key={genero.id} value={genero.id}>
-                          {genero.name}
+                      {mockGeneros.map(g => (
+                        <MenuItem key={g.value} value={g.value}>
+                          {g.label}
                         </MenuItem>
                       ))}
                     </Select>
@@ -623,20 +695,37 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                 {doctor.especialidades.map((especialidad, index) => (
                   <Box key={especialidad.id} className="dynamic-field">
                     <Autocomplete
-                      freeSolo
-                      options={mockEspecialidades}
-                      value={especialidad.atr_especialidad}
+                      options={especialidadesOptions}
+                      getOptionLabel={(option) => option.name}
+                      value={especialidadesOptions.find(o => o.id === especialidad.atr_id_especialidad) || null}
                       onChange={(event, newValue) => {
-                        handleDynamicChange('especialidades', especialidad.id, 'atr_especialidad', newValue || '');
+                        const name = newValue ? newValue.name : '';
+                        const id = newValue ? newValue.id : null;
+                        handleDynamicChange('especialidades', especialidad.id, 'atr_id_especialidad', id);
+                        handleDynamicChange('especialidades', especialidad.id, 'atr_especialidad', name);
                       }}
                       renderInput={(params) => (
                         <TextField
                           {...params}
                           label={`Especialidad ${index + 1}`}
                           className="form-field"
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {loadingEspecialidades ? <CircularProgress size={18} style={{ marginRight: 8 }} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            )
+                          }}
                         />
                       )}
                     />
+                    {especialidadesError && (
+                      <Typography variant="caption" color="error">
+                        Error cargando especialidades: {especialidadesError}
+                      </Typography>
+                    )}
                     {doctor.especialidades.length > 1 && (
                       <IconButton
                         onClick={() => handleRemoveDynamicField('especialidades', especialidad.id)}
@@ -654,6 +743,11 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                 >
                   Agregar Especialidad
                 </Button>
+              </Box>
+
+              {/* Horarios de Atención */}
+              <Box sx={{ mt: 3 }}>
+                <DoctorSchedule value={doctor.horarios} onChange={handleHorariosChange} />
               </Box>
             </CardContent>
           </Card>

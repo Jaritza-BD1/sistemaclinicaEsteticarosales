@@ -277,27 +277,30 @@ export const doctorSchema = Yup.object({
 
 // Esquema para citas
 export const appointmentSchema = Yup.object({
-  title: Yup.string()
+  motivo: Yup.string()
     .min(5, 'El motivo debe tener al menos 5 caracteres')
     .max(200, 'El motivo no puede exceder 200 caracteres')
     .required('El motivo de la cita es obligatorio'),
   
-  start: Yup.date()
+  fecha: Yup.date()
     .min(new Date(), 'La fecha debe ser futura')
-    .required('La fecha y hora es obligatoria'),
+    .required('La fecha es obligatoria'),
   
-  status: Yup.string()
-    .oneOf(['programada', 'confirmada', 'en_proceso', 'completada', 'cancelada'], 'Estado inválido')
+  hora: Yup.string()
+    .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:MM)')
+    .required('La hora es obligatoria'),
+  
+  estado: Yup.string()
+    .oneOf(['PROGRAMADA', 'CONFIRMADA', 'EN_CONSULTA', 'PENDIENTE_PAGO', 'FINALIZADA', 'CANCELADA', 'NO_ASISTIO'], 'Estado inválido')
     .required('El estado es obligatorio'),
   
-  patientId: Yup.string()
+  pacienteId: Yup.number()
     .required('El paciente es obligatorio'),
   
-  doctorId: Yup.string()
+  medicoId: Yup.number()
     .required('El médico es obligatorio'),
   
-  tipo_cita: Yup.string()
-    .oneOf(['consulta', 'emergencia', 'control', 'especialista'], 'Tipo de cita inválido')
+  tipoCitaId: Yup.number()
     .required('El tipo de cita es obligatorio')
 });
 
@@ -427,7 +430,7 @@ export const profileSchema = Yup.object({
     }),
   
   changePassword: Yup.boolean(),
-  twoFactorEnabled: Yup.boolean(),
+  dos_fa_enabled: Yup.boolean(),
   
   notifications: Yup.object({
     email: Yup.boolean(),

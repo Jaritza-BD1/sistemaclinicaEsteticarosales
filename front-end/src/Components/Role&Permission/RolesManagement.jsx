@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Typography,
   Button,
@@ -35,8 +35,8 @@ const RolesManagement = ({ onNotification }) => {
   const [dense, setDense] = useState(false);
   const itemsPerPage = 10;
 
-  // Cargar roles
-  const fetchRoles = async (page = 1) => {
+  // Cargar roles (memoizada para evitar warnings de dependencias en useEffect)
+  const fetchRoles = useCallback(async (page = 1) => {
     setLoading(true);
     setError('');
     try {
@@ -50,12 +50,16 @@ const RolesManagement = ({ onNotification }) => {
       const response = await api.get('/roles', { params });
       console.log('Roles response:', response);
       
-      // El interceptor ya devuelve response.data, así que accedemos directamente
-      setRoles(response.data || []);
-      setTotalPages(response.meta?.totalPages || 1);
-      setTotalRecords(response.meta?.total || 0);
+      // Normalizar formatos de respuesta (array directo o { data, meta })
+      const payload = response.data;
+      const rolesArray = Array.isArray(payload) ? payload : (payload && (payload.data || payload.roles)) || [];
+      const meta = (payload && payload.meta) || response.meta || {};
+
+      setRoles(rolesArray);
+      setTotalPages(meta?.totalPages || meta?.total_pages || 1);
+      setTotalRecords(meta?.total || 0);
       
-      console.log('Roles state updated:', response.data || []);
+      console.log('Roles state updated:', rolesArray);
     } catch (error) {
       console.error('Error fetching roles:', error);
       setError('Error al cargar los roles');
@@ -63,19 +67,20 @@ const RolesManagement = ({ onNotification }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, itemsPerPage, onNotification]);
 
   // Cargar roles al montar el componente
   useEffect(() => {
     console.log('Component mounted, fetching roles...');
     fetchRoles(currentPage);
-  }, [currentPage]);
+  }, [currentPage, fetchRoles]);
 
   // Cargar roles cuando cambian los filtros
   useEffect(() => {
-    console.log('Filters changed, fetching roles...');
+    console.log('Filters changed, resetting to first page...');
+    // Solo resetear la página; el otro useEffect (dependiente de currentPage)
+    // se encargará de llamar a fetchRoles y evitar llamadas duplicadas.
     setCurrentPage(1);
-    fetchRoles(1);
   }, [searchTerm]);
 
   // Manejar cambio de página

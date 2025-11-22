@@ -108,7 +108,9 @@ const SignUp = () => {
       });
 
       if (response.status === 201) {
-        navigate('/welcome'); // Redirigir después de registro exitoso
+        // Redirigir al formulario de verificación por código OTP
+        // Pasar el email en el state para que la página de verificación pueda reenviar el código si es necesario
+        navigate('/verify-email', { state: { email: formData.email } });
       }
     } catch (error) {
       setApiError('Error en el registro. Intente nuevamente.');
