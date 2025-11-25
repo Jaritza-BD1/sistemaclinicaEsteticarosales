@@ -1,7 +1,9 @@
 import api from './api';
 import { throwParsedAxiosError } from './httpHelper';
 
-const base = '/api/admin/maintenance';
+// `api` client already includes the `/api` prefix in its baseURL,
+// so use paths relative to that base (avoid duplicating `/api`).
+const base = '/admin/maintenance';
 
 // helper: build an id path segment which may be a primitive, array or string like '1/2'
 const buildIdSegment = (id) => {
@@ -91,7 +93,7 @@ export const create = async (model, payload) => {
     // Special-case Permiso create/upsert which uses a dedicated endpoint for business logic
     if (String(model).toLowerCase() === 'permiso' || String(model).toLowerCase() === 'permisos') {
       const normalized = normalizePermisoPayload(payload);
-      const res = await api.post('/api/permisos/upsert', normalized);
+      const res = await api.post('/permisos/upsert', normalized);
       return res;
     }
     const res = await api.post(`${base}/${model}`, payload);
@@ -104,7 +106,7 @@ export const update = async (model, id, payload) => {
     // Special-case Permiso: use upsert endpoint instead of generic PUT when updating permissions
     if (String(model).toLowerCase() === 'permiso' || String(model).toLowerCase() === 'permisos') {
       const normalized = normalizePermisoPayload(payload);
-      const res = await api.post('/api/permisos/upsert', normalized);
+      const res = await api.post('/permisos/upsert', normalized);
       return res;
     }
     const idSeg = buildIdSegment(id);
@@ -133,11 +135,10 @@ export const checkUnique = async (model, field, value, id = null) => {
 
 export const exportData = async (model, format = 'csv') => {
   try {
-    const url = `${base}/${model}/export?format=${format}`;
-  // For binary responses we still use axios directly to preserve responseType support
-  const axios = require('axios');
-  const res = await axios.get(url, { responseType: 'blob' });
-  return res;
+    const url = `${base}/${model}/export`;
+    // Use the shared api client so baseURL is applied; request binary blob via responseType
+    const res = await api.get(url, { params: { format }, responseType: 'blob' });
+    return res;
   } catch (err) { throwParsedAxiosError(err); }
 };
 

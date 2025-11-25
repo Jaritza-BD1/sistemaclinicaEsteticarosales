@@ -5,10 +5,24 @@ import * as doctorApi from '../../services/doctorService';
 // Thunks para operaciones CRUD de médicos
 export const fetchDoctors = createAsyncThunk(
   'doctors/fetchDoctors',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await doctorApi.fetchDoctors();
-      return response.data.data;
+      const response = await doctorApi.fetchDoctors(params);
+      // Normalizar distintas estructuras: { data: { data: [...], meta: {...} } } o { data: [...], meta: {...} } o array
+      let items = [];
+      let meta = {};
+      if (!response) {
+        items = [];
+      } else if (Array.isArray(response)) {
+        items = response;
+      } else if (response.data) {
+        // response.data puede ser el array o un objeto con data/meta
+        items = response.data.data ?? response.data.items ?? response.data;
+        meta = response.data.meta ?? response.data.pagination ?? {};
+      } else {
+        items = response.data ?? response;
+      }
+      return { items, meta };
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || error.message);
     }
@@ -72,6 +86,10 @@ const doctorsSlice = createSlice({
     activeDoctors: [], // Lista de médicos activos para formularios
     status: 'idle', // Estado general: 'idle', 'loading', 'succeeded', 'failed'
     error: null, // Mensaje de error
+    // Meta para paginación server-side
+    total: 0,
+    page: 1,
+    pageSize: 10,
   },
   reducers: {
     clearError: (state) => {
@@ -90,7 +108,11 @@ const doctorsSlice = createSlice({
       })
       .addCase(fetchDoctors.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.items = action.payload;
+        state.items = action.payload.items ?? [];
+        // actualizar meta si viene
+        state.total = action.payload.meta?.total ?? state.total;
+        state.page = action.meta?.arg?.page ?? action.payload.meta?.page ?? state.page;
+        state.pageSize = action.meta?.arg?.pageSize ?? action.payload.meta?.pageSize ?? state.pageSize;
         state.error = null;
       })
       .addCase(fetchDoctors.rejected, (state, action) => {

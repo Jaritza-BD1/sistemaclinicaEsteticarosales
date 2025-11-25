@@ -3,8 +3,85 @@ const { Appointment, Patient, Doctor, User, Recordatorio, EstadoCita, TipoCita, 
 const { APPOINTMENT_STATUS } = require('../Config/appointmentStatus');
 const { CITA_ESTADOS } = require('../Config/statusCodes');
 const { Op } = require('sequelize');
-const { sequelize } = require('../Models');
+const Sequelize = require('sequelize');
+const sequelize = require('../Config/db');
 const bitacoraService = require('./bitacoraService');
+const { registrarEstadoRecordatorio, ESTADOS_RECORDATORIO } = require('../utils/reminderUtils');
+
+// Helper: parse a date string `YYYY-MM-DD` as a local Date (avoid UTC shift)
+const parseLocalDate = (dateStr) => {
+  if (!dateStr) return null;
+  const s = String(dateStr);
+  const parts = s.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(dateStr);
+};
+
+// Helper: remove diacritics from a string (e.g. 'Miércoles' -> 'Miercoles')
+const removeDiacritics = (str) => {
+  if (!str) return str;
+  try {
+    return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  } catch (e) {
+    // Fallback (should be equivalent)
+    return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+};
+
+// Build a set of possible representations for a weekday to improve matching
+const buildDayCandidates = (date) => {
+  if (!date || !(date instanceof Date) || isNaN(date)) return [];
+  const rawDayES = date.toLocaleDateString('es-ES', { weekday: 'long' });
+  const dayES = rawDayES ? (rawDayES.charAt(0).toUpperCase() + rawDayES.slice(1).toLowerCase()) : rawDayES;
+  const dayESNoAccent = dayES ? removeDiacritics(dayES) : dayES;
+  const dayAbbrevES = dayES ? dayES.slice(0, 3) : null;
+  const dayAbbrevESNoAccent = dayAbbrevES ? removeDiacritics(dayAbbrevES) : dayAbbrevES;
+
+  const rawDayEN = date.toLocaleDateString('en-US', { weekday: 'long' });
+  const dayEN = rawDayEN ? (rawDayEN.charAt(0).toUpperCase() + rawDayEN.slice(1).toLowerCase()) : rawDayEN;
+  const dayENNoAccent = dayEN ? removeDiacritics(dayEN) : dayEN;
+
+  const dayNumber = date.getDay(); // 0 = Sunday ... 6 = Saturday
+
+  const candidates = [
+    dayES,
+    dayESNoAccent,
+    dayAbbrevES,
+    dayAbbrevESNoAccent,
+    dayEN,
+    dayENNoAccent,
+    String(dayNumber),
+    String(dayNumber + 1) // some systems use 1-7
+  ].filter(Boolean).map(s => String(s).trim().toLowerCase());
+
+  // deduplicate
+  return Array.from(new Set(candidates));
+};
+
+// Find doctor's schedule with tolerant matching for day and estado
+const findDoctorSchedule = async (medicoId, appointmentDate, transaction = null) => {
+  const candidates = buildDayCandidates(appointmentDate);
+
+  // If we couldn't build candidates, fallback to searching only by medicoId and ACTIVO
+  const dayOrConditions = candidates.length > 0 ? candidates.map(c => Sequelize.where(Sequelize.fn('LOWER', Sequelize.fn('TRIM', Sequelize.col('atr_dia'))), c)) : [];
+
+  const where = {
+    atr_id_medico: medicoId,
+    [Op.and]: Sequelize.where(Sequelize.fn('LOWER', Sequelize.fn('TRIM', Sequelize.col('atr_estado'))), 'activo')
+  };
+
+  if (dayOrConditions.length) where[Op.or] = dayOrConditions;
+
+  const opts = { where };
+  if (transaction) opts.transaction = transaction;
+
+  return await MedicoHorario.findOne(opts);
+};
 
 module.exports = {
   async createAppointment({ pacienteId, medicoId, fecha, hora, tipoCita, motivo, duracion, userId }) {
@@ -27,17 +104,13 @@ module.exports = {
     }
 
     // Validar disponibilidad con MedicoHorario
-    const appointmentDate = new Date(fecha);
-    const dayOfWeek = appointmentDate.toLocaleDateString('es-ES', { weekday: 'long' });
+    const appointmentDate = parseLocalDate(fecha);
+    const rawDay = appointmentDate.toLocaleDateString('es-ES', { weekday: 'long' });
+    const dayOfWeek = rawDay ? (rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()) : rawDay;
     const appointmentTime = hora;
 
-    const doctorSchedule = await MedicoHorario.findOne({
-      where: {
-        atr_id_medico: medicoId,
-        atr_dia: dayOfWeek,
-        atr_estado: 'ACTIVO'
-      }
-    });
+    // Use tolerant lookup helper that matches multiple formats (case, accents, abbrev, english, numeric)
+    const doctorSchedule = await findDoctorSchedule(medicoId, appointmentDate);
 
     if (!doctorSchedule) {
       throw new Error(`El médico no tiene horario disponible para ${dayOfWeek}`);
@@ -166,7 +239,7 @@ module.exports = {
         { model: Patient, as: 'Patient' },
         { model: Doctor, as: 'Doctor' },
         { model: User, as: 'User' },
-        { model: Recordatorio, as: 'Recordatorio' },
+        { model: Recordatorio, as: 'Recordatorios' },
         { model: EstadoCita, as: 'EstadoCita' },
         { model: TipoCita, as: 'TipoCita' }
       ]
@@ -176,100 +249,112 @@ module.exports = {
     // Actualizar el estado de la cita a "Confirmada" (asumiendo ID 2)
     return Appointment.update({ atr_id_estado: 2 }, { where: { atr_id_cita: id } });
   },
-  async reschedule(id, { nuevaFecha, nuevaHora, motivo, userId }) {
-    const appointment = await Appointment.findByPk(id, {
-      include: [
-        { model: EstadoCita, as: 'EstadoCita' }
-      ]
-    });
+  async reschedule(id, { nuevaFecha, nuevaHora, motivo, userId, recordatorio }) {
+    // Wrap reprogram and optional reminder create/update in a transaction
+    await sequelize.transaction(async (t) => {
+      const appointment = await Appointment.findByPk(id, {
+        include: [ { model: EstadoCita, as: 'EstadoCita' } ],
+        transaction: t
+      });
 
-    if (!appointment) {
-      throw new Error('Cita no encontrada');
-    }
-
-    // Verificar que no esté en estado final
-    const currentStatus = appointment.EstadoCita?.atr_nombre_estado;
-    const finalStatuses = [APPOINTMENT_STATUS.FINALIZADA, APPOINTMENT_STATUS.CANCELADA, APPOINTMENT_STATUS.NO_ASISTIO];
-    if (finalStatuses.includes(currentStatus)) {
-      throw new Error(`No se puede reprogramar una cita en estado ${currentStatus}`);
-    }
-
-    // Validar disponibilidad con MedicoHorario
-    const appointmentDate = new Date(nuevaFecha);
-    const dayOfWeek = appointmentDate.toLocaleDateString('es-ES', { weekday: 'long' });
-    const appointmentTime = nuevaHora;
-
-    const doctorSchedule = await MedicoHorario.findOne({
-      where: {
-        atr_id_medico: appointment.atr_id_medico,
-        atr_dia: dayOfWeek,
-        atr_estado: 'ACTIVO'
+      if (!appointment) {
+        throw new Error('Cita no encontrada');
       }
-    });
 
-    if (!doctorSchedule) {
-      throw new Error(`El médico no tiene horario disponible para ${dayOfWeek}`);
-    }
+      // Verificar que no esté en estado final
+      const currentStatus = appointment.EstadoCita?.atr_nombre_estado;
+      const finalStatuses = [APPOINTMENT_STATUS.FINALIZADA, APPOINTMENT_STATUS.CANCELADA, APPOINTMENT_STATUS.NO_ASISTIO];
+      if (finalStatuses.includes(currentStatus)) {
+        throw new Error(`No se puede reprogramar una cita en estado ${currentStatus}`);
+      }
 
-    // Verificar que la hora de la cita esté dentro del horario del médico
-    const [startHour, startMinute] = doctorSchedule.atr_hora_inicio.split(':').map(Number);
-    const [endHour, endMinute] = doctorSchedule.atr_hora_fin.split(':').map(Number);
-    const [apptHour, apptMinute] = appointmentTime.split(':').map(Number);
+      // Validar disponibilidad con MedicoHorario
+      const appointmentDate = parseLocalDate(nuevaFecha);
+      const rawDay = appointmentDate.toLocaleDateString('es-ES', { weekday: 'long' });
+      const dayOfWeek = rawDay ? (rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()) : rawDay;
+      const dayOfWeekNoAccent = dayOfWeek ? removeDiacritics(dayOfWeek) : dayOfWeek;
+      const appointmentTime = nuevaHora;
 
-    const startTime = startHour * 60 + startMinute;
-    const endTime = endHour * 60 + endMinute;
-    const apptTime = apptHour * 60 + apptMinute;
-    const apptEndTime = apptTime + (appointment.atr_duracion || 60);
+      const doctorSchedule = await findDoctorSchedule(appointment.atr_id_medico, appointmentDate, t);
 
-    if (apptTime < startTime || apptEndTime > endTime) {
-      throw new Error(`La nueva hora (${appointmentTime}) no está dentro del horario disponible del médico (${doctorSchedule.atr_hora_inicio} - ${doctorSchedule.atr_hora_fin})`);
-    }
+      if (!doctorSchedule) {
+        throw new Error(`El médico no tiene horario disponible para ${dayOfWeek}`);
+      }
 
-    // Validar que no haya otra cita del mismo médico en ese rango
-    const estadoCancelada = await EstadoCita.findOne({ where: { atr_nombre_estado: APPOINTMENT_STATUS.CANCELADA } });
-    const conflictingAppointment = await Appointment.findOne({
-      where: {
-        atr_id_medico: appointment.atr_id_medico,
-        atr_fecha_cita: nuevaFecha,
-        atr_id_estado: {
-          [Op.ne]: estadoCancelada?.atr_id_estado
+      // Verificar que la hora de la cita esté dentro del horario del médico
+      const [startHour, startMinute] = doctorSchedule.atr_hora_inicio.split(':').map(Number);
+      const [endHour, endMinute] = doctorSchedule.atr_hora_fin.split(':').map(Number);
+      const [apptHour, apptMinute] = appointmentTime.split(':').map(Number);
+
+      const startTime = startHour * 60 + startMinute;
+      const endTime = endHour * 60 + endMinute;
+      const apptTime = apptHour * 60 + apptMinute;
+      const apptEndTime = apptTime + (appointment.atr_duracion || 60);
+
+      if (apptTime < startTime || apptEndTime > endTime) {
+        throw new Error(`La nueva hora (${appointmentTime}) no está dentro del horario disponible del médico (${doctorSchedule.atr_hora_inicio} - ${doctorSchedule.atr_hora_fin})`);
+      }
+
+      // Validar que no haya otra cita del mismo médico en ese rango
+      const estadoCancelada = await EstadoCita.findOne({ where: { atr_nombre_estado: APPOINTMENT_STATUS.CANCELADA }, transaction: t });
+      const conflictingAppointment = await Appointment.findOne({
+        where: {
+          atr_id_medico: appointment.atr_id_medico,
+          atr_fecha_cita: nuevaFecha,
+          atr_id_estado: { [Op.ne]: estadoCancelada?.atr_id_estado },
+          atr_id_cita: { [Op.ne]: id }
         },
-        atr_id_cita: {
-          [Op.ne]: id // Excluir la cita actual
+        include: [{ model: EstadoCita, as: 'EstadoCita' }],
+        transaction: t
+      });
+
+      if (conflictingAppointment) {
+        const [confHour, confMinute] = conflictingAppointment.atr_hora_cita.split(':').map(Number);
+        const confTime = confHour * 60 + confMinute;
+        const confEndTime = confTime + (conflictingAppointment.atr_duracion || 60);
+
+        if ((apptTime >= confTime && apptTime < confEndTime) || (apptEndTime > confTime && apptEndTime <= confEndTime) || (apptTime <= confTime && apptEndTime >= confEndTime)) {
+          throw new Error('Conflicto de horario: El médico ya tiene una cita programada en este horario');
         }
-      },
-      include: [{
-        model: EstadoCita,
-        as: 'EstadoCita'
-      }]
-    });
-
-    if (conflictingAppointment) {
-      const [confHour, confMinute] = conflictingAppointment.atr_hora_cita.split(':').map(Number);
-      const confTime = confHour * 60 + confMinute;
-      const confEndTime = confTime + (conflictingAppointment.atr_duracion || 60);
-
-      if ((apptTime >= confTime && apptTime < confEndTime) || (apptEndTime > confTime && apptEndTime <= confEndTime) || (apptTime <= confTime && apptEndTime >= confEndTime)) {
-        throw new Error('Conflicto de horario: El médico ya tiene una cita programada en este horario');
       }
-    }
 
-    // Crear registro en ReprogramarCita
-    await ReprogramarCita.create({
-      atr_id_cita: id,
-      atr_fecha_anterior: appointment.atr_fecha_cita,
-      atr_hora_anterior: appointment.atr_hora_cita,
-      atr_nueva_fecha: nuevaFecha,
-      atr_nueva_hora: nuevaHora,
-      atr_motivo_reprogramacion: motivo,
-      atr_estado_reprogramacion: 'APROBADA',
-      atr_id_usuario: userId
-    });
+      // Crear registro en ReprogramarCita
+      await ReprogramarCita.create({
+        atr_id_cita: id,
+        atr_fecha_anterior: appointment.atr_fecha_cita,
+        atr_hora_anterior: appointment.atr_hora_cita,
+        atr_nueva_fecha: nuevaFecha,
+        atr_nueva_hora: nuevaHora,
+        atr_motivo_reprogramacion: motivo,
+        atr_estado_reprogramacion: 'APROBADA',
+        atr_id_usuario: userId
+      }, { transaction: t });
 
-    // Actualizar Appointment
-    await appointment.update({
-      atr_fecha_cita: nuevaFecha,
-      atr_hora_cita: nuevaHora
+      // Actualizar Appointment
+      await appointment.update({ atr_fecha_cita: nuevaFecha, atr_hora_cita: nuevaHora }, { transaction: t });
+
+      // Si se incluye recordatorio en el payload, crear o actualizar
+      if (recordatorio) {
+        const r = recordatorio;
+        let rec = await Recordatorio.findOne({ where: { atr_id_cita: id }, transaction: t });
+        if (rec) {
+          await rec.update({
+            atr_fecha_hora_envio: r.fechaHoraEnvio || rec.atr_fecha_hora_envio,
+            atr_medio: r.medio || rec.atr_medio,
+            atr_contenido: r.contenido || rec.atr_contenido
+          }, { transaction: t });
+        } else {
+          rec = await Recordatorio.create({
+            atr_id_cita: id,
+            atr_fecha_hora_envio: r.fechaHoraEnvio,
+            atr_medio: r.medio,
+            atr_contenido: r.contenido || `Recordatorio por reprogramación`
+          }, { transaction: t });
+        }
+
+        // Registrar estado inicial en la bitácora del recordatorio
+        await registrarEstadoRecordatorio(rec.atr_id_recordatorio, r.estado || ESTADOS_RECORDATORIO.PENDIENTE, 'Creado/ajustado al reprogramar', false, { transaction: t });
+      }
     });
 
     // Obtener la cita actualizada con relaciones
@@ -278,7 +363,7 @@ module.exports = {
         { model: Patient, as: 'Patient' },
         { model: Doctor, as: 'Doctor' },
         { model: User, as: 'User' },
-        { model: Recordatorio, as: 'Recordatorio' },
+        { model: Recordatorio, as: 'Recordatorios' },
         { model: EstadoCita, as: 'EstadoCita' },
         { model: TipoCita, as: 'TipoCita' },
         { model: ReprogramarCita, as: 'Reprogramaciones' }
@@ -363,17 +448,13 @@ module.exports = {
 
     if (dataToUpdate.atr_fecha_cita || dataToUpdate.atr_hora_cita || dataToUpdate.atr_duracion) {
       // Revalidar disponibilidad
-      const appointmentDate = new Date(fecha);
-      const dayOfWeek = appointmentDate.toLocaleDateString('es-ES', { weekday: 'long' });
+      const appointmentDate = parseLocalDate(fecha);
+      const rawDay = appointmentDate.toLocaleDateString('es-ES', { weekday: 'long' });
+      const dayOfWeek = rawDay ? (rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()) : rawDay;
+      const dayOfWeekNoAccent = dayOfWeek ? removeDiacritics(dayOfWeek) : dayOfWeek;
       const appointmentTime = hora;
 
-      const doctorSchedule = await MedicoHorario.findOne({
-        where: {
-          atr_id_medico: medicoId,
-          atr_dia: dayOfWeek,
-          atr_estado: 'ACTIVO'
-        }
-      });
+      const doctorSchedule = await findDoctorSchedule(medicoId, appointmentDate);
 
       if (!doctorSchedule) {
         throw new Error(`El médico no tiene horario disponible para ${dayOfWeek}`);
@@ -432,7 +513,7 @@ module.exports = {
         { model: Patient, as: 'Patient' },
         { model: Doctor, as: 'Doctor' },
         { model: User, as: 'User' },
-        { model: Recordatorio, as: 'Recordatorio' },
+        { model: Recordatorio, as: 'Recordatorios' },
         { model: EstadoCita, as: 'EstadoCita' },
         { model: TipoCita, as: 'TipoCita' }
       ]

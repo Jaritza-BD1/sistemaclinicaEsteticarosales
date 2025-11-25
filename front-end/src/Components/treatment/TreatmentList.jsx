@@ -323,7 +323,7 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={2}>
             <FormControl fullWidth>
               <InputLabel>Estado</InputLabel>
               <Select
@@ -350,23 +350,50 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={2}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<ClearIcon />}
-              onClick={handleClearFilters}
-              sx={{
-                borderColor: 'primary.300',
-                color: 'primary.main',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  backgroundColor: 'primary.50',
-                },
-              }}
-            >
-              Limpiar
-            </Button>
+          <Grid item xs={12} sm={3}>
+            <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Button
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleClearFilters}
+                aria-label="Limpiar filtros"
+                sx={{
+                  borderColor: 'primary.300',
+                  color: 'primary.main',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    backgroundColor: 'primary.50',
+                  },
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Limpiar
+              </Button>
+
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={onOpenCreateModal}
+                aria-label="Agregar Tratamiento"
+                sx={{
+                  borderRadius: 1,
+                  textTransform: 'none',
+                  minWidth: 140,
+                  height: 40,
+                  fontSize: '0.95rem',
+                  backgroundColor: '#F8C6D8',
+                  color: '#3a1f2b',
+                  '&:hover': {
+                    backgroundColor: '#F3B6CB',
+                    transform: 'translateY(-1px)'
+                  },
+                  boxShadow: '0 6px 20px rgba(120,90,110,0.12)',
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+              >
+                Agregar Tratamiento
+              </Button>
+            </Box>
           </Grid>
         </Grid>
       </Paper>
@@ -538,26 +565,7 @@ function TreatmentList({ onOpenCreateModal, onOpenPatientDetailModal }) {
         />
       </Paper>
 
-      {/* Botón Flotante */}
-      <Fab
-        color="primary"
-        aria-label="add"
-        onClick={onOpenCreateModal}
-        sx={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-          backgroundColor: 'brand.pale',
-          color: 'accent.main',
-          '&:hover': {
-            backgroundColor: 'brand.paleDark',
-            transform: 'scale(1.1)',
-          },
-          boxShadow: '0 4px 14px 0 rgba(33,40,69,0.06)',
-        }}
-      >
-        <AddIcon />
-      </Fab>
+      {/* (Add button moved into filters row) */}
 
       {/* Modal de Edición */}
       <Dialog 

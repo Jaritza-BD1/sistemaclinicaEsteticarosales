@@ -123,11 +123,12 @@ function PharmacyPage() {
                             startIcon={<AddIcon />}
                             onClick={() => handleOpenForm()}
                             sx={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                color: 'white',
+                                backgroundColor: '#F8C6D8',
+                                color: '#3a1f2b',
                                 '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.2)'
-                                }
+                                    backgroundColor: '#F3B6CB'
+                                },
+                                boxShadow: 'none'
                             }}
                         >
                             Agregar Producto

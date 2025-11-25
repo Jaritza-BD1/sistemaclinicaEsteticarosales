@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Container,
   Typography,
   Stepper,
@@ -40,10 +44,14 @@ import {
 import { CircularProgress } from '@mui/material';
 import useEspecialidades from '../../hooks/useEspecialidades';
 import useGeneros from '../../hooks/useGeneros';
+import useTiposMedico from '../../hooks/useTiposMedico';
 import './DoctorRegistrationForm.css';
 import DoctorSchedule from './DoctorSchedule';
 
-function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
+function DoctorRegistrationForm({ open = false, onClose, initialData = {}, onSave, onCancel, autoCloseOnSave = true, readOnly = false }) {
+  // Guardar una referencia segura: si el caller pasa `null`, el parámetro default (= {}) no aplica,
+  // por eso normalizamos aquí a un objeto vacío para evitar errores al leer propiedades.
+  const init = initialData || {};
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -84,41 +92,46 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
     });
   };
 
-  const [doctor, setDoctor] = useState({
-    atr_nombre: initialData.atr_nombre || '',
-    atr_apellido: initialData.atr_apellido || '',
-    atr_fecha_nacimiento: convertDateFormat(initialData.atr_fecha_nacimiento) || '',
-    atr_identidad: initialData.atr_identidad || '',
-    atr_id_genero: initialData.atr_id_genero || '',
-    atr_numero_colegiado: initialData.atr_numero_colegiado || '',
-    atr_id_tipo_medico: initialData.atr_id_tipo_medico || '',
-    telefonos: normalizeContactList(initialData.telefonos, 'telefonos'),
-    direcciones: normalizeContactList(initialData.direcciones, 'direcciones'),
-    correos: normalizeContactList(initialData.correos, 'correos'),
-    especialidades: (() => {
-      // Normalizar distintos formatos que puede traer `initialData`:
-      // - initialData.Especialidades (Sequelize association): [{ atr_id_especialidad, atr_especialidad }, ...]
-      // - initialData.especialidades: puede ser array de objetos, ids o nombres
-      const raw = initialData.Especialidades || initialData.especialidades || [];
-      if (!raw || !Array.isArray(raw) || raw.length === 0) return [{ id: 1, atr_id_especialidad: null, atr_especialidad: '' }];
+  const buildInitialDoctor = (init) => {
+    const normalized = init || {};
+    return {
+      atr_nombre: normalized.atr_nombre || '',
+      atr_apellido: normalized.atr_apellido || '',
+      atr_fecha_nacimiento: convertDateFormat(normalized.atr_fecha_nacimiento) || '',
+      atr_identidad: normalized.atr_identidad || '',
+      atr_id_genero: normalized.atr_id_genero || '',
+      atr_numero_colegiado: normalized.atr_numero_colegiado || '',
+      atr_id_tipo_medico: normalized.atr_id_tipo_medico || '',
+      telefonos: normalizeContactList(normalized.telefonos, 'telefonos'),
+      direcciones: normalizeContactList(normalized.direcciones, 'direcciones'),
+      correos: normalizeContactList(normalized.correos, 'correos'),
+      especialidades: (() => {
+        const raw = normalized.Especialidades || normalized.especialidades || [];
+        if (!raw || !Array.isArray(raw) || raw.length === 0) return [{ id: 1, atr_id_especialidad: null, atr_especialidad: '' }];
 
-      return raw.map((e, idx) => {
-        if (typeof e === 'number') {
-          return { id: idx + 1, atr_id_especialidad: e, atr_especialidad: '' };
-        }
-        if (typeof e === 'string') {
-          return { id: idx + 1, atr_id_especialidad: null, atr_especialidad: e };
-        }
+        return raw.map((e, idx) => {
+          if (typeof e === 'number') {
+            return { id: idx + 1, atr_id_especialidad: e, atr_especialidad: '' };
+          }
+          if (typeof e === 'string') {
+            return { id: idx + 1, atr_id_especialidad: null, atr_especialidad: e };
+          }
+          const idVal = e.atr_id_especialidad || e.id || e.atr_id || e.value || null;
+          const nameVal = e.atr_especialidad || e.atr_nombre || e.name || e.label || '';
+          return { id: idx + 1, atr_id_especialidad: idVal, atr_especialidad: nameVal };
+        });
+      })(),
+      horarios: (normalized.horarios && typeof normalized.horarios === 'object') ? normalized.horarios : {},
+    };
+  };
 
-        // objeto
-        const idVal = e.atr_id_especialidad || e.id || e.atr_id || e.value || null;
-        const nameVal = e.atr_especialidad || e.atr_nombre || e.name || e.label || '';
-        return { id: idx + 1, atr_id_especialidad: idVal, atr_especialidad: nameVal };
-      });
-    })(),
-    // Horarios: estructura { Lunes: [{start, end}], Martes: [...], ... }
-    horarios: (initialData.horarios && typeof initialData.horarios === 'object') ? initialData.horarios : {},
-  });
+  const [doctor, setDoctor] = useState(() => buildInitialDoctor(init));
+  const [saving, setSaving] = useState(false);
+
+  // Si cambia `initialData` (abrir modal para editar), resetear el estado del formulario
+  useEffect(() => {
+    setDoctor(buildInitialDoctor(initialData || {}));
+  }, [initialData]);
 
   // Estado para el paso actual del formulario
   const [currentStep, setCurrentStep] = useState(1);
@@ -130,13 +143,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   // Géneros cargados desde API
   const { options: mockGeneros, loading: loadingGeneros } = useGeneros();
 
-  const mockTiposMedico = [
-    { id: 1, name: 'Médico General' },
-    { id: 2, name: 'Especialista' },
-    { id: 3, name: 'Cirujano' },
-    { id: 4, name: 'Residente' },
-  ];
-  
+  const { options: tiposOptions, loading: loadingTipos, error: tiposError } = useTiposMedico();
 
   const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
@@ -156,9 +163,9 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   const cleanEmptyFields = () => {
     setDoctor(prevDoctor => ({
       ...prevDoctor,
-      telefonos: prevDoctor.telefonos.filter(t => t.atr_telefono.trim() !== ''),
-      direcciones: prevDoctor.direcciones.filter(d => d.atr_direccion_completa.trim() !== ''),
-      correos: prevDoctor.correos.filter(c => c.atr_correo.trim() !== '')
+      telefonos: prevDoctor.telefonos.filter(t => String(t.atr_telefono || '').trim() !== ''),
+      direcciones: prevDoctor.direcciones.filter(d => String(d.atr_direccion_completa || '').trim() !== ''),
+      correos: prevDoctor.correos.filter(c => String(c.atr_correo || '').trim() !== '')
     }));
   };
 
@@ -176,13 +183,13 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         console.log('🆔 Identidad:', doctor.atr_identidad);
         console.log('👤 Género:', doctor.atr_id_genero);
         
-        if (!doctor.atr_nombre.trim()) {
+        if (!String(doctor.atr_nombre || '').trim()) {
           console.log('❌ Error: Nombre vacío');
           showNotification('Por favor, ingrese el nombre del médico.', 'error');
           return false;
         }
         
-        if (!doctor.atr_apellido.trim()) {
+        if (!String(doctor.atr_apellido || '').trim()) {
           console.log('❌ Error: Apellido vacío');
           showNotification('Por favor, ingrese el apellido del médico.', 'error');
           return false;
@@ -210,20 +217,20 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
           return false;
         }
         
-        if (!doctor.atr_identidad.trim()) {
+        if (!String(doctor.atr_identidad || '').trim()) {
           console.log('❌ Error: Identidad vacía');
           showNotification('Por favor, ingrese el número de identidad.', 'error');
           return false;
         }
         
-        if (!/^\d{13}$/.test(doctor.atr_identidad)) {
+        if (!/^\d{13}$/.test(String(doctor.atr_identidad || ''))) {
           console.log('❌ Error: Identidad inválida');
           showNotification('El número de identidad debe contener exactamente 13 dígitos numéricos.', 'error');
           return false;
         }
 
         // Max length según modelo: varchar(20)
-        if (doctor.atr_identidad && doctor.atr_identidad.length > 20) {
+        if (doctor.atr_identidad && String(doctor.atr_identidad).length > 20) {
           showNotification('El número de identidad no puede exceder 20 caracteres.', 'error');
           return false;
         }
@@ -242,7 +249,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         console.log('📋 Número de colegiado:', doctor.atr_numero_colegiado);
         console.log('📋 Tipo de médico:', doctor.atr_id_tipo_medico);
         
-        if (!doctor.atr_numero_colegiado.trim()) {
+        if (!String(doctor.atr_numero_colegiado || '').trim()) {
           console.log('❌ Error: Número de colegiado vacío');
           showNotification('Por favor, ingrese el número de colegiado del médico.', 'error');
           return false;
@@ -255,13 +262,13 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         }
 
         // Validar longitud del número de colegiado según modelo varchar(15)
-        if (doctor.atr_numero_colegiado && doctor.atr_numero_colegiado.length > 15) {
+        if (doctor.atr_numero_colegiado && String(doctor.atr_numero_colegiado).length > 15) {
           showNotification('El número de colegiado no puede exceder 15 caracteres.', 'error');
           return false;
         }
 
         // Validar que las especialidades seleccionadas sean válidas (deben tener id)
-        const hasInvalidEspecialidad = doctor.especialidades.some(e => !e.atr_id_especialidad);
+        const hasInvalidEspecialidad = Array.isArray(doctor.especialidades) ? doctor.especialidades.some(e => !e.atr_id_especialidad) : true;
         if (hasInvalidEspecialidad) {
           console.log('❌ Error: Hay especialidades sin id seleccionadas');
           showNotification('Por favor seleccione especialidades válidas desde la lista (no cree nuevas).', 'error');
@@ -319,7 +326,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         
         // Verificar teléfonos si existen
         if (doctor.telefonos.length > 0) {
-          const hasValidTelefono = doctor.telefonos.some(t => t.atr_telefono.trim() !== '');
+          const hasValidTelefono = Array.isArray(doctor.telefonos) && doctor.telefonos.some(t => String(t.atr_telefono || '').trim() !== '');
           if (!hasValidTelefono) {
             console.log('❌ Error: No hay teléfonos válidos');
             showNotification('Por favor, ingrese al menos un número de teléfono válido o elimine los campos vacíos.', 'error');
@@ -329,7 +336,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         
         // Verificar direcciones si existen
         if (doctor.direcciones.length > 0) {
-          const hasValidDireccion = doctor.direcciones.some(d => d.atr_direccion_completa.trim() !== '');
+          const hasValidDireccion = Array.isArray(doctor.direcciones) && doctor.direcciones.some(d => String(d.atr_direccion_completa || '').trim() !== '');
           if (!hasValidDireccion) {
             console.log('❌ Error: No hay direcciones válidas');
             showNotification('Por favor, ingrese al menos una dirección o elimine los campos vacíos.', 'error');
@@ -339,7 +346,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
         
         // Verificar correos si existen
         if (doctor.correos.length > 0) {
-          const hasValidCorreo = doctor.correos.some(c => c.atr_correo.trim() !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.atr_correo));
+          const hasValidCorreo = Array.isArray(doctor.correos) && doctor.correos.some(c => String(c.atr_correo || '').trim() !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c.atr_correo || '')));
           if (!hasValidCorreo) {
             console.log('❌ Error: No hay correos válidos');
             showNotification('Por favor, ingrese al menos un correo electrónico válido o elimine los campos vacíos.', 'error');
@@ -504,7 +511,20 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
       };
 
       if (onSave) {
-        onSave(cleanDoctor);
+        const maybePromise = onSave(cleanDoctor);
+        // soportar handler sincrono o async (promise)
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          setSaving(true);
+          maybePromise.then(() => {
+            setSaving(false);
+            if (autoCloseOnSave && onClose) onClose();
+          }).catch(err => {
+            setSaving(false);
+            showNotification(err?.message || 'Error al guardar médico', 'error');
+          });
+        } else {
+          if (autoCloseOnSave && onClose) onClose();
+        }
       } else {
         console.log('Datos del médico a enviar:', cleanDoctor);
         showNotification('Médico registrado exitosamente!', 'success');
@@ -541,10 +561,11 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     name="atr_nombre"
                     value={doctor.atr_nombre}
                     onChange={handleChange}
+                    disabled={readOnly}
                     className="form-field"
                     required
-                    error={!doctor.atr_nombre.trim()}
-                    helperText={!doctor.atr_nombre.trim() ? "El nombre es obligatorio" : ""}
+                    error={!readOnly && !String(doctor.atr_nombre || '').trim()}
+                    helperText={!readOnly && !String(doctor.atr_nombre || '').trim() ? "El nombre es obligatorio" : ""}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -554,10 +575,11 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     name="atr_apellido"
                     value={doctor.atr_apellido}
                     onChange={handleChange}
+                    disabled={readOnly}
                     className="form-field"
                     required
-                    error={!doctor.atr_apellido.trim()}
-                    helperText={!doctor.atr_apellido.trim() ? "El apellido es obligatorio" : ""}
+                    error={!readOnly && !String(doctor.atr_apellido || '').trim()}
+                    helperText={!readOnly && !String(doctor.atr_apellido || '').trim() ? "El apellido es obligatorio" : ""}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -568,6 +590,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     type="date"
                     value={doctor.atr_fecha_nacimiento}
                     onChange={handleChange}
+                    disabled={readOnly}
                     className="form-field"
                     required
                     InputLabelProps={{ shrink: true }}
@@ -586,16 +609,17 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     name="atr_identidad"
                     value={doctor.atr_identidad}
                     onChange={handleChange}
+                    disabled={readOnly}
                     className="form-field"
                     required
                     inputProps={{ maxLength: 13 }}
-                    error={!doctor.atr_identidad.trim() || (doctor.atr_identidad && !/^\d{13}$/.test(doctor.atr_identidad))}
+                    error={!readOnly && (!String(doctor.atr_identidad || '').trim() || (doctor.atr_identidad && !/^\d{13}$/.test(String(doctor.atr_identidad || ''))))}
                     helperText={
-                      !doctor.atr_identidad.trim() 
+                      !readOnly && (!String(doctor.atr_identidad || '').trim() 
                         ? "La identidad es obligatoria" 
-                        : (doctor.atr_identidad && !/^\d{13}$/.test(doctor.atr_identidad))
+                        : (doctor.atr_identidad && !/^\d{13}$/.test(String(doctor.atr_identidad || '')))
                           ? "Debe contener exactamente 13 dígitos"
-                          : ""
+                          : "")
                     }
                   />
                 </Grid>
@@ -606,6 +630,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       name="atr_id_genero"
                       value={doctor.atr_id_genero}
                       onChange={handleChange}
+                      disabled={readOnly}
                       label="Género *"
                     >
                       {mockGeneros.map(g => (
@@ -644,19 +669,22 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     name="atr_numero_colegiado"
                     value={doctor.atr_numero_colegiado}
                     onChange={handleChange}
+                    disabled={readOnly}
                     className="form-field"
                     required
-                    error={!doctor.atr_numero_colegiado.trim()}
-                    helperText={!doctor.atr_numero_colegiado.trim() ? "El número de colegiado es obligatorio" : ""}
+                    error={!readOnly && !String(doctor.atr_numero_colegiado || '').trim()}
+                    helperText={!readOnly && !String(doctor.atr_numero_colegiado || '').trim() ? "El número de colegiado es obligatorio" : ""}
                     InputProps={{
                       endAdornment: (
-                        <Button
-                          size="small"
-                          onClick={generateColegiado}
-                          className="generate-btn"
-                        >
-                          Generar
-                        </Button>
+                        !readOnly ? (
+                          <Button
+                            size="small"
+                            onClick={generateColegiado}
+                            className="generate-btn"
+                          >
+                            Generar
+                          </Button>
+                        ) : null
                       ),
                     }}
                   />
@@ -668,20 +696,46 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       name="atr_id_tipo_medico"
                       value={doctor.atr_id_tipo_medico}
                       onChange={handleChange}
+                      disabled={readOnly}
                       label="Tipo de Médico *"
                       required
                     >
-                      {mockTiposMedico.map(tipo => (
-                        <MenuItem key={tipo.id} value={tipo.id}>
-                          {tipo.name}
-                        </MenuItem>
-                      ))}
+                        {loadingTipos ? (
+                          <MenuItem value="">Cargando...</MenuItem>
+                        ) : tiposOptions.length > 0 ? (
+                          tiposOptions.map(tipo => (
+                            <MenuItem key={tipo.id ?? tipo.value} value={tipo.id ?? tipo.value}>
+                              {tipo.name ?? tipo.label}
+                            </MenuItem>
+                          ))
+                        ) : (
+                          <MenuItem value="">No hay tipos disponibles</MenuItem>
+                        )}
                     </Select>
-                    {!doctor.atr_id_tipo_medico && (
-                      <Typography variant="caption" color="error">
-                        El tipo de médico es obligatorio
-                      </Typography>
-                    )}
+                      {!doctor.atr_id_tipo_medico && (
+                        <Typography variant="caption" color="error">
+                          El tipo de médico es obligatorio
+                        </Typography>
+                      )}
+
+                      {/* Mostrar descripción del tipo seleccionado (si existe) */}
+                      {(() => {
+                        const selected = tiposOptions.find(t => (t.id ?? t.value) === doctor.atr_id_tipo_medico);
+                        if (selected) {
+                          return (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="body2" color="text.primary"><strong>Nombre:</strong> {selected.name}</Typography>
+                              {selected.creadoPor && (
+                                <Typography variant="caption" color="text.secondary">Creado por: {selected.creadoPor}</Typography>
+                              )}
+                              {selected.fechaCreacion && (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Fecha creación: {new Date(selected.fechaCreacion).toLocaleString()}</Typography>
+                              )}
+                            </Box>
+                          );
+                        }
+                        return null;
+                      })()}
                   </FormControl>
                 </Grid>
               </Grid>
@@ -699,11 +753,13 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       getOptionLabel={(option) => option.name}
                       value={especialidadesOptions.find(o => o.id === especialidad.atr_id_especialidad) || null}
                       onChange={(event, newValue) => {
+                        if (readOnly) return;
                         const name = newValue ? newValue.name : '';
                         const id = newValue ? newValue.id : null;
                         handleDynamicChange('especialidades', especialidad.id, 'atr_id_especialidad', id);
                         handleDynamicChange('especialidades', especialidad.id, 'atr_especialidad', name);
                       }}
+                      disabled={readOnly}
                       renderInput={(params) => (
                         <TextField
                           {...params}
@@ -726,7 +782,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                         Error cargando especialidades: {especialidadesError}
                       </Typography>
                     )}
-                    {doctor.especialidades.length > 1 && (
+                    {!readOnly && doctor.especialidades.length > 1 && (
                       <IconButton
                         onClick={() => handleRemoveDynamicField('especialidades', especialidad.id)}
                         className="remove-btn"
@@ -736,18 +792,20 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     )}
                   </Box>
                 ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => handleAddDynamicField('especialidades')}
-                  className="add-btn"
-                >
-                  Agregar Especialidad
-                </Button>
+                {!readOnly && (
+                  <Button
+                    startIcon={<AddIcon />}
+                    onClick={() => handleAddDynamicField('especialidades')}
+                    className="add-btn"
+                  >
+                    Agregar Especialidad
+                  </Button>
+                )}
               </Box>
 
               {/* Horarios de Atención */}
               <Box sx={{ mt: 3 }}>
-                <DoctorSchedule value={doctor.horarios} onChange={handleHorariosChange} />
+                <DoctorSchedule value={doctor.horarios} onChange={handleHorariosChange} readOnly={readOnly} />
               </Box>
             </CardContent>
           </Card>
@@ -782,10 +840,11 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       fullWidth
                       label={`Teléfono ${index + 1}`}
                       value={telefono.atr_telefono}
-                      onChange={(e) => handleDynamicChange('telefonos', telefono.id, 'atr_telefono', e.target.value)}
+                      onChange={(e) => { if (!readOnly) handleDynamicChange('telefonos', telefono.id, 'atr_telefono', e.target.value); }}
+                      disabled={readOnly}
                       className="form-field"
                     />
-                    {doctor.telefonos.length > 1 && (
+                    {!readOnly && doctor.telefonos.length > 1 && (
                       <IconButton
                         onClick={() => handleRemoveDynamicField('telefonos', telefono.id)}
                         className="remove-btn"
@@ -795,13 +854,15 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     )}
                   </Box>
                 ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => handleAddDynamicField('telefonos')}
-                  className="add-btn"
-                >
-                  Agregar Teléfono
-                </Button>
+                {!readOnly && (
+                  <Button
+                    startIcon={<AddIcon />}
+                    onClick={() => handleAddDynamicField('telefonos')}
+                    className="add-btn"
+                  >
+                    Agregar Teléfono
+                  </Button>
+                )}
               </Box>
 
               {/* Direcciones */}
@@ -818,10 +879,11 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       rows={2}
                       label={`Dirección ${index + 1}`}
                       value={direccion.atr_direccion_completa}
-                      onChange={(e) => handleDynamicChange('direcciones', direccion.id, 'atr_direccion_completa', e.target.value)}
+                      onChange={(e) => { if (!readOnly) handleDynamicChange('direcciones', direccion.id, 'atr_direccion_completa', e.target.value); }}
+                      disabled={readOnly}
                       className="form-field"
                     />
-                    {doctor.direcciones.length > 1 && (
+                    {!readOnly && doctor.direcciones.length > 1 && (
                       <IconButton
                         onClick={() => handleRemoveDynamicField('direcciones', direccion.id)}
                         className="remove-btn"
@@ -831,13 +893,15 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     )}
                   </Box>
                 ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => handleAddDynamicField('direcciones')}
-                  className="add-btn"
-                >
-                  Agregar Dirección
-                </Button>
+                {!readOnly && (
+                  <Button
+                    startIcon={<AddIcon />}
+                    onClick={() => handleAddDynamicField('direcciones')}
+                    className="add-btn"
+                  >
+                    Agregar Dirección
+                  </Button>
+                )}
               </Box>
 
               {/* Correos */}
@@ -853,10 +917,11 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       type="email"
                       label={`Correo ${index + 1}`}
                       value={correo.atr_correo}
-                      onChange={(e) => handleDynamicChange('correos', correo.id, 'atr_correo', e.target.value)}
+                      onChange={(e) => { if (!readOnly) handleDynamicChange('correos', correo.id, 'atr_correo', e.target.value); }}
+                      disabled={readOnly}
                       className="form-field"
                     />
-                    {doctor.correos.length > 1 && (
+                    {!readOnly && doctor.correos.length > 1 && (
                       <IconButton
                         onClick={() => handleRemoveDynamicField('correos', correo.id)}
                         className="remove-btn"
@@ -866,13 +931,15 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                     )}
                   </Box>
                 ))}
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={() => handleAddDynamicField('correos')}
-                  className="add-btn"
-                >
-                  Agregar Correo
-                </Button>
+                {!readOnly && (
+                  <Button
+                    startIcon={<AddIcon />}
+                    onClick={() => handleAddDynamicField('correos')}
+                    className="add-btn"
+                  >
+                    Agregar Correo
+                  </Button>
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -921,7 +988,10 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
                       </Box>
                       <Box className="data-item">
                         <strong>Tipo de Médico:</strong> {
-                          mockTiposMedico.find(t => t.id === doctor.atr_id_tipo_medico)?.name || 'No seleccionado'
+                          (() => {
+                            const t = tiposOptions.find(t => (t.id ?? t.value) === doctor.atr_id_tipo_medico);
+                            return t ? (t.name ?? t.label) : (!loadingTipos ? 'No seleccionado' : 'Cargando...');
+                          })()
                         }
                       </Box>
                       <Box className="data-item">
@@ -967,79 +1037,89 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
   ];
 
   return (
-    <Container maxWidth="lg" className="doctor-form-container">
-      <Box className="form-header">
-        <Typography variant="h4" className="form-title">
-          {initialData.atr_id_medico ? 'Editar Médico' : 'Registro de Médico'}
-        </Typography>
-        <Typography variant="body1" className="form-subtitle">
-          Complete la información del médico paso a paso
-        </Typography>
-      </Box>
-
-      <Paper className="form-paper">
-        <Stepper 
-          activeStep={currentStep - 1} 
-          alternativeLabel 
-          className="form-stepper"
-          sx={{ 
-            display: isMobile ? 'none' : 'flex',
-            marginBottom: 3 
-          }}
-        >
-          {steps.map((label, index) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        {/* Mensaje informativo */}
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="body2">
-            <strong>Instrucciones:</strong> Complete cada paso del formulario. Los campos marcados con <strong>*</strong> son obligatorios. 
-            Puede avanzar al siguiente paso una vez que complete todos los campos requeridos del paso actual.
+    <Dialog open={open} onClose={onClose || onCancel} fullWidth maxWidth="lg" fullScreen={isMobile} scroll="paper">
+      <DialogTitle>
+        <Box className="form-header">
+          <Typography variant="h5" className="form-title">
+            {initialData?.atr_id_medico ? 'Editar Médico' : 'Registro de Médico'}
           </Typography>
-        </Alert>
+          <Typography variant="body2" className="form-subtitle">
+            Complete la información del médico paso a paso
+          </Typography>
+        </Box>
+      </DialogTitle>
 
-        {isMobile && (
-          <Box className="mobile-progress">
-            <Typography variant="body2" className="progress-text">
-              Paso {currentStep} de {totalSteps}
+      <DialogContent dividers>
+        <Paper className="form-paper">
+          <Stepper 
+            activeStep={currentStep - 1} 
+            alternativeLabel 
+            className="form-stepper"
+            sx={{ 
+              display: isMobile ? 'none' : 'flex',
+              marginBottom: 3 
+            }}
+          >
+            {steps.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+
+          {/* Mensaje informativo */}
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <Typography variant="body2">
+              <strong>Instrucciones:</strong> Complete cada paso del formulario. Los campos marcados con <strong>*</strong> son obligatorios. 
+              Puede avanzar al siguiente paso una vez que complete todos los campos requeridos del paso actual.
             </Typography>
-            <Box className="progress-bar">
-              <Box 
-                className="progress-fill"
-                sx={{ width: `${(currentStep / totalSteps) * 100}%` }}
-              />
+          </Alert>
+
+          {isMobile && (
+            <Box className="mobile-progress">
+              <Typography variant="body2" className="progress-text">
+                Paso {currentStep} de {totalSteps}
+              </Typography>
+              <Box className="progress-bar">
+                <Box 
+                  className="progress-fill"
+                  sx={{ width: `${(currentStep / totalSteps) * 100}%` }}
+                />
+              </Box>
             </Box>
+          )}
+
+          <Box className="form-content">
+            {getStepContent(currentStep)}
           </Box>
+        </Paper>
+      </DialogContent>
+
+      <DialogActions>
+        {!readOnly ? (
+          <>
+            <Button
+              disabled={currentStep === 1}
+              onClick={handleBack}
+              className="back-btn"
+              variant="outlined"
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              className="next-btn"
+              disabled={saving}
+              endIcon={currentStep === totalSteps ? (saving ? <CircularProgress size={18} /> : <SaveIcon />) : null}
+            >
+              {currentStep === totalSteps ? (saving ? 'Guardando...' : 'Guardar Médico') : 'Siguiente'}
+            </Button>
+          </>
+        ) : (
+          <Button variant="contained" onClick={() => { if (onClose) onClose(); else if (onCancel) onCancel(); }}>Cerrar</Button>
         )}
-
-        <Box className="form-content">
-          {getStepContent(currentStep)}
-        </Box>
-
-        <Box className="form-actions">
-          <Button
-            disabled={currentStep === 1}
-            onClick={handleBack}
-            className="back-btn"
-            variant="outlined"
-          >
-            Anterior
-          </Button>
-          
-          <Button
-            variant="contained"
-            onClick={handleNext}
-            className="next-btn"
-            endIcon={currentStep === totalSteps ? <SaveIcon /> : null}
-          >
-            {currentStep === totalSteps ? 'Guardar Médico' : 'Siguiente'}
-          </Button>
-        </Box>
-      </Paper>
+      </DialogActions>
 
       <Snackbar
         open={notification?.open || false}
@@ -1055,7 +1135,7 @@ function DoctorRegistrationForm({ initialData = {}, onSave, onCancel }) {
           {notification?.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Dialog>
   );
 }
 

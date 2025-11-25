@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { createAppointment, fetchPatients, fetchDoctors } from '../../redux/appointments/appointmentsSlice';
+import { getAppointmentTypes, getAppointmentStates, getUsers } from '../../services/appointmentService';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   Box,
   Container,
@@ -19,7 +23,11 @@ import {
   Chip,
   useTheme,
   useMediaQuery,
-  Autocomplete
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   CalendarToday as CalendarIcon,
@@ -32,7 +40,7 @@ import {
 } from '@mui/icons-material';
 import './FormularioReservaCita.css';
 
-const FormularioReservaCita = () => {
+const FormularioReservaCita = ({ inModal = false, onSuccess = null, onClose = null }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -45,7 +53,7 @@ const FormularioReservaCita = () => {
     hora_cita: '',
     motivo_cita: '',
     tipo_cita: '',
-    estado: 'programada'
+    estado: ''
   });
 
   // Estados para errores
@@ -54,22 +62,14 @@ const FormularioReservaCita = () => {
   // Estado para notificaciones
   const [notification, setNotification] = useState(null);
 
-  // Datos de ejemplo (en una aplicación real vendrían de una API)
-  const pacientes = [
-    { id: 1, nombre: 'María Rodríguez', identidad: '0801199501234' },
-    { id: 2, nombre: 'Carlos Pérez', identidad: '0802199405678' },
-    { id: 3, nombre: 'Ana Martínez', identidad: '0803199309012' },
-    { id: 4, nombre: 'Luis González', identidad: '0804199203456' },
-    { id: 5, nombre: 'Sofía Herrera', identidad: '0805199107890' }
-  ];
-
-  const medicos = [
-    { id: 1, nombre: 'Dr. Juan López', especialidad: 'Cardiología' },
-    { id: 2, nombre: 'Dra. Sofía García', especialidad: 'Pediatría' },
-    { id: 3, nombre: 'Dr. Miguel Torres', especialidad: 'Dermatología' },
-    { id: 4, nombre: 'Dra. Carmen Ruiz', especialidad: 'Ginecología' },
-    { id: 5, nombre: 'Dr. Roberto Silva', especialidad: 'Ortopedia' }
-  ];
+  // Datos cargados desde el backend (redux)
+  const patients = useSelector(state => state.appointments.patients || []);
+  const doctors = useSelector(state => state.appointments.doctors || []);
+  const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [appointmentStates, setAppointmentStates] = useState([]);
+  const [appointmentUsers, setAppointmentUsers] = useState([]);
+  const [defaultProgramadaId, setDefaultProgramadaId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const usuarios = [
     { id: 1, nombre: 'admin', rol: 'Administrador' },
@@ -98,6 +98,64 @@ const FormularioReservaCita = () => {
     { value: 'cancelada', label: 'Cancelada' },
     { value: 'reprogramada', label: 'Reprogramada' }
   ];
+
+  const dispatch = useDispatch();
+
+  // Helpers para normalizar opciones que pueden venir como { value,label }
+  const getOptionId = (item) => item?.value ?? item?.atr_id_paciente ?? item?.atr_id_medico ?? item?.atr_id ?? item?.id ?? null;
+  const getPersonLabel = (item) => item?.label ?? (item?.atr_nombre ? `${item.atr_nombre} ${item.atr_apellido || ''}`.trim() : (item?.nombre || item?.name || 'Sin nombre'));
+  const getPersonIdentity = (item) => item?.atr_identidad ?? item?.identidad ?? item?.documento ?? '';
+  const getTypeId = (item) => item?.value ?? item?.atr_id_tipo_cita ?? item?.id ?? null;
+  const getTypeLabel = (item) => item?.label ?? item?.atr_nombre_tipo_cita ?? item?.name ?? 'Tipo';
+
+  // Cargar pacientes, médicos y tipos al montar
+  React.useEffect(() => {
+    try {
+      dispatch(fetchPatients());
+      dispatch(fetchDoctors());
+    } catch (e) {
+      // no-op
+    }
+
+    const loadTypes = async () => {
+      try {
+        const res = await getAppointmentTypes();
+        const types = res?.data?.data || [];
+        setAppointmentTypes(types);
+      } catch (err) {
+        console.error('Error loading appointment types:', err);
+      }
+    };
+    const loadStates = async () => {
+      try {
+        const res = await getAppointmentStates();
+        const states = res?.data?.data || [];
+        setAppointmentStates(states);
+        // Si encontramos PROGRAMADA, seleccionar por defecto su ID
+        const programada = states.find(s => String(s.label).toUpperCase() === 'PROGRAMADA');
+        if (programada) {
+          const idStr = String(programada.value);
+          setDefaultProgramadaId(idStr);
+          setFormData(prev => ({ ...prev, estado: idStr }));
+        }
+      } catch (err) {
+        console.error('Error loading appointment states:', err);
+      }
+    };
+    const loadUsers = async () => {
+      try {
+        // Pedimos un listado corto (limit) para poblar el select
+        const res = await getUsers({ page: 1, limit: 200 });
+        const users = res?.data?.data || [];
+        setAppointmentUsers(users);
+      } catch (err) {
+        console.error('Error loading users for appointment form:', err);
+      }
+    };
+    loadTypes();
+    loadStates();
+    loadUsers();
+  }, [dispatch]);
 
   // Función para mostrar notificaciones
   const showNotification = (message, type = 'success') => {
@@ -175,22 +233,52 @@ const FormularioReservaCita = () => {
     e.preventDefault();
     
     if (validateForm()) {
-      // Aquí iría la lógica para enviar los datos a tu API
-      console.log('Datos de la cita a enviar:', formData);
-      showNotification('Cita reservada exitosamente!', 'success');
-      
-      // Resetear formulario después del envío exitoso
-      setFormData({
-        paciente: '',
-        medico: '',
-        usuario: '',
-        fecha_cita: '',
-        hora_cita: '',
-        motivo_cita: '',
-        tipo_cita: '',
-        estado: 'programada'
-      });
-      setErrors({});
+      // Preparar payload para el backend
+      const payload = {
+        pacienteId: parseInt(formData.paciente) || null,
+        medicoId: parseInt(formData.medico) || null,
+        fecha: formData.fecha_cita,
+        hora: formData.hora_cita,
+        usuarioId: formData.usuario ? (isNaN(parseInt(formData.usuario)) ? null : parseInt(formData.usuario)) : null,
+        usuario: formData.usuario ? (isNaN(parseInt(formData.usuario)) ? null : parseInt(formData.usuario)) : null,
+        tipoCitaId: isNaN(parseInt(formData.tipo_cita)) ? null : parseInt(formData.tipo_cita),
+        tipoCita: isNaN(parseInt(formData.tipo_cita)) ? null : parseInt(formData.tipo_cita),
+        motivo: formData.motivo_cita,
+        estado: formData.estado || 'PROGRAMADA',
+        duracion: formData.duracion ? parseInt(formData.duracion) : 60
+      };
+
+      (async () => {
+        setSubmitting(true);
+        try {
+          const resultAction = await dispatch(createAppointment(payload));
+          if (createAppointment.fulfilled.match(resultAction)) {
+            showNotification('Cita reservada exitosamente!', 'success');
+            // Resetear formulario
+            setFormData({
+              paciente: '',
+              medico: '',
+              usuario: '',
+              fecha_cita: '',
+              hora_cita: '',
+              motivo_cita: '',
+              tipo_cita: '',
+              estado: defaultProgramadaId || ''
+            });
+            setErrors({});
+            if (typeof onSuccess === 'function') onSuccess(resultAction.payload);
+          } else {
+            const err = resultAction.payload || resultAction.error;
+            console.error('Error creating appointment:', err);
+            showNotification(typeof err === 'string' ? err : (err?.message || 'Error al crear cita'), 'error');
+          }
+        } catch (err) {
+          console.error('Unexpected error creating appointment:', err);
+          showNotification(err?.message || 'Error al crear cita', 'error');
+        } finally {
+          setSubmitting(false);
+        }
+      })();
     } else {
       showNotification('Por favor, corrija los errores en el formulario.', 'error');
     }
@@ -198,17 +286,20 @@ const FormularioReservaCita = () => {
 
   // Función para obtener el paciente seleccionado
   const getPacienteSeleccionado = () => {
-    return pacientes.find(p => p.id === parseInt(formData.paciente));
+    const selectedId = formData.paciente;
+    if (!selectedId) return null;
+    return patients.find(p => String(p.value ?? p.atr_id_paciente ?? p.id ?? p.atr_id) === String(selectedId));
   };
 
   // Función para obtener el médico seleccionado
   const getMedicoSeleccionado = () => {
-    return medicos.find(m => m.id === parseInt(formData.medico));
+    const selectedId = formData.medico;
+    if (!selectedId) return null;
+    return doctors.find(m => String(m.value ?? m.atr_id_medico ?? m.id ?? m.atr_id) === String(selectedId));
   };
 
-  return (
-    <Container maxWidth="lg" className="appointment-form-container">
-      <Box className="form-header">
+  const FormHeader = (
+    <Box className="form-header">
         <Typography variant="h4" className="form-title">
           <CalendarIcon className="header-icon" />
           Reserva de Cita Médica
@@ -216,10 +307,11 @@ const FormularioReservaCita = () => {
         <Typography variant="body1" className="form-subtitle">
           Complete la información para agendar una nueva cita
         </Typography>
-      </Box>
+        </Box>
+      );
 
-      <Paper className="form-paper">
-        <form onSubmit={handleSubmit}>
+      const FormBody = (
+    <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             {/* Selección de Paciente */}
             <Grid item xs={12} md={6}>
@@ -240,11 +332,16 @@ const FormularioReservaCita = () => {
                       label="Paciente"
                       required
                     >
-                      {pacientes.map(paciente => (
-                        <MenuItem key={paciente.id} value={paciente.id}>
-                          {paciente.nombre} - {paciente.identidad}
-                        </MenuItem>
-                      ))}
+                      {patients.map(paciente => {
+                        const id = getOptionId(paciente);
+                        const nombre = getPersonLabel(paciente);
+                        const identidad = getPersonIdentity(paciente);
+                        return (
+                          <MenuItem key={id ?? nombre} value={id}>
+                            {nombre} {identidad ? `- ${identidad}` : ''}
+                          </MenuItem>
+                        );
+                      })}
                     </Select>
                     {errors.paciente && (
                       <Typography variant="caption" className="error-text">
@@ -256,7 +353,7 @@ const FormularioReservaCita = () => {
                   {getPacienteSeleccionado() && (
                     <Box className="selected-info">
                       <Chip
-                        label={`Paciente: ${getPacienteSeleccionado().nombre}`}
+                        label={`Paciente: ${getPersonLabel(getPacienteSeleccionado())}`}
                         color="primary"
                         className="info-chip"
                       />
@@ -285,11 +382,16 @@ const FormularioReservaCita = () => {
                       label="Médico"
                       required
                     >
-                      {medicos.map(medico => (
-                        <MenuItem key={medico.id} value={medico.id}>
-                          {medico.nombre} - {medico.especialidad}
-                        </MenuItem>
-                      ))}
+                      {doctors.map(medico => {
+                        const id = getOptionId(medico);
+                        const nombre = getPersonLabel(medico);
+                        const especialidad = medico.atr_especialidad || medico.especialidad || medico.specialty || '';
+                        return (
+                          <MenuItem key={id ?? nombre} value={id}>
+                            {nombre} {especialidad ? `- ${especialidad}` : ''}
+                          </MenuItem>
+                        );
+                      })}
                     </Select>
                     {errors.medico && (
                       <Typography variant="caption" className="error-text">
@@ -301,15 +403,17 @@ const FormularioReservaCita = () => {
                   {getMedicoSeleccionado() && (
                     <Box className="selected-info">
                       <Chip
-                        label={`Médico: ${getMedicoSeleccionado().nombre}`}
+                        label={`Médico: ${getPersonLabel(getMedicoSeleccionado())}`}
                         color="secondary"
                         className="info-chip"
                       />
-                      <Chip
-                        label={`Especialidad: ${getMedicoSeleccionado().especialidad}`}
-                        variant="outlined"
-                        className="info-chip"
-                      />
+                      { (getMedicoSeleccionado().atr_especialidad || getMedicoSeleccionado().especialidad || getMedicoSeleccionado().specialty) && (
+                        <Chip
+                          label={`Especialidad: ${getMedicoSeleccionado().atr_especialidad || getMedicoSeleccionado().especialidad || getMedicoSeleccionado().specialty}`}
+                          variant="outlined"
+                          className="info-chip"
+                        />
+                      )}
                     </Box>
                   )}
                 </CardContent>
@@ -374,26 +478,39 @@ const FormularioReservaCita = () => {
                   
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
-                      <Autocomplete
-                        options={tiposCita}
-                        value={formData.tipo_cita}
-                        onChange={(event, newValue) => {
-                          setFormData({ ...formData, tipo_cita: newValue || '' });
-                          if (errors.tipo_cita) {
-                            setErrors({ ...errors, tipo_cita: '' });
-                          }
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Tipo de Cita"
-                            className="form-field"
-                            required
-                            error={!!errors.tipo_cita}
-                            helperText={errors.tipo_cita}
-                          />
+                      <FormControl fullWidth className="form-field" error={!!errors.tipo_cita}>
+                        <InputLabel>Tipo de Cita</InputLabel>
+                        <Select
+                          name="tipo_cita"
+                          value={formData.tipo_cita}
+                          onChange={(e) => {
+                            handleChange(e);
+                          }}
+                          label="Tipo de Cita"
+                          required
+                        >
+                          {appointmentTypes.length > 0 ? (
+                            appointmentTypes.map(tipo => {
+                              const id = getTypeId(tipo);
+                              const label = getTypeLabel(tipo);
+                              return (
+                                <MenuItem key={id ?? label} value={id}>
+                                  {label}
+                                </MenuItem>
+                              );
+                            })
+                          ) : (
+                            tiposCita.map((t, idx) => (
+                              <MenuItem key={idx} value={t}>{t}</MenuItem>
+                            ))
+                          )}
+                        </Select>
+                        {errors.tipo_cita && (
+                          <Typography variant="caption" className="error-text">
+                            {errors.tipo_cita}
+                          </Typography>
                         )}
-                      />
+                      </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <FormControl fullWidth className="form-field">
@@ -404,11 +521,19 @@ const FormularioReservaCita = () => {
                           onChange={handleChange}
                           label="Estado"
                         >
-                          {estadosCita.map(estado => (
-                            <MenuItem key={estado.value} value={estado.value}>
-                              {estado.label}
-                            </MenuItem>
-                          ))}
+                          {appointmentStates.length > 0 ? (
+                            appointmentStates.map(estado => (
+                              <MenuItem key={estado.value} value={String(estado.value)}>
+                                {estado.label}
+                              </MenuItem>
+                            ))
+                          ) : (
+                            estadosCita.map(estado => (
+                              <MenuItem key={estado.value} value={estado.value}>
+                                {estado.label}
+                              </MenuItem>
+                            ))
+                          )}
                         </Select>
                       </FormControl>
                     </Grid>
@@ -457,21 +582,29 @@ const FormularioReservaCita = () => {
                   
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth className="form-field">
-                        <InputLabel>Usuario Responsable</InputLabel>
-                        <Select
-                          name="usuario"
-                          value={formData.usuario}
-                          onChange={handleChange}
-                          label="Usuario Responsable"
-                        >
-                          {usuarios.map(usuario => (
-                            <MenuItem key={usuario.id} value={usuario.id}>
-                              {usuario.nombre} - {usuario.rol}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                        <FormControl fullWidth className="form-field">
+                          <InputLabel>Usuario Responsable</InputLabel>
+                          <Select
+                            name="usuario"
+                            value={formData.usuario}
+                            onChange={handleChange}
+                            label="Usuario Responsable"
+                          >
+                            {appointmentUsers.length > 0 ? (
+                              appointmentUsers.map(u => (
+                                <MenuItem key={u.atr_id_usuario} value={String(u.atr_id_usuario)}>
+                                  {u.atr_nombre_usuario || u.atr_usuario} {u.atr_correo_electronico ? `- ${u.atr_correo_electronico}` : ''}
+                                </MenuItem>
+                              ))
+                            ) : (
+                              usuarios.map(usuario => (
+                                <MenuItem key={usuario.id} value={usuario.id}>
+                                  {usuario.nombre} - {usuario.rol}
+                                </MenuItem>
+                              ))
+                            )}
+                          </Select>
+                        </FormControl>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Box className="appointment-summary">
@@ -495,7 +628,11 @@ const FormularioReservaCita = () => {
                           )}
                           {formData.tipo_cita && (
                             <Chip
-                              label={`Tipo: ${formData.tipo_cita}`}
+                              label={`Tipo: ${(() => {
+                                const sel = appointmentTypes.find(t => String(getTypeId(t)) === String(formData.tipo_cita));
+                                if (sel) return getTypeLabel(sel) || formData.tipo_cita;
+                                return formData.tipo_cita;
+                              })()}`}
                               size="small"
                               className="summary-chip"
                             />
@@ -523,7 +660,7 @@ const FormularioReservaCita = () => {
                   hora_cita: '',
                   motivo_cita: '',
                   tipo_cita: '',
-                  estado: 'programada'
+                  estado: defaultProgramadaId || ''
                 });
                 setErrors({});
               }}
@@ -535,29 +672,54 @@ const FormularioReservaCita = () => {
             <Button
               type="submit"
               variant="contained"
-              endIcon={<SaveIcon />}
+              endIcon={submitting ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
               className="submit-btn"
+              disabled={submitting}
             >
-              Reservar Cita
+              {submitting ? 'Reservando...' : 'Reservar Cita'}
             </Button>
           </Box>
-        </form>
-      </Paper>
+    </form>
+  );
 
-      <Snackbar
-        open={notification?.open || false}
-        autoHideDuration={6000}
+  const SnackbarNode = (
+    <Snackbar
+      open={notification?.open || false}
+      autoHideDuration={6000}
+      onClose={handleCloseNotification}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert
         onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        severity={notification?.type || 'info'}
+        className="notification-alert"
       >
-        <Alert
-          onClose={handleCloseNotification}
-          severity={notification?.type || 'info'}
-          className="notification-alert"
-        >
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+        {notification?.message}
+      </Alert>
+    </Snackbar>
+  );
+
+  if (inModal) {
+    return (
+      <Dialog open={true} onClose={() => { if (typeof onClose === 'function') onClose(); }} fullWidth maxWidth="lg">
+        <DialogTitle>
+          {FormHeader}
+        </DialogTitle>
+        <DialogContent dividers>
+          {FormBody}
+          {SnackbarNode}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" className="appointment-form-container">
+      {FormHeader}
+      <Paper className="form-paper">
+        {FormBody}
+      </Paper>
+      {SnackbarNode}
     </Container>
   );
 };

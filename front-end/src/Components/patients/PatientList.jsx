@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Button, Container, Typography, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, Paper, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
-  IconButton, Snackbar, Alert, Tooltip,
+  IconButton, Snackbar, Alert, Tooltip, Accordion, AccordionSummary, AccordionDetails,
   CircularProgress, Chip
 } from '@mui/material';
 import { Edit, Delete, Visibility, Phone, Email, LocationOn } from '@mui/icons-material';
@@ -13,9 +13,13 @@ import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import logoSvg from '../../logo.svg';
 import { DataGrid } from '@mui/x-data-grid';
 import ModalForm from '../common/ModalForm';
 import PatientForm from './PatientForm';
+import PatientHistory from './PatientHistory';
+import ConsultationList from './ConsultationList';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import { fetchPatients, deletePatient, clearError, getPatient } from '../../redux/patients/patientsSlice';
@@ -27,7 +31,7 @@ const theme = createTheme({
   }
 });
 
-const PatientList = () => {
+const PatientList = ({ onEdit, onDelete, onView, refresh }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items: pacientes, status, error } = useSelector(state => state.patients);
@@ -89,15 +93,21 @@ const PatientList = () => {
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
-    const rows = filtered.map(p => [
-      p.atr_nombre, 
-      p.atr_apellido, 
-      p.atr_numero_expediente, 
-      p.atr_identidad,
-      p.atr_estado_paciente || 'ACTIVO'
-    ]);
+      const rows = filtered.map(p => {
+        const phones = p.telefonos || [];
+        const mainPhone = phones && phones.length > 0 ? (phones[0].telefono || phones[0].atr_telefono || phones[0].numero || '') : '';
+        return [
+          p.atr_nombre || '-',
+          p.atr_apellido || '-',
+          p.atr_numero_expediente || '-',
+          p.atr_identidad || '-',
+          p.atr_fecha_nacimiento || '-',
+          mainPhone || '-',
+          p.atr_estado_paciente || 'ACTIVO'
+        ];
+      });
     doc.autoTable({ 
-      head: [['Nombre', 'Apellido', 'Expediente', 'Identidad', 'Estado']], 
+      head: [['Nombre', 'Apellido', 'Expediente', 'Identidad', 'Fecha Nacimiento', 'Teléfono principal', 'Estado']], 
       body: rows 
     });
     doc.save('pacientes.pdf');
@@ -121,11 +131,29 @@ const PatientList = () => {
     XLSX.writeFile(wb, 'pacientes.xlsx');
   };
 
+  const [viewPatient, setViewPatient] = useState(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [consultationsExpanded, setConsultationsExpanded] = useState(false);
+
   const handleViewPatient = (paciente) => {
-    navigate(`/pacientes/detalle/${paciente.atr_id_paciente}`);
+    // If parent provided an onView handler, call it but still maintain local view state
+    if (onView) {
+      try { onView(paciente); } catch (e) { console.warn('onView handler error', e); }
+    }
+
+    // toggle local view when parent doesn't control view; auto-expand history when selecting
+    setViewPatient(prev => {
+      const same = prev && prev.atr_id_paciente === paciente.atr_id_paciente;
+      const next = same ? null : paciente;
+      if (!same) {
+        setHistoryExpanded(true);
+      }
+      return next;
+    });
   };
 
   const handleEditPatient = async (paciente) => {
+    if (onEdit) return onEdit(paciente);
     try {
       // If the patient object already contains the tipo field, use it directly
       if (paciente && (paciente.atr_id_tipo_paciente !== undefined || paciente.tipoPaciente !== undefined)) {
@@ -147,8 +175,108 @@ const PatientList = () => {
   };
 
   const handleDeletePatient = (paciente) => {
+    if (onDelete) return onDelete(paciente);
     setSelected(paciente);
     setDeleteOpen(true);
+  };
+
+  // New: generate styled PDF report for current filtered patients using clinic header/logo
+  const handleGenerateReport = async () => {
+    try {
+      // convert logo SVG to PNG like other components
+      const svgText = await fetch(logoSvg).then(r => r.text());
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.src = url;
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const desiredHeight = 72;
+          const scale = desiredHeight / img.height;
+          canvas.width = img.width * scale;
+          canvas.height = desiredHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const imgData = canvas.toDataURL('image/png');
+          URL.revokeObjectURL(url);
+
+          const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+          const margin = 40;
+          const headerHeight = 48;
+          const pageWidth = doc.internal.pageSize.getWidth();
+
+          const drawClinicHeader = () => {
+            doc.setFillColor(186, 110, 143);
+            doc.rect(0, 0, pageWidth, headerHeight, 'F');
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text('Clínica Estética Rosales', margin, headerHeight - 14);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(0, 0, 0);
+          };
+
+          drawClinicHeader();
+
+          const imgProps = doc.getImageProperties(imgData);
+          const imgWidth = 72;
+          const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+          const logoY = headerHeight + 6;
+          doc.addImage(imgData, 'PNG', margin, logoY, imgWidth, imgHeight);
+
+          doc.setFontSize(16);
+          doc.setFont(undefined, 'bold');
+          doc.text('Listado de Pacientes', margin + imgWidth + 12, logoY + 18);
+          doc.setFontSize(10);
+          doc.setFont(undefined, 'normal');
+          doc.text(`Generado: ${new Date().toLocaleString()}`, margin + imgWidth + 12, logoY + 36);
+
+          const rows = filtered.map(p => {
+            const phones = p.telefonos || [];
+            const mainPhone = phones && phones.length > 0 ? (phones[0].telefono || phones[0].atr_telefono || phones[0].numero || '') : '';
+            return [
+              p.atr_nombre || '-',
+              p.atr_apellido || '-',
+              p.atr_numero_expediente || '-',
+              p.atr_identidad || '-',
+              p.atr_fecha_nacimiento || '-',
+              mainPhone || '-',
+              p.atr_estado_paciente || 'ACTIVO'
+            ];
+          });
+
+          const startY = logoY + imgHeight + 12;
+          doc.autoTable({
+            startY,
+            head: [['Nombre', 'Apellido', 'Expediente', 'Identidad', 'Fecha Nacimiento', 'Teléfono principal', 'Estado']],
+            body: rows,
+            styles: { fontSize: 10 },
+            didDrawPage: () => drawClinicHeader()
+          });
+
+          const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : startY + 80;
+          doc.setFontSize(9);
+          doc.text('Documento generado desde la aplicación.', margin, finalY);
+
+          doc.save(`pacientes_${Date.now()}.pdf`);
+        } catch (err) {
+          console.error('Error creando PDF de pacientes', err);
+          setSnackbar({ open: true, msg: 'Error al generar el reporte', severity: 'error' });
+        }
+      };
+
+      img.onerror = (e) => {
+        console.error('Error cargando logo para PDF', e);
+        setSnackbar({ open: true, msg: 'No se pudo cargar el logo para generar el reporte', severity: 'error' });
+      };
+    } catch (err) {
+      console.error('Error generando reporte', err);
+      setSnackbar({ open: true, msg: 'Error al generar el reporte', severity: 'error' });
+    }
   };
 
   const [editOpen, setEditOpen] = useState(false);
@@ -244,6 +372,15 @@ const PatientList = () => {
             
             <Button
               variant="outlined"
+              startIcon={<PictureAsPdfIcon />}
+              onClick={handleGenerateReport}
+              sx={{ minWidth: 160 }}
+            >
+              Generar Reporte
+            </Button>
+            
+            <Button
+              variant="outlined"
               startIcon={<TableChartIcon />}
               onClick={handleExportExcel}
               sx={{ minWidth: 120 }}
@@ -297,6 +434,39 @@ const PatientList = () => {
             />
           </Box>
         </Paper>
+
+        {/* Paneles colapsables debajo de la tabla: Historial y Consultas */}
+        <Box sx={{ mt: 3 }}>
+          <Accordion expanded={historyExpanded} onChange={(e, expanded) => setHistoryExpanded(expanded)}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6">Historial del paciente {viewPatient ? `${viewPatient.atr_nombre} ${viewPatient.atr_apellido}` : ''}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {historyExpanded ? (
+                viewPatient ? (
+                  <PatientHistory patientId={viewPatient.atr_id_paciente} />
+                ) : (
+                  <Typography>Seleccione un paciente para ver el historial.</Typography>
+                )
+              ) : null}
+            </AccordionDetails>
+          </Accordion>
+
+          <Accordion expanded={consultationsExpanded} onChange={(e, expanded) => setConsultationsExpanded(expanded)} sx={{ mt: 2 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6">Consultas relacionadas {viewPatient ? `de ${viewPatient.atr_nombre} ${viewPatient.atr_apellido}` : ''}</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {consultationsExpanded ? (
+                viewPatient ? (
+                  <ConsultationList patientId={viewPatient.atr_id_paciente} />
+                ) : (
+                  <Typography>Seleccione un paciente para ver las consultas.</Typography>
+                )
+              ) : null}
+            </AccordionDetails>
+          </Accordion>
+        </Box>
 
         {/* Diálogo de eliminación */}
         <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>

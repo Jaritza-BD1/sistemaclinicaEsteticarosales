@@ -1,15 +1,14 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import DoctorRegistrationPage from '../pages/DoctorRegistrationPage';
-import DoctorListPage from '../pages/DoctorListPage';
+import DoctorList from '../Components/doctors/DoctorList';
+import DoctorPage from '../pages/DoctorPage';
 
 export default function DoctorRoutes() {
   return (
     <Routes>
       {/* Index route so `/medicos` shows the list by default */}
-      <Route index element={<DoctorListPage />} />
-      <Route path="registrar" element={<DoctorRegistrationPage />} />
-      <Route path="lista" element={<DoctorListPage />} />
+      <Route index element={<DoctorList/>} />
+      <Route path="lista" element={<DoctorPage />} />
     </Routes>
   );
 }

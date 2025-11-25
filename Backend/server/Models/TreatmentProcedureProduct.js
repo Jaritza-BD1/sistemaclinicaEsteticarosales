@@ -5,11 +5,13 @@ const TreatmentProcedureProduct = sequelize.define('TPP', {
   atr_procedimiento_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    primaryKey: true,
     field: 'atr_procedimiento_id'
   },
   atr_product_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    primaryKey: true,
     field: 'atr_product_id'
   },
   atr_cantidad: {

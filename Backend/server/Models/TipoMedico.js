@@ -14,11 +14,6 @@ const TipoMedico = sequelize.define('TipoMedico', {
     allowNull: false,
     field: 'atr_nombre_tipo_medico'
   },
-  atr_descripcion: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    field: 'atr_descripcion'
-  },
   atr_creado_por: { type: DataTypes.STRING(15), allowNull: true, field: 'atr_creado_por' },
   atr_fecha_creacion: { type: DataTypes.DATE, allowNull: true, field: 'atr_fecha_creacion' },
   atr_modificado_por: { type: DataTypes.STRING(15), allowNull: true, field: 'atr_modificado_por' },

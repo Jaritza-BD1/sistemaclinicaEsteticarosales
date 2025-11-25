@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
-import { Button, Toast, ToastContainer } from 'react-bootstrap';
+import './doctor-module.css';
+import { useDispatch } from 'react-redux';
 import DoctorList from './DoctorList';
-import DoctorModal from './DoctorModal';
-import { deleteDoctor } from '../../services/doctorService';
+import DoctorRegistrationForm from './DoctorRegistrationForm';
+import { createDoctor, updateDoctor } from '../../redux/doctors/doctorsSlice';
+import { useNotifications } from '../../context/NotificationsContext';
 
 export default function DoctorModule() {
+  const dispatch = useDispatch();
   const [showModal, setShowModal] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [refresh, setRefresh] = useState(false);
-  const [toast, setToast] = useState({ show: false, message: '', bg: 'success' });
+  const [viewDetailsModal, setViewDetailsModal] = useState(false);
+  const { notify } = useNotifications();
+
+  const handleViewDetails = (doctor) => {
+    setSelectedDoctor(doctor);
+    setViewDetailsModal(true);
+  };
 
   const handleEdit = (doctor) => {
     setSelectedDoctor(doctor);
@@ -22,41 +31,56 @@ export default function DoctorModule() {
 
   const handleSuccess = () => {
     setRefresh(r => !r);
-    setToast({ show: true, message: 'Médico guardado correctamente', bg: 'success' });
+    notify({ message: 'Médico guardado correctamente', severity: 'success' });
   };
 
-  const handleDelete = async (id) => {
+  const handleSave = async (doctorData) => {
     try {
-      await deleteDoctor(id);
-      setRefresh(r => !r);
-      setToast({ show: true, message: 'Médico eliminado correctamente', bg: 'success' });
-    } catch (error) {
-      setToast({ show: true, message: 'Error al eliminar médico', bg: 'danger' });
+      if (selectedDoctor && selectedDoctor.atr_id_medico) {
+        await dispatch(updateDoctor({ id: selectedDoctor.atr_id_medico, doctorData })).unwrap();
+      } else {
+        await dispatch(createDoctor(doctorData)).unwrap();
+      }
+      setShowModal(false);
+      handleSuccess();
+    } catch (err) {
+      notify({ message: err?.message || 'Error al guardar médico', severity: 'error' });
+      throw err;
     }
   };
 
+  // La eliminación ahora la maneja internamente `DoctorList` (despacha el thunk)
   return (
-    <div>
-      <Button variant="success" className="mb-3" onClick={handleAdd}>+ Nuevo Médico</Button>
-      <DoctorList onEdit={handleEdit} onDelete={handleDelete} refresh={refresh} />
-      <DoctorModal
-        show={showModal}
-        onHide={() => setShowModal(false)}
-        initialData={selectedDoctor}
-        onSuccess={handleSuccess}
-        onError={error => setToast({ show: true, message: error?.response?.data?.message || error?.message || 'Error al guardar médico', bg: 'danger' })}
+    <div className="doctor-module-container">
+      <header className="module-header">
+        <div className="module-head-inner">
+          <h1 className="module-title">Gestión de Médicos</h1>
+          <h2 className="module-subtitle">Médicos</h2>
+        </div>
+      </header>
+
+      <DoctorList 
+        onEdit={handleEdit}
+        onViewDetails={handleViewDetails}
+        onRegisterNew={handleAdd}
+        refresh={refresh} 
       />
-      <ToastContainer position="bottom-end" className="p-3">
-        <Toast
-          onClose={() => setToast({ ...toast, show: false })}
-          show={toast.show}
-          bg={toast.bg}
-          delay={2500}
-          autohide
-        >
-          <Toast.Body className="text-white">{toast.message}</Toast.Body>
-        </Toast>
-      </ToastContainer>
+      <DoctorRegistrationForm
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        initialData={selectedDoctor}
+        onSave={handleSave}
+        onCancel={() => setShowModal(false)}
+        autoCloseOnSave={false}
+      />
+      {/* Modal para ver detalles (modo lectura) */}
+      <DoctorRegistrationForm
+        open={viewDetailsModal}
+        onClose={() => setViewDetailsModal(false)}
+        initialData={selectedDoctor}
+        readOnly={true}
+        autoCloseOnSave={false}
+      />
     </div>
   );
 } 

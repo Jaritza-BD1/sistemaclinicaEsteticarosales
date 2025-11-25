@@ -38,6 +38,10 @@ const authenticate = async (req, res, next) => {
         'BLOQUEADO': 'Cuenta bloqueada. Contacta al administrador',
         'RECHAZADO': 'Cuenta rechazada'
       };
+      console.debug('[auth] Usuario con estado no activo:', {
+        id: user.atr_id_usuario,
+        estado: user.atr_estado_usuario
+      });
       
       return res.status(403).json({
         error: statusMessages[user.atr_estado_usuario] || 'Cuenta no activa',
@@ -48,6 +52,10 @@ const authenticate = async (req, res, next) => {
     // 5. Verificar bloqueo temporal
     if (user.atr_reset_expiry && new Date(user.atr_reset_expiry) > new Date()) {
       const unlockTime = new Date(user.atr_reset_expiry).toLocaleTimeString();
+      console.debug('[auth] Usuario bloqueado temporalmente:', {
+        id: user.atr_id_usuario,
+        resetExpiry: user.atr_reset_expiry
+      });
       return res.status(403).json({
         error: `Cuenta bloqueada temporalmente hasta ${unlockTime}`
       });

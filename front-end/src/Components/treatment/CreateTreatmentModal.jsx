@@ -1,40 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 import {
+  Autocomplete,
+  TextField,
   Box,
+  Typography,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Typography,
-  TextField,
   Button,
   Grid,
-  Alert,
-  Snackbar,
+  Card,
+  CardContent,
+  Divider,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Card,
-  CardContent,
-  Divider,
-  useTheme,
-  useMediaQuery,
-  Autocomplete,
+  Snackbar,
+  Alert,
   IconButton
 } from '@mui/material';
 import {
-  Save as SaveIcon,
-  Close as CloseIcon,
-  MedicalServices as MedicalIcon,
-  Person as PersonIcon,
   CalendarToday as CalendarIcon,
-  Description as DescriptionIcon
+  Person as PersonIcon,
+  MedicalServices as MedicalIcon,
+  Description as DescriptionIcon,
+  Save as SaveIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
+import { getActivePatients, fetchPatients, formatPatientForForm } from '../../services/patientService';
+import { getActiveDoctors, fetchDoctors, formatDoctorForForm } from '../../services/doctorService';
 
-import { useNavigate } from 'react-router-dom';
-
-const CreateTreatmentModal = ({ open, onClose, onSave }) => {
+const CreateTreatmentModal = ({ open = false, onClose = () => {}, onSave = null }) => {
   const theme = useTheme();
 
   const navigate = useNavigate();
@@ -55,52 +55,63 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
   });
 
   const [notification, setNotification] = useState(null);
+  // Estados y listas necesarias
+  const [pacientes, setPacientesList] = useState([]);
+  const [medicos, setMedicosList] = useState([]);
 
-  // Datos simulados para selectores
+  // Datos simulados / opciones por defecto
   const tiposTratamiento = [
     'Fisioterapia',
     'Farmacológico',
-    'Quirúrgico',
-    'Psicoterapia',
-    'Rehabilitación',
     'Terapia Ocupacional',
-    'Terapia del Lenguaje',
-    'Terapia Respiratoria',
-    'Terapia Cardiaca',
-    'Terapia Neurológica',
-    'Otro'
+    'Rehabilitación'
   ];
 
   const frecuencias = [
-    'Diario',
-    'Dos veces por semana',
-    'Tres veces por semana',
-    'Semanal',
-    'Quincenal',
-    'Mensual',
+    'Una vez al día',
+    'Dos veces al día',
+    'Tres veces al día',
+    'Cada 6 horas',
+    'Cada 8 horas',
+    'Cada 12 horas',
     'Según necesidad',
-    'Continuo'
+    'Antes de las comidas',
+    'Después de las comidas',
+    'Con las comidas'
   ];
 
   const estados = [
-    { value: 'activo', label: 'Activo' },
-    { value: 'pendiente', label: 'Pendiente' },
-    { value: 'completado', label: 'Completado' },
-    { value: 'cancelado', label: 'Cancelado' },
-    { value: 'suspendido', label: 'Suspendido' }
+    { value: 'ACTIVO', label: 'Activo' },
+    { value: 'INACTIVO', label: 'Inactivo' },
+    { value: 'COMPLETADO', label: 'Completado' }
   ];
+  // Load patients and doctors for the selects
+  React.useEffect(() => {
+    let mounted = true;
+    const loadLists = async () => {
+      try {
+        const pRes = await getActivePatients().catch(() => fetchPatients());
+        const patientsData = (pRes && pRes.data) ? (pRes.data.data || pRes.data) : (pRes || []);
+        if (mounted) {
+          const list = Array.isArray(patientsData) ? patientsData : [];
+          const normalizedPatients = list.map(p => formatPatientForForm(p));
+          setPacientesList(normalizedPatients);
+        }
 
-  const pacientes = [
-    { id: 1, nombre: 'María Rodríguez', identidad: '0801199501234' },
-    { id: 2, nombre: 'Carlos Pérez', identidad: '0802199405678' },
-    { id: 3, nombre: 'Ana Martínez', identidad: '0803199309012' }
-  ];
-
-  const medicos = [
-    { id: 1, nombre: 'Dr. Juan López', especialidad: 'Medicina General' },
-    { id: 2, nombre: 'Dra. Sofía García', especialidad: 'Cardiología' },
-    { id: 3, nombre: 'Dr. Miguel Torres', especialidad: 'Dermatología' }
-  ];
+        const dRes = await getActiveDoctors().catch(() => fetchDoctors());
+        const doctorsData = (dRes && dRes.data) ? (dRes.data.data || dRes.data) : (dRes || []);
+        if (mounted) {
+          const list = Array.isArray(doctorsData) ? doctorsData : [];
+          const normalizedDoctors = list.map(d => formatDoctorForForm(d));
+          setMedicosList(normalizedDoctors);
+        }
+      } catch (err) {
+        console.error('Error cargando pacientes/medicos', err);
+      }
+    };
+    loadLists();
+    return () => { mounted = false; };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -125,10 +136,25 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
 
     try {
       setNotification({ message: 'Creando tratamiento...', type: 'info', open: true });
+      // Construir payload con los atributos que espera el backend
+      const payload = {
+        patientId: parseInt(formData.paciente, 10),
+        doctorId: parseInt(formData.medico, 10),
+        treatmentType: formData.tipo_tratamiento || formData.nombre_tratamiento,
+        description: formData.descripcion,
+        startDate: formData.fecha_inicio,
+        endDate: formData.fecha_fin || null,
+        frequency: formData.frecuencia,
+        duration: formData.duracion,
+        medications: [],
+        observations: formData.observaciones,
+        status: (formData.estado || 'ACTIVO').toString().toUpperCase()
+      };
+
       // onSave debe devolver el tratamiento creado
       let created = null;
       if (onSave) {
-        created = await onSave(formData);
+        created = await onSave(payload);
       }
 
       setNotification({
@@ -488,7 +514,12 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
                       <Grid item xs={12} sm={6}>
                         <Autocomplete
                           options={pacientes}
-                          getOptionLabel={(option) => `${option.nombre} - ${option.identidad}`}
+                          getOptionLabel={(option) => {
+                            const nombre = option.atr_nombre || option.nombre || '';
+                            const apellido = option.atr_apellido || option.apellido || '';
+                            const identidad = option.atr_identidad || option.identidad || option.atr_numero_expediente || '';
+                            return `${nombre} ${apellido}${identidad ? ` - ${identidad}` : ''}`;
+                          }}
                           renderInput={(params) => (
                             <TextField
                               {...params}
@@ -509,9 +540,10 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
                           onChange={(event, newValue) => {
                             setFormData(prev => ({
                               ...prev,
-                              paciente: newValue ? newValue.id : ''
+                              paciente: newValue ? (newValue.atr_id_paciente ?? newValue.id) : ''
                             }));
                           }}
+                          value={pacientes.find(p => (p.atr_id_paciente ?? p.id) === formData.paciente) || null}
                           renderOption={(props, option) => (
                             <Box component="li" {...props}>
                               <Box>
@@ -528,7 +560,12 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
                       <Grid item xs={12} sm={6}>
                         <Autocomplete
                           options={medicos}
-                          getOptionLabel={(option) => `${option.nombre} - ${option.especialidad}`}
+                          getOptionLabel={(option) => {
+                            const nombre = option.atr_nombre || option.nombre || '';
+                            const apellido = option.atr_apellido || option.apellido || '';
+                            const especial = (option.Especialidades && option.Especialidades[0] && option.Especialidades[0].atr_especialidad) || option.especialidad || '';
+                            return `${nombre} ${apellido}${especial ? ` - ${especial}` : ''}`;
+                          }}
                           renderInput={(params) => (
                             <TextField
                               {...params}
@@ -549,9 +586,10 @@ const CreateTreatmentModal = ({ open, onClose, onSave }) => {
                           onChange={(event, newValue) => {
                             setFormData(prev => ({
                               ...prev,
-                              medico: newValue ? newValue.id : ''
+                              medico: newValue ? (newValue.atr_id_medico ?? newValue.id) : ''
                             }));
                           }}
+                          value={medicos.find(m => (m.atr_id_medico ?? m.id) === formData.medico) || null}
                           renderOption={(props, option) => (
                             <Box component="li" {...props}>
                               <Box>

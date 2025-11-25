@@ -31,8 +31,11 @@ const MaintenanceManager = ({ model, columnLabels = {} }) => {
   setPrimaryKeyAttributes((m && m.primaryKeyAttributes) ? m.primaryKeyAttributes : []);
       const offset = (page - 1) * limit;
       const list = await maintenanceService.list(model, page, limit, query, { offset, field: searchField });
-      setRows((list.data && list.data) || []);
-      setTotal(list.pagination ? list.pagination.total : 0);
+      // list is axios response: list.data contains { data: [...rows], pagination: {...} }
+      const payload = list && list.data ? list.data : list;
+      const rowsArray = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.data) ? payload.data : []);
+      setRows(rowsArray);
+      setTotal(payload && payload.pagination ? payload.pagination.total : 0);
 
       // permisos
       try {
@@ -99,7 +102,9 @@ const MaintenanceManager = ({ model, columnLabels = {} }) => {
     try {
   const offset = (page - 1) * limit;
   const list = await maintenanceService.list(model, page, limit, query, { offset, field: searchField });
-      setRows((list.data && list.data) || []);
+      const payload = list && list.data ? list.data : list;
+      const rowsArray = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.data) ? payload.data : []);
+      setRows(rowsArray);
       setSnackbar({ open: true, message: 'Registro eliminado', severity: 'success' });
     } catch (err) {
       console.error(err);
@@ -139,7 +144,9 @@ const MaintenanceManager = ({ model, columnLabels = {} }) => {
       }
   const offset = (page - 1) * limit;
   const list = await maintenanceService.list(model, page, limit, query, { offset, field: searchField });
-      setRows((list.data && list.data) || []);
+      const payload = list && list.data ? list.data : list;
+      const rowsArray = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.data) ? payload.data : []);
+      setRows(rowsArray);
       setOpen(false);
       resetForm();
       setSnackbar({ open: true, message: editing ? 'Registro actualizado' : 'Registro creado', severity: 'success' });

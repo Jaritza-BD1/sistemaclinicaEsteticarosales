@@ -84,3 +84,20 @@ export const useConsultations = () => {
     clearAllErrors
   };
 };
+
+// Convenience hooks: selector wrappers that call `useSelector` internally
+// These provide a safer API so components don't need to call `useSelector` themselves.
+export const useConsultationFromAppointment = (appointmentId) =>
+  useSelector(state => selectConsultationByAppointment(state, appointmentId));
+
+export const useConsultationById = (consultationId) =>
+  useSelector(state => selectConsultationById(state, consultationId));
+
+export const useConsultationExams = (consultationId) =>
+  useSelector(state => selectExamsByConsultation(state, consultationId));
+
+export const useConsultationPrescriptions = (consultationId) =>
+  useSelector(state => selectPrescriptionsByConsultation(state, consultationId));
+
+export const useConsultationTreatments = (consultationId) =>
+  useSelector(state => selectTreatmentsByConsultation(state, consultationId));

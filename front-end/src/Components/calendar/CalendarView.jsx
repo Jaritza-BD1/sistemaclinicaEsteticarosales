@@ -29,14 +29,18 @@ const CalendarView = () => {
   // Usa el hook del contexto para acceder al estado y las funciones
   const { showEditModal, selectedEvent, closeEditModal } = useCalendar();
 
+  // Track notifications locally (avoid mutating Redux state)
+  const notifiedRef = React.useRef(new Set());
   const checkReminders = useCallback((eventsToCheck) => {
     const now = moment();
     eventsToCheck.forEach(event => {
-      if (event.reminder && moment(event.reminder).isValid() && !event.notified) {
+      if (!event || !event.id) return;
+      const alreadyNotified = notifiedRef.current.has(event.id);
+      if (event.reminder && moment(event.reminder).isValid() && !alreadyNotified) {
         const reminderTime = moment(event.reminder);
         if (reminderTime.isBetween(now.clone().subtract(1, 'minute'), now.clone().add(1, 'minute'))) {
           alert(`¡Recordatorio! Tienes "${event.title}" programado para hoy a las ${moment(event.start).format('HH:mm')}.`);
-          event.notified = true; // Marca como notificado para esta sesión
+          notifiedRef.current.add(event.id);
         }
       }
     });

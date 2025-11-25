@@ -92,3 +92,5 @@ notNull Violation: tbl_ms_bitacora.atr_descripcion cannot be null
 
 [2025-11-12 19:15:28] ERROR: Error al registrar en bitácora: Data too long for column 'atr_accion' at row 1
 
+[2025-11-25 04:05:15] ERROR: Error al registrar en bitácora: Data too long for column 'atr_descripcion' at row 1
+

@@ -59,7 +59,6 @@ import TokenModelPage from './pages/TokenModelPage';
 import CitasRoutes from './routes/CitasRoutes';
 import PacienteRoutes from './routes/PacienteRoutes';
 import DoctorRoutes from './routes/DoctorRoutes';
-import CitasAgendarPage from './pages/CitasAgendarPage';
 import ExamenRoutes from './routes/ExamenRoutes';
 import TratamientoRoutes from './routes/tratamientoRoutes';
 import CajaRoutes from './routes/CajaRoutes';
@@ -159,16 +158,7 @@ function ModalSwitch() {
         <Route path="/test-admin" element={<AppLayout><ProtectedRoute requiredRole={1}><AdminDashboard /></ProtectedRoute></AppLayout>} />
       </Routes>
 
-      {background && location.pathname === '/citas/agendar' && (
-        <Dialog open onClose={() => navigate(-1)} fullWidth maxWidth="lg">
-          <DialogTitle>Agendar Cita</DialogTitle>
-          <DialogContent>
-            <AppLayout>
-              <CitasAgendarPage />
-            </AppLayout>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Removed modal for /citas/agendar because the referenced page component was not present. */}
     </>
   );
 }

@@ -26,19 +26,7 @@ function TreatmentsModulePage() {
 
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Button
-                    variant="outlined"
-                    startIcon={<ArrowBackIcon />}
-                    onClick={handleBack}
-                    sx={{ mr: 2 }}
-                >
-                    Regresar
-                </Button>
-                <Typography variant="h4" component="h1" gutterBottom>
-                    Módulo de Gestión de Tratamientos
-                </Typography>
-            </Box>
+            <Box sx={{ height: 16 }} />
 
             {/* Renderizar TreatmentList y pasarle props para abrir modales */}
             <TreatmentList

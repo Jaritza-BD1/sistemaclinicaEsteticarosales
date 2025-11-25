@@ -52,8 +52,9 @@ export const updateConsultation = createAsyncThunk(
 
 export const finishConsultation = createAsyncThunk(
   'consultations/finish',
-  async (consultationId, { rejectWithValue }) => {
+  async ({ consultationId, data } = {}, { rejectWithValue }) => {
     try {
+      // `data` is optional; backend endpoint currently doesn't require a body for finish
       const response = await consultationApi.finishConsultation(consultationId);
       return { consultationId, result: response.data.data };
     } catch (error) {

@@ -25,7 +25,11 @@ const authenticate = async (req, res, next) => {
       return ResponseService.forbidden(res, 'Cuenta no activa');
     }
 
-    req.user = user;
+    // Normalize the user object to a plain object and expose a convenient `id` field
+    const plainUser = (typeof user.get === 'function') ? user.get({ plain: true }) : user;
+    // Map DB PK `atr_id_usuario` to `id` for compatibility with existing controllers
+    plainUser.id = plainUser.atr_id_usuario || plainUser.id || null;
+    req.user = plainUser;
     next();
   } catch (error) {
     logger.error('Error en autenticación', error);

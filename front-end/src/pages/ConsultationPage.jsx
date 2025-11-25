@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  useConsultationFromAppointment,
+  useConsultationExams as useExamsHook,
+  useConsultationPrescriptions as usePrescHook,
+  useConsultationTreatments as useTreatHook
+} from '../hooks/useConsultations';
+import {
   Container,
   Typography,
   Paper,
@@ -51,14 +57,34 @@ const ConsultationPage = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Get data from Redux
-  const consultation = selectConsultationFromAppointment(appointmentId);
-  const exams = selectConsultationExams(consultation?.atr_id_consulta);
-  const prescriptions = selectConsultationPrescriptions(consultation?.atr_id_consulta);
-  const treatments = selectConsultationTreatments(consultation?.atr_id_consulta);
+  // Use the new convenience selector hooks
+  const consultation = useConsultationFromAppointment(appointmentId);
+  const exams = useExamsHook(consultation?.atr_id_consulta);
+  const prescriptions = usePrescHook(consultation?.atr_id_consulta);
+  const treatments = useTreatHook(consultation?.atr_id_consulta);
 
   useEffect(() => {
     loadData();
   }, [appointmentId]);
+
+  // When the consultation is available in the store, load related lists
+  useEffect(() => {
+    const loadRelated = async () => {
+      if (consultation?.atr_id_consulta) {
+        try {
+          await Promise.all([
+            fetchConsultationExams(consultation.atr_id_consulta),
+            fetchConsultationPrescriptions(consultation.atr_id_consulta),
+            fetchConsultationTreatments(consultation.atr_id_consulta)
+          ]);
+        } catch (e) {
+          console.error('Error cargando datos relacionados de la consulta', e);
+        }
+      }
+    };
+
+    loadRelated();
+  }, [consultation?.atr_id_consulta]);
 
   const loadData = async () => {
     try {
@@ -78,6 +104,7 @@ const ConsultationPage = () => {
           appointment = updatedAppointmentRes.data.data;
         } catch (statusError) {
           console.error('Error cambiando estado de cita:', statusError);
+          setSnackbar({ open: true, message: statusError?.response?.data?.message || statusError?.message || 'No se pudo cambiar el estado de la cita', severity: 'error' });
           // Continuar con la cita original si falla el cambio de estado
         }
       }
@@ -97,9 +124,11 @@ const ConsultationPage = () => {
       }
     } catch (err) {
       console.error('Error cargando datos:', err);
+      // Prefer backend-friendly messages when available
+      const msg = err?.customMessage || err?.response?.data?.error || err?.response?.data?.message || err.message || 'Error cargando datos de la cita';
       setSnackbar({
         open: true,
-        message: 'Error cargando datos de la cita',
+        message: msg,
         severity: 'error'
       });
     }
@@ -160,7 +189,20 @@ const ConsultationPage = () => {
   };
 
   if (loading.fetch) return <Typography>Cargando...</Typography>;
-  if (!appointment) return <Typography>Cita no encontrada</Typography>;
+  if (!appointment) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>Cita no encontrada</Typography>
+          <Typography sx={{ mb: 2 }} color="textSecondary">No fue posible cargar la cita. Verifique la conexión al backend o los permisos.</Typography>
+          <Box display="flex" gap={2}>
+            <Button variant="contained" onClick={loadData}>Reintentar</Button>
+            <Button variant="outlined" onClick={() => navigate('/citas')}>Volver a Citas</Button>
+          </Box>
+        </Paper>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="xl">

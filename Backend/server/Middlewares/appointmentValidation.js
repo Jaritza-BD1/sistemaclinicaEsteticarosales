@@ -22,7 +22,12 @@ const create = [
     return true;
   }),
   body('hora').matches(/^\d{2}:\d{2}$/).withMessage('Hora es requerida y debe estar en formato HH:MM'),
-  body('tipoCita').notEmpty().withMessage('Tipo de cita es requerido'),
+  // aceptar `tipoCita` o `tipoCitaId` para compatibilidad con distintos clientes
+  body('tipoCita').custom((value, { req }) => {
+    if (value) return true;
+    if (req.body && (req.body.tipoCitaId || req.body.tipo_cita)) return true;
+    throw new Error('Tipo de cita es requerido');
+  }),
   body('motivo').notEmpty().withMessage('Motivo es requerido'),
   body('duracion').isInt({ min: 1 }).withMessage('Duración debe ser un número entero mayor a 0 (en minutos)'),
   validateRequest
@@ -31,7 +36,12 @@ const create = [
 const update = [
   body('fecha').optional().isISO8601().withMessage('Fecha debe ser un formato válido'),
   body('hora').optional().matches(/^\d{2}:\d{2}$/).withMessage('Hora debe estar en formato HH:MM'),
-  body('tipoCita').optional().notEmpty().withMessage('Tipo de cita no puede estar vacío'),
+  body('tipoCita').optional().custom((value, { req }) => {
+    // Si viene vacío, pero existe tipoCitaId, es válido
+    if (value) return true;
+    if (req.body && (req.body.tipoCitaId || req.body.tipo_cita)) return true;
+    return true;
+  }),
   body('motivo').optional().notEmpty().withMessage('Motivo no puede estar vacío'),
   body('duracion').optional().isInt({ min: 1 }).withMessage('Duración debe ser un número entero mayor a 0 (en minutos)'),
   validateRequest

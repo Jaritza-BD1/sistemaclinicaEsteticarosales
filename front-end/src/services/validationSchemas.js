@@ -304,50 +304,45 @@ export const appointmentSchema = Yup.object({
     .required('El tipo de cita es obligatorio')
 });
 
-// Esquema para productos farmacéuticos
+// Esquema para productos farmacéuticos (nombres de campo en español usados por el formulario)
 export const productSchema = Yup.object({
-  name: Yup.string()
+  nombre: Yup.string()
     .min(2, 'El nombre debe tener al menos 2 caracteres')
     .max(100, 'El nombre no puede exceder 100 caracteres')
     .required('El nombre del producto es obligatorio'),
-  
-  code: Yup.string()
-    .matches(/^[A-Z0-9]+$/, 'El código debe contener solo letras mayúsculas y números')
-    .required('El código del producto es obligatorio'),
-  
-  quantity: Yup.number()
-    .min(0, 'La cantidad no puede ser negativa')
-    .required('La cantidad es obligatoria'),
-  
-  price: Yup.number()
+
+  codigoBarra: Yup.string()
+    .matches(/^[A-Z0-9]*$/, 'El código debe contener solo letras mayúsculas y números')
+    .optional(),
+
+  descripcion: Yup.string()
+    .max(500, 'La descripción no puede exceder 500 caracteres')
+    .optional(),
+
+  categoria: Yup.string()
+    .required('La categoría es obligatoria'),
+
+  unidadMedida: Yup.string()
+    .required('La unidad de medida es obligatoria'),
+
+  proveedor: Yup.string()
+    .required('El proveedor es obligatorio'),
+
+  precio: Yup.number()
     .min(0, 'El precio no puede ser negativo')
     .required('El precio es obligatorio'),
-  
-  description: Yup.string()
-    .max(500, 'La descripción no puede exceder 500 caracteres'),
-  
-  category: Yup.string()
-    .required('La categoría es obligatoria'),
-  
-  supplier: Yup.string()
-    .required('El proveedor es obligatorio'),
-  
-  expiration_date: Yup.date()
-    .min(new Date(), 'La fecha de vencimiento debe ser futura')
-    .required('La fecha de vencimiento es obligatoria'),
-  
-  min_stock: Yup.number()
+
+  stock: Yup.number()
+    .min(0, 'El stock no puede ser negativo')
+    .required('El stock es obligatorio'),
+
+  stockMinimo: Yup.number()
     .min(0, 'El stock mínimo no puede ser negativo')
     .required('El stock mínimo es obligatorio'),
-  
-  max_stock: Yup.number()
-    .min(Yup.ref('min_stock'), 'El stock máximo debe ser mayor al mínimo')
-    .required('El stock máximo es obligatorio'),
-  
-  unit: Yup.string()
-    .required('La unidad es obligatoria'),
-  
-  prescription_required: Yup.boolean()
+
+  stockMaximo: Yup.number()
+    .min(Yup.ref('stockMinimo'), 'El stock máximo debe ser mayor al mínimo')
+    .required('El stock máximo es obligatorio')
 });
 
 // Esquema para tratamientos

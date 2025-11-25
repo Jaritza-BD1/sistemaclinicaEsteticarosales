@@ -24,7 +24,7 @@ const ESTADOS_RECORDATORIO = {
  * @param {boolean} cancelacion - Indica si es una cancelación (default: false)
  * @returns {Promise} Promise que resuelve con el registro creado
  */
-async function registrarEstadoRecordatorio(recordatorioId, estado, contenido, cancelacion = false) {
+async function registrarEstadoRecordatorio(recordatorioId, estado, contenido, cancelacion = false, options = {}) {
   // Validar estado
   const estadosValidos = Object.values(ESTADOS_RECORDATORIO);
   if (!estadosValidos.includes(estado)) {
@@ -36,7 +36,7 @@ async function registrarEstadoRecordatorio(recordatorioId, estado, contenido, ca
     atr_estado_recordatorio: estado,
     atr_contenido: contenido,
     atr_cancelacion: cancelacion,
-  });
+  }, options);
 }
 
 /**

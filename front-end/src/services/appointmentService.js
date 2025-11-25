@@ -45,21 +45,12 @@ export const deleteAppointment = async (id) => normalize(await api.delete(`/appo
 
 // Operaciones específicas
 export const updateAppointmentStatus = async (id, statusName) => {
-  // Convertir nombre de estado a ID
-  const statusIdMap = {
-    'PROGRAMADA': 1,
-    'CONFIRMADA': 2,
-    'EN_CONSULTA': 3,
-    'PENDIENTE_PAGO': 4,
-    'FINALIZADA': 5,
-    'CANCELADA': 6,
-    'NO_ASISTIO': 7
-  };
-  const estadoId = statusIdMap[statusName];
-  if (!estadoId) {
+  // The backend expects the status name string in `req.body.status`.
+  // Send the status as provided (e.g. 'EN_CONSULTA').
+  if (!statusName || typeof statusName !== 'string') {
     throw new Error(`Estado ${statusName} no válido`);
   }
-  return normalize(await api.patch(`/appointments/${id}/status`, { estadoId }));
+  return normalize(await api.patch(`/appointments/${id}/status`, { status: statusName }));
 };
 export const rescheduleAppointment = async (id, data) => normalize(await api.post(`/appointments/${id}/reschedule`, data));
 
@@ -72,6 +63,8 @@ export const getPatients = async () => normalize(await api.get('/appointments/pa
 export const getDoctors = async () => normalize(await api.get('/appointments/doctors'));
 export const getAppointmentStates = async () => normalize(await api.get('/appointments/states'));
 export const getAppointmentTypes = async () => normalize(await api.get('/appointments/types'));
+// Obtener usuarios (sin paginación extensa para select)
+export const getUsers = async (params = {}) => normalize(await api.get('/admin/users', { params }));
 
 // Recordatorios (si existe endpoint)
 export const sendReminders = async () => normalize(await api.post('/appointments/reminders/send'));
@@ -123,8 +116,10 @@ export const formatAppointmentForCalendar = (appointment) => {
   return {
     id: String(appointment.atr_id_cita),
     title: appointment.atr_motivo_cita,
-    start: startDate,
-    end: endDate,
+    // Store ISO strings to keep Redux state serializable; UI components
+    // (FullCalendar / moment) can parse ISO strings as needed.
+    start: startDate.toISOString(),
+    end: endDate.toISOString(),
     type: 'appointment',
     patientId: appointment.atr_id_paciente,
     doctorId: appointment.atr_id_medico,
@@ -133,7 +128,7 @@ export const formatAppointmentForCalendar = (appointment) => {
     typeName: appointment.TipoCita?.atr_nombre_tipo_cita,
     area: appointment.TipoCita?.atr_area,
     duration: duration,
-    reminder: appointment.Recordatorio?.atr_fecha_hora_envio ? new Date(appointment.Recordatorio.atr_fecha_hora_envio) : null,
+    reminder: appointment.Recordatorio?.atr_fecha_hora_envio ? new Date(appointment.Recordatorio.atr_fecha_hora_envio).toISOString() : null,
     patient: appointment.Patient,
     doctor: appointment.Doctor,
     user: appointment.User
@@ -147,7 +142,10 @@ export const formatFormDataForBackend = (formData) => {
     medicoId: parseInt(formData.medicoId),
     fecha: formData.fecha,
     hora: formData.hora,
-    tipoCitaId: parseInt(formData.tipoCitaId),
+    // En el backend algunos controladores esperan `tipoCita` (id) en vez de `tipoCitaId`.
+    // Enviar ambos para máxima compatibilidad.
+    tipoCitaId: formData.tipoCitaId ? parseInt(formData.tipoCitaId) : null,
+    tipoCita: formData.tipoCitaId ? parseInt(formData.tipoCitaId) : (formData.tipoCita ? parseInt(formData.tipoCita) : null),
     motivo: formData.motivo,
     estado: formData.estado || 'PROGRAMADA',
     duracion: parseInt(formData.duracion) || 60, // 60 minutos por defecto

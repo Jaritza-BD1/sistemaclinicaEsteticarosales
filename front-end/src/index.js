@@ -4,6 +4,7 @@ import './index.css';
 import './asset/Style/color-system.css'; // Importar el sistema de colores
 import App from './App';
 import GlobalErrorBoundary from './Components/common/GlobalErrorBoundary';
+import { NotificationsProvider } from './context/NotificationsContext';
 import reportWebVitals from './reportWebVitals';
 import { Provider } from 'react-redux';
 import store from './redux/LocalStorage/store';
@@ -19,7 +20,9 @@ root.render(
   <React.StrictMode>
     <Provider store={store}>
       <GlobalErrorBoundary>
-        <App />
+        <NotificationsProvider>
+          <App />
+        </NotificationsProvider>
       </GlobalErrorBoundary>
     </Provider>
   </React.StrictMode>

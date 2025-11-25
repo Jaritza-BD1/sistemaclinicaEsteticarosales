@@ -176,7 +176,10 @@ function ProductList({ products, onEdit, onView, loading = false }) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                      ${product.atr_precio_venta_unitario?.toFixed(2) || '0.00'}
+                      ${(() => {
+                        const p = Number(product.atr_precio_venta_unitario);
+                        return Number.isFinite(p) ? p.toFixed(2) : '0.00';
+                      })()}
                     </Typography>
                   </TableCell>
                   <TableCell>

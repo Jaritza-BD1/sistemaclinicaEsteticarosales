@@ -192,8 +192,8 @@ exports.delete = async (req, res) => {
 // Obtener pacientes activos para formularios
 exports.getActivePatients = async (req, res) => {
   try {
+    // Some schemas do not include an 'atr_estado_paciente' column — omit that filter
     const pacientes = await Patient.findAll({
-      where: { atr_estado_paciente: 'ACTIVO' },
       attributes: ['atr_id_paciente', 'atr_nombre', 'atr_apellido', 'atr_numero_expediente'],
       order: [['atr_nombre', 'ASC']]
     });

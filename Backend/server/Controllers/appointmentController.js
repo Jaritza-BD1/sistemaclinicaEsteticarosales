@@ -8,11 +8,104 @@ const bitacoraService = require('../services/bitacoraService');
 const logger = require('../utils/logger');
 const { registrarEstadoRecordatorio, ESTADOS_RECORDATORIO } = require('../utils/reminderUtils');
 
+// Helper to fetch appointment with common associations.
+// If the DB is missing the `tbl_conf_cita` table, retry without the Confirmaciones association.
+async function fetchAppointmentWithPossibleMissingConf(id, includeConf = true) {
+  const baseIncludes = [
+    { model: Patient, as: 'Patient' },
+    { model: Doctor, as: 'Doctor' },
+    { model: User, as: 'User' },
+    {
+      model: Recordatorio,
+      as: 'Recordatorios',
+      include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
+    },
+    { model: EstadoCita, as: 'EstadoCita' },
+    { model: TipoCita, as: 'TipoCita' }
+  ];
+
+  try {
+    const includes = includeConf && ConfCita ? [...baseIncludes, { model: ConfCita, as: 'Confirmaciones' }] : baseIncludes;
+    return await Appointment.findByPk(id, { include: includes });
+  } catch (err) {
+    // If the error indicates the confirmaciones table is missing, retry without it
+    const parentCode = err && err.parent && err.parent.code;
+    const sqlMessage = err && err.parent && err.parent.sqlMessage;
+    const sql = err && err.parent && err.parent.sql;
+    if ((parentCode === 'ER_NO_SUCH_TABLE' || (sqlMessage && sqlMessage.includes("doesn't exist"))) && (sql && sql.includes('tbl_conf_cita'))) {
+      // Retry without Confirmaciones
+      return await Appointment.findByPk(id, { include: baseIncludes });
+    }
+    throw err;
+  }
+}
+
+// Helper to fetch multiple appointments in a date range with the same defensive behavior
+async function fetchAppointmentsInRangeWithPossibleMissingConf(start, end, includeConf = true) {
+  const baseIncludes = [
+    { model: Patient, as: 'Patient' },
+    { model: Doctor, as: 'Doctor' },
+    { model: User, as: 'User' },
+    {
+      model: Recordatorio,
+      as: 'Recordatorios',
+      include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
+    },
+    { model: EstadoCita, as: 'EstadoCita' },
+    { model: TipoCita, as: 'TipoCita' }
+  ];
+
+  try {
+    const includes = includeConf && ConfCita ? [...baseIncludes, { model: ConfCita, as: 'Confirmaciones' }] : baseIncludes;
+    return await Appointment.findAll({
+      where: { atr_fecha_cita: { [require('sequelize').Op.between]: [start, end] } },
+      include: includes,
+      order: [['atr_fecha_cita', 'ASC'], ['atr_hora_cita', 'ASC']]
+    });
+  } catch (err) {
+    const parentCode = err && err.parent && err.parent.code;
+    const sqlMessage = err && err.parent && err.parent.sqlMessage;
+    const sql = err && err.parent && err.parent.sql;
+    if ((parentCode === 'ER_NO_SUCH_TABLE' || (sqlMessage && sqlMessage.includes("doesn't exist"))) && (sql && sql.includes('tbl_conf_cita'))) {
+      return await Appointment.findAll({
+        where: { atr_fecha_cita: { [require('sequelize').Op.between]: [start, end] } },
+        include: baseIncludes,
+        order: [['atr_fecha_cita', 'ASC'], ['atr_hora_cita', 'ASC']]
+      });
+    }
+    throw err;
+  }
+}
+
 module.exports = {
   async createAppointment(req, res, next) {
     try {
       const userId = req.user.id;
-      const { pacienteId, medicoId, fecha, hora, tipoCita, motivo, duracion } = req.body;
+      const { pacienteId, medicoId, fecha, hora, tipoCita, motivo, duracion, usuarioId, usuario } = req.body;
+
+      // Allow optional overriding of the creating user via payload (`usuarioId` or `usuario`).
+      // Robustly parse incoming values and fallback to authenticated user ID when not provided or invalid.
+      const tryParseInt = (v) => {
+        if (v === undefined || v === null) return null;
+        const n = parseInt(v, 10);
+        return Number.isInteger(n) ? n : null;
+      };
+
+      const parsedUsuarioId = tryParseInt(usuarioId);
+      const parsedUsuario = tryParseInt(usuario);
+      // Also accept string numeric IDs from the authenticated user object
+      const parsedAuthUserId = tryParseInt(userId);
+      const creatorId = parsedUsuarioId ?? parsedUsuario ?? parsedAuthUserId ?? null;
+
+      if (!creatorId) {
+        // Log useful details for mapping/reporting
+        logger.warn('createAppointment: no se pudo identificar usuario creador', {
+          reqUser: req.user,
+          bodyUsuarioId: usuarioId,
+          bodyUsuario: usuario
+        });
+        return res.status(400).json({ error: 'No se pudo identificar el usuario creador de la cita' });
+      }
 
       // Llamar al servicio para crear la cita
       const appointment = await appointmentService.createAppointment({
@@ -23,7 +116,7 @@ module.exports = {
         tipoCita,
         motivo,
         duracion,
-        userId
+        userId: creatorId
       });
 
       // Obtener la cita con relaciones
@@ -85,21 +178,7 @@ module.exports = {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const appointment = await Appointment.findByPk(id, {
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ]
-      });
+      const appointment = await fetchAppointmentWithPossibleMissingConf(id, true);
       
       if (!appointment) {
         return res.status(404).json({ error: 'Cita no encontrada' });
@@ -175,21 +254,7 @@ module.exports = {
     try {
       const { id } = req.params;
 
-      const appointment = await Appointment.findByPk(id, {
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ]
-      });
+      const appointment = await fetchAppointmentWithPossibleMissingConf(id, true);
 
       if (!appointment) {
         return res.status(404).json({ error: 'Cita no encontrada' });
@@ -207,21 +272,7 @@ module.exports = {
       const confirmadaId = getEstadoIdByNombre(APPOINTMENT_STATUS.CONFIRMADA);
       await appointment.update({ atr_id_estado: confirmadaId });
 
-      const updatedAppointment = await Appointment.findByPk(id, {
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ]
-      });
+      const updatedAppointment = await fetchAppointmentWithPossibleMissingConf(id, true);
 
       res.json({ success: true, data: updatedAppointment });
     } catch (err) {
@@ -233,10 +284,10 @@ module.exports = {
   async reschedule(req, res, next) {
     try {
       const { id } = req.params;
-      const { nuevaFecha, nuevaHora, motivo } = req.body;
+      const { nuevaFecha, nuevaHora, motivo, recordatorio } = req.body;
       const userId = req.user.id;
 
-      const updatedAppointment = await appointmentService.reschedule(id, { nuevaFecha, nuevaHora, motivo, userId });
+      const updatedAppointment = await appointmentService.reschedule(id, { nuevaFecha, nuevaHora, motivo, userId, recordatorio });
 
       res.json({ success: true, data: updatedAppointment });
     } catch (err) {
@@ -253,21 +304,7 @@ module.exports = {
       const { id } = req.params;
       const { reason } = req.body;
 
-      const appointment = await Appointment.findByPk(id, {
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ]
-      });
+      const appointment = await fetchAppointmentWithPossibleMissingConf(id, true);
 
       if (!appointment) {
         return res.status(404).json({ error: 'Cita no encontrada' });
@@ -288,21 +325,7 @@ module.exports = {
         atr_motivo_cita: `${appointment.atr_motivo_cita} - CANCELADA: ${reason || 'Sin motivo especificado'}`
       });
 
-      const updatedAppointment = await Appointment.findByPk(id, {
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ]
-      });
+      const updatedAppointment = await fetchAppointmentWithPossibleMissingConf(id, true);
 
       res.json({ success: true, data: updatedAppointment });
     } catch (err) {
@@ -313,9 +336,10 @@ module.exports = {
 
   async getPatients(req, res, next) {
     try {
+      // Some schemas do not include an 'estado' column on paciente.
+      // Fetch basic identifying fields without filtering by a missing column.
       const patients = await Patient.findAll({
         attributes: ['atr_id_paciente', 'atr_nombre', 'atr_apellido'],
-        where: { atr_estado_paciente: 'ACTIVO' },
         order: [['atr_nombre', 'ASC']]
       });
       
@@ -333,9 +357,10 @@ module.exports = {
 
   async getDoctors(req, res, next) {
     try {
+      // Some schemas do not include an 'estado' column on medico.
+      // Fetch basic identifying fields without filtering by a missing column.
       const doctors = await Doctor.findAll({
         attributes: ['atr_id_medico', 'atr_nombre', 'atr_apellido'],
-        where: { atr_estado_medico: 'ACTIVO' },
         order: [['atr_nombre', 'ASC']]
       });
       
@@ -373,15 +398,17 @@ module.exports = {
 
   async getAppointmentTypes(req, res, next) {
     try {
+      // Some schemas for TipoCita do not include an 'atr_descripcion' column.
+      // Select available fields and map a fallback description from other fields if present.
       const types = await TipoCita.findAll({
-        attributes: ['atr_id_tipo_cita', 'atr_nombre_tipo_cita', 'atr_descripcion'],
+        attributes: ['atr_id_tipo_cita', 'atr_nombre_tipo_cita', 'atr_area'],
         order: [['atr_id_tipo_cita', 'ASC']]
       });
-      
+
       const formattedTypes = types.map(type => ({
         value: type.atr_id_tipo_cita,
         label: type.atr_nombre_tipo_cita,
-        description: type.atr_descripcion
+        description: type.atr_descripcion || type.atr_area || ''
       }));
       
       res.json({ success: true, data: formattedTypes });
@@ -434,28 +461,8 @@ module.exports = {
         });
       }
 
-      // Obtener citas en el rango de fechas
-      const appointments = await Appointment.findAll({
-        where: {
-          atr_fecha_cita: {
-            [require('sequelize').Op.between]: [start, end]
-          }
-        },
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ],
-        order: [['atr_fecha_cita', 'ASC'], ['atr_hora_cita', 'ASC']]
-      });
+      // Obtener citas en el rango de fechas (defensively handle missing tbl_conf_cita)
+      let appointments = await fetchAppointmentsInRangeWithPossibleMissingConf(start, end, true);
 
       // Formatear para FullCalendar
       const calendarEvents = appointments.map(appointment => {
@@ -535,21 +542,7 @@ module.exports = {
       await appointment.update({ atr_id_estado: newStatusId });
 
       // Obtener la cita actualizada
-      const updatedAppointment = await Appointment.findByPk(id, {
-        include: [
-          { model: Patient, as: 'Patient' },
-          { model: Doctor, as: 'Doctor' },
-          { model: User, as: 'User' },
-          { 
-            model: Recordatorio, 
-            as: 'Recordatorios',
-            include: [{ model: EstadoBitacoraRecordatorio, as: 'EstadosRecordatorio' }]
-          },
-          { model: EstadoCita, as: 'EstadoCita' },
-          { model: TipoCita, as: 'TipoCita' },
-          { model: ConfCita, as: 'Confirmaciones' }
-        ]
-      });
+      const updatedAppointment = await fetchAppointmentWithPossibleMissingConf(id, true);
 
       // Registrar en bitácora
       await bitacoraService.registrarEvento({

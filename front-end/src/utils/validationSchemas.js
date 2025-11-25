@@ -82,4 +82,8 @@ export const rescheduleValidationSchema = Yup.object({
     .required('El motivo de reprogramación es obligatorio')
     .min(5, 'El motivo debe tener al menos 5 caracteres')
     .max(300, 'El motivo no puede exceder 300 caracteres'),
+  fechaHoraEnvio: Yup.date()
+    .nullable()
+    .typeError('Fecha y hora de envío inválida')
+    .min(new Date(new Date().setHours(0, 0, 0, 0)), 'La fecha de envío debe ser hoy o futura')
 });

@@ -1,4 +1,4 @@
-const { Treatment, Patient, Doctor, User, Especialidad } = require('../Models');
+const { Treatment, Patient, Doctor, User, Especialidad, TreatmentProcedure } = require('../Models');
 const logger = require('../utils/logger');
 const ResponseService = require('../services/responseService');
 
@@ -18,7 +18,7 @@ exports.list = async (req, res) => {
           include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['atr_fecha_inicio', 'DESC']]
     });
     
     return ResponseService.success(res, treatments);
@@ -197,10 +197,17 @@ exports.delete = async (req, res) => {
     if (!treatment) {
       return ResponseService.notFound(res, 'Tratamiento no encontrado');
     }
+    // Soft-clear: en lugar de eliminar la fila (que puede romper FKs), limpiamos los campos de datos
+    // Conservamos las FK (atr_id_paciente, atr_id_medico, etc.) para mantener integridad referencial
+    await treatment.update({
+      atr_fecha_fin: null,
+      atr_diagnostico: null,
+      atr_observaciones: null,
+      atr_numero_sesiones: null,
+      atr_tipo_tratamiento: null
+    });
     
-    await treatment.destroy();
-    
-    return ResponseService.success(res, { message: 'Tratamiento eliminado exitosamente' });
+    return ResponseService.success(res, { message: 'Datos del tratamiento borrados (fila conservada)' });
   } catch (error) {
     logger.error('Error eliminando tratamiento:', error);
     return ResponseService.internalError(res, 'Error al eliminar el tratamiento');
@@ -222,7 +229,7 @@ exports.getByPatient = async (req, res) => {
           include: [ { model: Especialidad, as: 'Especialidades', attributes: ['atr_id_especialidad','atr_especialidad'], through: { attributes: [] } } ]
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['atr_fecha_inicio', 'DESC']]
     });
     
     return ResponseService.success(res, treatments);
@@ -246,7 +253,7 @@ exports.getByDoctor = async (req, res) => {
           attributes: ['atr_id_paciente', 'atr_nombre', 'atr_apellido', 'atr_numero_expediente']
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['atr_fecha_inicio', 'DESC']]
     });
     
     return ResponseService.success(res, treatments);

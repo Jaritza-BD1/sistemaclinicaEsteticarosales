@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useFormik } from 'formik';
-import * as Yup from 'yup';
 import {
   Box,
   TextField,
@@ -10,7 +9,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import { DatePicker, TimePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { DatePicker, TimePicker, DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
@@ -27,6 +26,7 @@ const RescheduleAppointment = ({ appointment, onSuccess, onCancel }) => {
     initialValues: {
       nuevaFecha: null,
       nuevaHora: null,
+      fechaHoraEnvio: null,
       motivo: ''
     },
     validationSchema: rescheduleValidationSchema,
@@ -39,6 +39,13 @@ const RescheduleAppointment = ({ appointment, onSuccess, onCancel }) => {
           nuevaHora: `${String(values.nuevaHora.getHours()).padStart(2, '0')}:${String(values.nuevaHora.getMinutes()).padStart(2, '0')}`,
           motivo: values.motivo
         };
+
+        // Si el usuario indicó una fecha/hora de envío de recordatorio, añadir el objeto `recordatorio`
+        if (values.fechaHoraEnvio) {
+          payload.recordatorio = {
+            fechaHoraEnvio: values.fechaHoraEnvio instanceof Date ? values.fechaHoraEnvio.toISOString() : values.fechaHoraEnvio
+          };
+        }
 
         await rescheduleAppointment(appointment.atr_id_cita, payload);
         if (onSuccess) onSuccess();
@@ -127,6 +134,21 @@ const RescheduleAppointment = ({ appointment, onSuccess, onCancel }) => {
                     fullWidth
                     error={formik.touched.nuevaHora && Boolean(formik.errors.nuevaHora)}
                     helperText={formik.touched.nuevaHora && formik.errors.nuevaHora}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <DateTimePicker
+                label="Fecha y hora envío recordatorio (opcional)"
+                value={formik.values.fechaHoraEnvio}
+                onChange={(value) => formik.setFieldValue('fechaHoraEnvio', value)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    error={formik.touched.fechaHoraEnvio && Boolean(formik.errors.fechaHoraEnvio)}
+                    helperText={formik.touched.fechaHoraEnvio && formik.errors.fechaHoraEnvio}
                   />
                 )}
               />

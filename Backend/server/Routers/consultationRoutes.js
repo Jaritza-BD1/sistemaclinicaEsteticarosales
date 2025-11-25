@@ -28,7 +28,7 @@ router.post(
     body('altura').optional().isFloat({ min: 0, max: 3 }).withMessage('Altura debe ser un número válido entre 0 y 3 metros'),
     body('temperatura').optional().isFloat({ min: 30, max: 45 }).withMessage('Temperatura debe estar entre 30°C y 45°C'),
     body('seguimiento').optional().isBoolean(),
-    body('sigVisitDia').optional().isISO8601().withMessage('Fecha de siguiente visita inválida')
+    body('sigVisitDia').isISO8601().withMessage('Fecha de siguiente visita inválida')
   ],
   validateRequest,
   consultationCtrl.create

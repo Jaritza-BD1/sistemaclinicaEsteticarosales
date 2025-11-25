@@ -14,7 +14,35 @@ export const TreatmentProvider = ({ children }) => {
     setLoading(true);
     try {
       const response = await fetchTreatments();
-      setTreatments(response.data || []);
+      // The backend wraps payloads as { success, message, data }
+      const payload = response?.data?.data ?? response?.data ?? [];
+      const list = Array.isArray(payload) ? payload : [];
+
+      // Normalize backend treatment objects into the shape the UI expects
+      const normalized = list.map(item => {
+        const id = item.atr_id_tratamiento ?? item.id ?? item._id;
+        const doctor = item.doctor || item.doctor || null;
+        const especialidad = (
+          (doctor && doctor.Especialidades && doctor.Especialidades.length > 0 && doctor.Especialidades[0].atr_especialidad) ||
+          doctor?.atr_especialidad ||
+          ''
+        );
+
+        return {
+          id,
+          name: item.atr_tipo_tratamiento || item.atr_nombre || `Tratamiento ${id}`,
+          description: item.atr_diagnostico || item.atr_observaciones || item.descripcion || '',
+          especialidad,
+          costo: item.atr_costo ?? item.costo ?? null,
+          duracion: item.atr_numero_sesiones ?? item.duracion ?? null,
+          estado: (item.atr_estado || item.estado || 'ACTIVO').toString().toLowerCase(),
+          patient: item.patient,
+          doctor: doctor,
+          raw: item
+        };
+      });
+
+      setTreatments(normalized);
       setError(null);
     } catch (err) {
       setError('Error al cargar tratamientos');
@@ -30,9 +58,29 @@ export const TreatmentProvider = ({ children }) => {
 
   const addTreatment = async (treatmentData) => {
     const resp = await createTreatment(treatmentData);
-    const newTreatment = resp?.data || resp;
-    setTreatments(prev => [newTreatment, ...prev]);
-    return newTreatment;
+    const newTreatment = resp?.data?.data ?? resp?.data ?? resp;
+    const item = newTreatment;
+    const id = item?.atr_id_tratamiento ?? item?.id ?? item?._id;
+    const doctor = item?.doctor || null;
+    const especialidad = (
+      (doctor && doctor.Especialidades && doctor.Especialidades.length > 0 && doctor.Especialidades[0].atr_especialidad) ||
+      doctor?.atr_especialidad ||
+      ''
+    );
+    const normalized = {
+      id,
+      name: item?.atr_tipo_tratamiento || item?.atr_nombre || `Tratamiento ${id}`,
+      description: item?.atr_diagnostico || item?.atr_observaciones || item?.descripcion || '',
+      especialidad,
+      costo: item?.atr_costo ?? item?.costo ?? null,
+      duracion: item?.atr_numero_sesiones ?? item?.duracion ?? null,
+      estado: (item?.atr_estado || item?.estado || 'ACTIVO').toString().toLowerCase(),
+      patient: item?.patient,
+      doctor: doctor,
+      raw: item
+    };
+    setTreatments(prev => [normalized, ...prev]);
+    return normalized;
   };
 
   const deleteTreatmentToContext = async (id) => {
@@ -41,9 +89,30 @@ export const TreatmentProvider = ({ children }) => {
   };
 
   const updateTreatmentToContext = async (id, treatmentData) => {
-    const updated = await updateTreatmentApi(id, treatmentData);
-    setTreatments(prev => prev.map(t => (t.id === id || t._id === id) ? updated : t));
-    return updated;
+    const resp = await updateTreatmentApi(id, treatmentData);
+    const updated = resp?.data?.data ?? resp?.data ?? resp;
+    const item = updated;
+    const newId = item?.atr_id_tratamiento ?? item?.id ?? item?._id;
+    const doctor = item?.doctor || null;
+    const especialidad = (
+      (doctor && doctor.Especialidades && doctor.Especialidades.length > 0 && doctor.Especialidades[0].atr_especialidad) ||
+      doctor?.atr_especialidad ||
+      ''
+    );
+    const normalized = {
+      id: newId,
+      name: item?.atr_tipo_tratamiento || item?.atr_nombre || `Tratamiento ${newId}`,
+      description: item?.atr_diagnostico || item?.atr_observaciones || item?.descripcion || '',
+      especialidad,
+      costo: item?.atr_costo ?? item?.costo ?? null,
+      duracion: item?.atr_numero_sesiones ?? item?.duracion ?? null,
+      estado: (item?.atr_estado || item?.estado || 'ACTIVO').toString().toLowerCase(),
+      patient: item?.patient,
+      doctor: doctor,
+      raw: item
+    };
+    setTreatments(prev => prev.map(t => (t.id === id || t._id === id) ? normalized : t));
+    return normalized;
   };
 
   return (

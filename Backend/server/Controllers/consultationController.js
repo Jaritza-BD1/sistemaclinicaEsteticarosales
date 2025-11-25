@@ -16,8 +16,8 @@ exports.list = async (req, res) => {
       where,
       order: [['atr_fecha_consulta', 'DESC']],
       include: [
-        { model: require('../Models/Patient'), as: 'patient' },
-        { model: require('../Models/Doctor'), as: 'Doctor' }
+        { model: Patient, as: 'patient' },
+        { model: Doctor, as: 'doctor' }
       ]
     });
     return ResponseService.success(res, consultations);

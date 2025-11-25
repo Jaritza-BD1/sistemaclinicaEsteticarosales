@@ -115,8 +115,8 @@ try {
 
   // EstadoBitacoraRecordatorio associations
   if (models.EstadoBitacoraRecordatorio && models.Recordatorio) {
-    models.EstadoBitacoraRecordatorio.belongsTo(models.Recordatorio, { foreignKey: 'atr_id_recordatorio' });
-    models.Recordatorio.hasMany(models.EstadoBitacoraRecordatorio, { foreignKey: 'atr_id_recordatorio' });
+    models.EstadoBitacoraRecordatorio.belongsTo(models.Recordatorio, { foreignKey: 'atr_id_recordatorio', as: 'Recordatorio' });
+    models.Recordatorio.hasMany(models.EstadoBitacoraRecordatorio, { foreignKey: 'atr_id_recordatorio', as: 'EstadosRecordatorio' });
   }
 
   // Nota: las asociaciones relacionadas con Consultation, Exam/Examen,
@@ -248,6 +248,20 @@ try {
     models.Genero.hasMany(models.Doctor, { foreignKey: 'atr_id_genero', sourceKey: 'atr_id_genero', as: 'doctores' });
   }
 
+  // Doctor <-> Contactos (teléfonos, correos, direcciones)
+  if (models.Doctor && models.DoctorPhone) {
+    models.Doctor.hasMany(models.DoctorPhone, { foreignKey: 'atr_id_medico', sourceKey: 'atr_id_medico', as: 'telefonos' });
+    models.DoctorPhone.belongsTo(models.Doctor, { foreignKey: 'atr_id_medico', targetKey: 'atr_id_medico', as: 'Medico' });
+  }
+  if (models.Doctor && models.DoctorEmail) {
+    models.Doctor.hasMany(models.DoctorEmail, { foreignKey: 'atr_id_medico', sourceKey: 'atr_id_medico', as: 'correos' });
+    models.DoctorEmail.belongsTo(models.Doctor, { foreignKey: 'atr_id_medico', targetKey: 'atr_id_medico', as: 'Medico' });
+  }
+  if (models.Doctor && models.DoctorAddress) {
+    models.Doctor.hasMany(models.DoctorAddress, { foreignKey: 'atr_id_medico', sourceKey: 'atr_id_medico', as: 'direcciones' });
+    models.DoctorAddress.belongsTo(models.Doctor, { foreignKey: 'atr_id_medico', targetKey: 'atr_id_medico', as: 'Medico' });
+  }
+
   // Especialidad <-> Doctor (many-to-many through MedicoEspecialidad)
   if (models.Especialidad && models.Doctor && models.MedicoEspecialidad) {
     models.Doctor.belongsToMany(models.Especialidad, { through: models.MedicoEspecialidad, foreignKey: 'atr_id_medico', otherKey: 'atr_id_especialidad', as: 'Especialidades' });
@@ -332,6 +346,21 @@ try {
   // No forzar fallo en carga de modelos; solo loguear
   // `logger` no está disponible aquí; usar console para no introducir dependencia
   console.error('Error configurando asociaciones en Models/index.js', err);
+}
+
+// Asegurarse de que la asociación Consultation <-> Doctor esté registrada
+// (algunos modelos definen associations en su propio archivo; mantenemos
+// aquí las asociaciones centrales necesarias para el funcionamiento).
+try {
+  if (models.Consultation && models.Doctor) {
+    models.Consultation.belongsTo(models.Doctor, { foreignKey: 'atr_id_medico', as: 'doctor' });
+    // Reciprocal association (si no está ya definida)
+    if (typeof models.Doctor.hasMany === 'function') {
+      models.Doctor.hasMany(models.Consultation, { foreignKey: 'atr_id_medico', as: 'consultas' });
+    }
+  }
+} catch (err) {
+  console.error('Error registrando asociación Consultation<->Doctor en Models/index.js', err);
 }
 
 module.exports = models;

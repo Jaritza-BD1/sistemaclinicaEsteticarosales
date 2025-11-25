@@ -91,24 +91,29 @@ function ProductForm({ product = null, onClose, open = false }) {
   }, [error, dispatch]);
 
   // Mostrar notificación de éxito cuando se complete la operación
-  useEffect(() => {
-    if (status === 'succeeded' && !error) {
-      setShowSuccessNotification(true);
-      setTimeout(() => {
-        setShowSuccessNotification(false);
-        onClose();
-      }, 2000);
-    }
-  }, [status, error, onClose]);
+  // NOTE: Do not rely on global `status` because other pharmacy actions
+  // (like fetchProducts) may set it to 'succeeded' and cause this modal to
+  // auto-close unexpectedly. We will show success only when the current
+  // submit completes successfully (see handleSubmit below).
 
   const handleSubmit = async (data) => {
     try {
       if (product) {
         // Actualizar producto existente
         await dispatch(updateProduct({ id: product.id, productData: data })).unwrap();
+        setShowSuccessNotification(true);
+        setTimeout(() => {
+          setShowSuccessNotification(false);
+          onClose();
+        }, 1200);
       } else {
         // Crear nuevo producto
         await dispatch(createProduct(data)).unwrap();
+        setShowSuccessNotification(true);
+        setTimeout(() => {
+          setShowSuccessNotification(false);
+          onClose();
+        }, 1200);
       }
       return { success: true, message: product ? 'Producto actualizado exitosamente' : 'Producto registrado exitosamente' };
     } catch (error) {
@@ -308,23 +313,25 @@ function ProductForm({ product = null, onClose, open = false }) {
                 </Card>
               </Grid>
             </Grid>
+            {/* Form actions placed inside the form so submit button triggers BaseForm onSubmit */}
+            <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+              <Button onClick={handleClose} disabled={status === 'loading'}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={status === 'loading'}
+                startIcon={status === 'loading' ? <CircularProgress size={20} /> : <CheckIcon />}
+              >
+                {status === 'loading' ? 'Guardando...' : (product ? 'Actualizar' : 'Guardar')}
+              </Button>
+            </Box>
           </BaseForm>
         </Container>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={handleClose} disabled={status === 'loading'}>
-          Cancelar
-        </Button>
-        <Button 
-          type="submit" 
-          variant="contained" 
-          disabled={status === 'loading'}
-          startIcon={status === 'loading' ? <CircularProgress size={20} /> : <CheckIcon />}
-        >
-          {status === 'loading' ? 'Guardando...' : (product ? 'Actualizar' : 'Guardar')}
-        </Button>
-      </DialogActions>
+      {/* DialogActions removed; form actions live inside the form to ensure a single submit source */}
 
       {/* Notificaciones */}
       <Snackbar

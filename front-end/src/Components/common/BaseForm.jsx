@@ -224,7 +224,9 @@ const BaseForm = ({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              form.handleSubmit(handleSubmit)();
+              // form.handleSubmit returns a Promise when called with the onSubmit
+              // handler. Do not attempt to invoke the return value as a function.
+              form.handleSubmit(handleSubmit);
             }}
             noValidate
           >
