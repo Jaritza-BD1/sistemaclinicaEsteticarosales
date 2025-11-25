@@ -5,6 +5,11 @@ import DoctorList from './DoctorList';
 import DoctorRegistrationForm from './DoctorRegistrationForm';
 import { createDoctor, updateDoctor } from '../../redux/doctors/doctorsSlice';
 import { useNotifications } from '../../context/NotificationsContext';
+import ConsultationList from '../patients/ConsultationList';
+import ReportsPage from '../../pages/ConsultasMedicosReportesPage';
+import CitasDiaPage from '../../pages/CitasDiaPage';
+import { Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export default function DoctorModule() {
   const dispatch = useDispatch();
@@ -65,6 +70,34 @@ export default function DoctorModule() {
         onRegisterNew={handleAdd}
         refresh={refresh} 
       />
+
+      <div style={{ marginTop: 16 }}>
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle1">Lista de Consultas</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <ConsultationList />
+          </AccordionDetails>
+        </Accordion>
+        <Accordion sx={{ mt: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle1">Citas del Día</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <CitasDiaPage />
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion sx={{ mt: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle1">Reporte de Médicos y Consultas</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <ReportsPage />
+          </AccordionDetails>
+        </Accordion>
+      </div>
       <DoctorRegistrationForm
         open={showModal}
         onClose={() => setShowModal(false)}

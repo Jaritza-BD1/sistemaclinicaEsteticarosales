@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   AppBar, Toolbar, Typography, Button, Container, Paper, Grid, TextField, Select, MenuItem,
-  FormControl, InputLabel, Box, TableContainer, Table,TableHead, TableRow, TableCell, TableBody, IconButton, TablePagination, Fab, Chip, Snackbar, Alert,
+  FormControl, InputLabel, Box, TableContainer, Table,TableHead, TableRow, TableCell, TableBody, IconButton, TablePagination, Fab, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Divider, InputAdornment, Menu
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 
 import useEspecialidades from '../hooks/useEspecialidades';
+import { useNotifications } from '../context/NotificationsContext';
 
 // NOTA: jsPDF, jspdf-autotable y xlsx se asumen disponibles globalmente a través de CDN.
 // Eliminar importaciones locales para evitar errores de "Could not resolve".
@@ -83,9 +84,7 @@ const RegistrarMedico = ({ onSave, onCancel, generateDoctorId }) => {
     horarios: [],
     estado: 'Activo', // Estado por defecto
   });
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const { notify } = useNotifications();
 
   const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
@@ -103,16 +102,12 @@ const RegistrarMedico = ({ onSave, onCancel, generateDoctorId }) => {
   // Maneja el guardado del médico
   const handleSave = () => {
     if (!formData.nombre || !formData.apellido || !formData.colegiado || formData.especialidad.length === 0) {
-      setSnackbarMessage('Por favor, complete los campos obligatorios.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+      notify({ message: 'Por favor, complete los campos obligatorios.', severity: 'error' });
       return;
     }
     const newDoctor = { ...formData, id: generateDoctorId() };
     onSave(newDoctor);
-    setSnackbarMessage('Médico registrado exitosamente.');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
+    notify({ message: 'Médico registrado exitosamente.', severity: 'success' });
     handleClear(); // Limpiar formulario después de guardar
   };
 
@@ -134,10 +129,7 @@ const RegistrarMedico = ({ onSave, onCancel, generateDoctorId }) => {
     });
   };
 
-  // Cierra el Snackbar
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
-  };
+  // Notifications handled by NotificationsContext via notify()
 
   return (
     <Container maxWidth="lg" className="py-8">
@@ -326,11 +318,7 @@ const RegistrarMedico = ({ onSave, onCancel, generateDoctorId }) => {
           </Grid>
         </Grid>
       </Paper>
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </Container>
   );
 };
@@ -421,9 +409,7 @@ const VerDetallesMedicoModal = ({ open, onClose, doctor }) => {
 // Componente del modal de Editar Médico
 const EditarMedicoModal = ({ open, onClose, doctor, onUpdate }) => {
   const [formData, setFormData] = useState({});
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const { notify } = useNotifications();
 
   const { options: especialidadesOptions, loading: loadingEspecialidades, error: especialidadesError } = useEspecialidades();
 
@@ -448,22 +434,15 @@ const EditarMedicoModal = ({ open, onClose, doctor, onUpdate }) => {
   // Maneja la actualización del médico
   const handleUpdate = () => {
     if (!formData.nombre || !formData.apellido || !formData.colegiado || formData.especialidad.length === 0) {
-      setSnackbarMessage('Por favor, complete los campos obligatorios.');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+      notify({ message: 'Por favor, complete los campos obligatorios.', severity: 'error' });
       return;
     }
     onUpdate(formData);
-    setSnackbarMessage('Médico actualizado exitosamente.');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
+    notify({ message: 'Médico actualizado exitosamente.', severity: 'success' });
     onClose(); // Cerrar modal después de actualizar
   };
 
-  // Cierra el Snackbar
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
-  };
+  // Notifications handled by NotificationsContext via notify()
 
   if (!doctor) return null;
 
@@ -639,11 +618,7 @@ const EditarMedicoModal = ({ open, onClose, doctor, onUpdate }) => {
           Guardar Cambios
         </Button>
       </DialogActions>
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </Dialog>
   );
 };

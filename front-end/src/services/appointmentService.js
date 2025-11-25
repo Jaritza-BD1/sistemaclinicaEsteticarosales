@@ -35,8 +35,8 @@ export const getCalendarAppointments = async (start, end) => {
   return normalize(await api.get(`/appointments/calendar?start=${start}&end=${end}`));
 };
 
-export const getTodayAppointments = () =>
-  normalize(api.get('/appointments/today'));
+export const getTodayAppointments = async () =>
+  normalize(await api.get('/appointments/today'));
 
 export const createAppointment = async (data) => normalize(await api.post('/appointments', data));
 export const getAppointment = async (id) => normalize(await api.get(`/appointments/${id}`));

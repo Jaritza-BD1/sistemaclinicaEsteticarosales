@@ -35,6 +35,7 @@ import { getStatusLabel, getStatusColor } from '../../config/appointmentStatus';
 const CitasDiaList = ({
   appointments = [],
   loading = false,
+  processingIds = [],
   onCheckIn,
   onStartConsultation,
   onReschedule,
@@ -109,6 +110,7 @@ const CitasDiaList = ({
                       startIcon={<CheckCircleIcon />}
                       onClick={() => onCheckIn(appointment.atr_id_cita)}
                       fullWidth
+                      disabled={processingIds.includes(appointment.atr_id_cita)}
                     >
                       Check-in
                     </Button>
@@ -122,6 +124,7 @@ const CitasDiaList = ({
                       startIcon={<PlayArrowIcon />}
                       onClick={() => onStartConsultation(appointment.atr_id_cita)}
                       fullWidth
+                      disabled={processingIds.includes(appointment.atr_id_cita)}
                     >
                       Iniciar Consulta
                     </Button>
@@ -133,6 +136,7 @@ const CitasDiaList = ({
                     startIcon={<ScheduleIcon />}
                     onClick={() => onReschedule(appointment.atr_id_cita)}
                     fullWidth
+                    disabled={processingIds.includes(appointment.atr_id_cita)}
                   >
                     Reprogramar
                   </Button>
@@ -144,6 +148,7 @@ const CitasDiaList = ({
                     startIcon={<CancelIcon />}
                     onClick={() => onCancel(appointment.atr_id_cita)}
                     fullWidth
+                    disabled={processingIds.includes(appointment.atr_id_cita)}
                   >
                     Cancelar
                   </Button>
@@ -223,6 +228,7 @@ const CitasDiaList = ({
                           size="small"
                           color="primary"
                           onClick={() => onCheckIn(appointment.atr_id_cita)}
+                          disabled={processingIds.includes(appointment.atr_id_cita)}
                         >
                           <CheckCircleIcon />
                         </IconButton>
@@ -235,6 +241,7 @@ const CitasDiaList = ({
                           size="small"
                           color="success"
                           onClick={() => onStartConsultation(appointment.atr_id_cita)}
+                          disabled={processingIds.includes(appointment.atr_id_cita)}
                         >
                           <PlayArrowIcon />
                         </IconButton>
@@ -245,6 +252,7 @@ const CitasDiaList = ({
                       <IconButton
                         size="small"
                         onClick={() => onReschedule(appointment.atr_id_cita)}
+                        disabled={processingIds.includes(appointment.atr_id_cita)}
                       >
                         <ScheduleIcon />
                       </IconButton>
@@ -255,6 +263,7 @@ const CitasDiaList = ({
                         size="small"
                         color="error"
                         onClick={() => onCancel(appointment.atr_id_cita)}
+                        disabled={processingIds.includes(appointment.atr_id_cita)}
                       >
                         <CancelIcon />
                       </IconButton>

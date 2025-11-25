@@ -2,11 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import {
   Container, Paper, Typography, Box, TextField, Button, FormControl, InputLabel, Select, MenuItem,
   Table, TableHead, TableRow, TableCell, TableBody, TableContainer, TablePagination, Chip, Tooltip,
-  IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Grid, useMediaQuery, Card, CardContent
+  IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Grid, useMediaQuery, Card, CardContent
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import CitasAgendarPage from './CitasAgendarPage';
 import { APPOINTMENT_STATUS, getStatusLabel } from '../config/appointmentStatus';
+import { useNotifications } from '../context/NotificationsContext';
 
 export default function VerCitas() {
   const { appointments, patients, doctors, reload, confirmAppointment, rescheduleAppointment, cancelAppointment } = useAppointments();
@@ -33,7 +34,7 @@ export default function VerCitas() {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { notify } = useNotifications();
 
   const filtered = useMemo(() => {
     let list = appointments || [];
@@ -75,7 +76,7 @@ export default function VerCitas() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Citas');
     XLSX.writeFile(wb, 'citas.xlsx');
-    setSnackbar({ open: true, message: 'Exportado a Excel', severity: 'success' });
+    notify({ message: 'Exportado a Excel', severity: 'success' });
   };
 
   const handleExportPDF = () => {
@@ -90,13 +91,13 @@ export default function VerCitas() {
     ]));
     doc.autoTable({ head: [['Fecha','Hora','Paciente','Médico','Motivo','Estado']], body: rows });
     doc.save('citas.pdf');
-    setSnackbar({ open: true, message: 'PDF generado', severity: 'success' });
+    notify({ message: 'PDF generado', severity: 'success' });
   };
 
   const handleConfirm = async (row) => {
     try {
       await confirmAppointment(row.id);
-      setSnackbar({ open: true, message: 'Cita confirmada', severity: 'success' });
+      notify({ message: 'Cita confirmada', severity: 'success' });
       reload();
     } catch (e) { setSnackbar({ open: true, message: 'Error al confirmar', severity: 'error' }); }
   };
@@ -108,7 +109,7 @@ export default function VerCitas() {
     if (!selected) return;
     try {
       await cancelAppointment(selected.id, cancelReason);
-      setSnackbar({ open: true, message: 'Cita cancelada', severity: 'success' });
+      notify({ message: 'Cita cancelada', severity: 'success' });
       setCancelOpen(false);
       setCancelReason('');
       reload();
@@ -137,13 +138,13 @@ export default function VerCitas() {
       const time = `${HH}:${MM}`;
 
       await rescheduleAppointment(selected.id, { nuevaFecha: date, nuevaHora: time, motivo: 'Reprogramación desde interfaz' });
-      setSnackbar({ open: true, message: 'Cita reprogramada', severity: 'success' });
+      notify({ message: 'Cita reprogramada', severity: 'success' });
       setReprogramOpen(false);
       setSelected(null);
       setRescheduleDT(null);
       reload();
     } catch (e) {
-      setSnackbar({ open: true, message: 'Error al reprogramar', severity: 'error' });
+      notify({ message: 'Error al reprogramar', severity: 'error' });
     } finally {
       setRescheduleLoading(false);
     }
@@ -376,9 +377,7 @@ export default function VerCitas() {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={()=>setSnackbar(s=>({...s,open:false}))}>
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </Container>
   );
 }

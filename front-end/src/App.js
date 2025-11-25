@@ -63,7 +63,8 @@ import ExamenRoutes from './routes/ExamenRoutes';
 import TratamientoRoutes from './routes/tratamientoRoutes';
 import CajaRoutes from './routes/CajaRoutes';
 import TestForm from './Components/common/TestForm';
-import { Dialog, DialogTitle, DialogContent } from '@mui/material';
+import ConsultasMedicosReportesPage from './pages/ConsultasMedicosReportesPage';
+import CitasReportesPage from './pages/CitasReportesPage';
 
 // Función para manejar errores globales
 const handleGlobalError = (event) => {
@@ -275,6 +276,10 @@ const AppContent = () => {
                 </ProtectedRoute>
               </AppLayout>
             } />
+
+            {/* Rutas de reportes */}
+            <Route path="/reportes/consultas-medicos" element={<AppLayout><ConsultasMedicosReportesPage /></AppLayout>} />
+            <Route path="/reportes/citas" element={<AppLayout><CitasReportesPage /></AppLayout>} />
 
             {/* Rutas de Gestión de Usuarios */}
             <Route path="/usuarios/lista" element={

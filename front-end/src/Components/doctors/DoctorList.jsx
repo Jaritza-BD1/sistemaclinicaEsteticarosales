@@ -1,11 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Spinner, InputGroup, FormControl, Row, Col, Form, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import './doctor-list.css';
-import { BsEye, BsPencilSquare, BsTrash } from 'react-icons/bs';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchDoctors as fetchDoctorsThunk, deleteDoctor as deleteDoctorThunk } from '../../redux/doctors/doctorsSlice';
 import { useNotifications } from '../../context/NotificationsContext';
 import ConfirmDialog from '../common/ConfirmDialog';
+import {
+  Box,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Paper,
+  TextField,
+  IconButton,
+  Tooltip,
+  Select,
+  MenuItem,
+  Button,
+  CircularProgress,
+  Typography,
+  TableFooter,
+  TablePagination,
+} from '@mui/material';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function DoctorList({ onEdit, onViewDetails, onRegisterNew, refresh }) {
   const dispatch = useDispatch();
@@ -89,109 +110,104 @@ export default function DoctorList({ onEdit, onViewDetails, onRegisterNew, refre
   const loading = status === 'loading';
 
   return (
-    <div>
-      <Row className="mb-2 align-items-center">
-        <Col md={6} className="mb-2 mb-md-0">
-          <InputGroup>
-            <InputGroup.Text>Buscar</InputGroup.Text>
-            <FormControl placeholder="Nombre, apellido, identidad o especialidad" value={search} onChange={e => setSearch(e.target.value)} />
-          </InputGroup>
-        </Col>
-        <Col md={3} className="text-md-end">
-          <Form.Select value={pageSize} onChange={e => setPageSize(parseInt(e.target.value, 10))}>
-            <option value={5}>5 por página</option>
-            <option value={10}>10 por página</option>
-            <option value={25}>25 por página</option>
-            <option value={50}>50 por página</option>
-          </Form.Select>
-        </Col>
-        <Col md={3} className="text-md-end">
-          <Button variant="success" onClick={() => onRegisterNew && onRegisterNew()}>+ Nuevo Médico</Button>
-        </Col>
-      </Row>
+    <Box>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <TextField
+          label="Buscar"
+          placeholder="Nombre, apellido, identidad o especialidad"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          size="small"
+          sx={{ flex: 1 }}
+        />
+
+        <Select value={pageSize} onChange={e => setPageSize(parseInt(e.target.value, 10))} size="small">
+          <MenuItem value={5}>5 por página</MenuItem>
+          <MenuItem value={10}>10 por página</MenuItem>
+          <MenuItem value={25}>25 por página</MenuItem>
+          <MenuItem value={50}>50 por página</MenuItem>
+        </Select>
+
+        <Button variant="contained" color="success" onClick={() => onRegisterNew && onRegisterNew()}>+ Nuevo Médico</Button>
+      </Box>
 
       {loading ? (
-        <div className="d-flex justify-content-center my-4">
-          <Spinner animation="border" role="status" />
-        </div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
       ) : error ? (
-        <div className="alert alert-danger">{error}</div>
+        <Box sx={{ my: 2 }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
       ) : (
-        <>
-          <Table striped bordered hover responsive>
-            <thead>
-              <tr>
-                <th style={{cursor: 'pointer'}} onClick={() => toggleSort('atr_id_medico')}># {sortField === 'atr_id_medico' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</th>
-                <th style={{cursor: 'pointer'}} onClick={() => toggleSort('atr_nombre')}>Nombre {sortField === 'atr_nombre' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</th>
-                <th style={{cursor: 'pointer'}} onClick={() => toggleSort('atr_apellido')}>Apellido {sortField === 'atr_apellido' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</th>
-                <th style={{cursor: 'pointer'}} onClick={() => toggleSort('atr_identidad')}>Identidad {sortField === 'atr_identidad' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</th>
-                <th style={{cursor: 'pointer'}} onClick={() => toggleSort('atr_numero_colegiado')}>N° Colegiado {sortField === 'atr_numero_colegiado' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</th>
-                <th>Especialidades</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {doctors.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="text-center">No hay médicos registrados</td>
-                </tr>
-              )}
-              {doctors.map((d, idx) => (
-                <tr key={d.atr_id_medico ?? d.id ?? idx}>
-                  <td>{d.atr_id_medico ?? d.id ?? ((page - 1) * pageSize + idx + 1)}</td>
-                  <td>{d.atr_nombre ?? d.nombre ?? ''}</td>
-                  <td>{d.atr_apellido ?? d.apellido ?? ''}</td>
-                  <td>{d.atr_identidad ?? d.identidad ?? ''}</td>
-                  <td>{d.atr_numero_colegiado ?? d.numero_colegiado ?? ''}</td>
-                  <td>{(d.Especialidades || d.especialidades || []).map(e => e.atr_especialidad || e.nombre || e.atr_nombre).filter(Boolean).join(', ')}</td>
-                  <td>
-                      <OverlayTrigger
-                        placement="top"
-                        overlay={<Tooltip id={`tooltip-view-${d.atr_id_medico ?? d.id ?? idx}`}>Ver</Tooltip>}>
-                        <span>
-                          <Button variant="primary" size="sm" className="me-2" onClick={() => onViewDetails && onViewDetails(d)} aria-label={`ver-${d.atr_id_medico ?? d.id ?? idx}`}>
-                            <BsEye />
-                          </Button>
-                        </span>
-                      </OverlayTrigger>
-
-                      <OverlayTrigger
-                        placement="top"
-                        overlay={<Tooltip id={`tooltip-edit-${d.atr_id_medico ?? d.id ?? idx}`}>Editar</Tooltip>}>
-                        <span>
-                          <Button variant="warning" size="sm" className="me-2" onClick={() => onEdit && onEdit(d)} aria-label={`editar-${d.atr_id_medico ?? d.id ?? idx}`}>
-                            <BsPencilSquare />
-                          </Button>
-                        </span>
-                      </OverlayTrigger>
-
-                      <OverlayTrigger
-                        placement="top"
-                        overlay={<Tooltip id={`tooltip-delete-${d.atr_id_medico ?? d.id ?? idx}`}>Eliminar</Tooltip>}>
-                        <span>
-                          <Button variant="danger" size="sm" onClick={() => handleDeleteClick(d.atr_id_medico ?? d.id)} aria-label={`eliminar-${d.atr_id_medico ?? d.id ?? idx}`}>
-                            <BsTrash />
-                          </Button>
-                        </span>
-                      </OverlayTrigger>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-
-          <div className="d-flex justify-content-between align-items-center">
-            <div>Mostrando {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, total)} de {total}</div>
-            <div>
-              <Button variant="light" size="sm" className="me-1" disabled={page <= 1} onClick={() => setPage(1)}>« Primero</Button>
-              <Button variant="light" size="sm" className="me-1" disabled={page <= 1} onClick={() => setPage(prev => Math.max(1, prev - 1))}>‹ Prev</Button>
-              <span className="mx-2">Página {page} / {totalPages}</span>
-              <Button variant="light" size="sm" className="ms-1" disabled={page >= totalPages} onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}>Next ›</Button>
-              <Button variant="light" size="sm" className="ms-1" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Último »</Button>
-            </div>
-          </div>
-        </>
+        <Paper>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell onClick={() => toggleSort('atr_id_medico')} sx={{ cursor: 'pointer' }}># {sortField === 'atr_id_medico' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</TableCell>
+                  <TableCell onClick={() => toggleSort('atr_nombre')} sx={{ cursor: 'pointer' }}>Nombre {sortField === 'atr_nombre' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</TableCell>
+                  <TableCell onClick={() => toggleSort('atr_apellido')} sx={{ cursor: 'pointer' }}>Apellido {sortField === 'atr_apellido' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</TableCell>
+                  <TableCell onClick={() => toggleSort('atr_identidad')} sx={{ cursor: 'pointer' }}>Identidad {sortField === 'atr_identidad' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</TableCell>
+                  <TableCell onClick={() => toggleSort('atr_numero_colegiado')} sx={{ cursor: 'pointer' }}>N° Colegiado {sortField === 'atr_numero_colegiado' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</TableCell>
+                  <TableCell>Especialidades</TableCell>
+                  <TableCell>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {doctors.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">No hay médicos registrados</TableCell>
+                  </TableRow>
+                ) : (
+                  doctors.map((d, idx) => (
+                    <TableRow key={d.atr_id_medico ?? d.id ?? idx} hover>
+                      <TableCell>{d.atr_id_medico ?? d.id ?? ((page - 1) * pageSize + idx + 1)}</TableCell>
+                      <TableCell>{d.atr_nombre ?? d.nombre ?? ''}</TableCell>
+                      <TableCell>{d.atr_apellido ?? d.apellido ?? ''}</TableCell>
+                      <TableCell>{d.atr_identidad ?? d.identidad ?? ''}</TableCell>
+                      <TableCell>{d.atr_numero_colegiado ?? d.numero_colegiado ?? ''}</TableCell>
+                      <TableCell>{(d.Especialidades || d.especialidades || []).map(e => e.atr_especialidad || e.nombre || e.atr_nombre).filter(Boolean).join(', ')}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Tooltip title="Ver">
+                            <IconButton size="small" color="primary" onClick={() => onViewDetails && onViewDetails(d)} aria-label={`ver-${d.atr_id_medico ?? d.id ?? idx}`}>
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Editar">
+                            <IconButton size="small" color="warning" onClick={() => onEdit && onEdit(d)} aria-label={`editar-${d.atr_id_medico ?? d.id ?? idx}`}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" color="error" onClick={() => handleDeleteClick(d.atr_id_medico ?? d.id)} aria-label={`eliminar-${d.atr_id_medico ?? d.id ?? idx}`}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TablePagination
+                    rowsPerPageOptions={[5,10,25,50]}
+                    count={total || 0}
+                    rowsPerPage={pageSize}
+                    page={Math.max(0, page - 1)}
+                    onPageChange={(e, newPage) => setPage(newPage + 1)}
+                    onRowsPerPageChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(1); }}
+                  />
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </TableContainer>
+        </Paper>
       )}
+
       <ConfirmDialog
         show={confirmShow}
         title="Confirmar eliminación"
@@ -202,6 +218,6 @@ export default function DoctorList({ onEdit, onViewDetails, onRegisterNew, refre
         cancelText="Cancelar"
         loading={deleting}
       />
-    </div>
+    </Box>
   );
 }

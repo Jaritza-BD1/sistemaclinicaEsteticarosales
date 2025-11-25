@@ -24,7 +24,7 @@ import 'jspdf-autotable';
 import logoSvg from '../../logo.svg';
 import * as consultationService from '../../services/consultationService';
 
-const HistorialdeCitas = ({ patientId }) => {
+const HistorialConsultas = ({ patientId }) => {
   const [consultas, setConsultas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

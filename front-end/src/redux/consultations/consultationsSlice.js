@@ -26,6 +26,31 @@ export const fetchConsultation = createAsyncThunk(
   }
 );
 
+export const fetchAllConsultations = createAsyncThunk(
+  'consultations/fetchAll',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await consultationApi.fetchAllConsultations(params);
+      // normalize response similar to other slices: { items, meta }
+      let items = [];
+      let meta = {};
+      if (!response) {
+        items = [];
+      } else if (Array.isArray(response)) {
+        items = response;
+      } else if (response.data) {
+        items = response.data.data ?? response.data.items ?? response.data ?? [];
+        meta = response.data.meta ?? response.data.pagination ?? {};
+      } else {
+        items = response.data ?? response;
+      }
+      return { items, meta };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || error.message);
+    }
+  }
+);
+
 export const createConsultation = createAsyncThunk(
   'consultations/create',
   async (data, { rejectWithValue }) => {
@@ -196,6 +221,13 @@ const consultationsSlice = createSlice({
       prescriptions: null,
       treatments: null
     }
+    ,
+    // meta para paginación server-side
+    meta: {
+      total: 0,
+      page: 1,
+      pageSize: 10
+    }
   },
   reducers: {
     clearConsultationData: (state, action) => {
@@ -259,6 +291,42 @@ const consultationsSlice = createSlice({
         state.loading.fetch = false;
       })
       .addCase(fetchConsultation.rejected, (state, action) => {
+        state.loading.fetch = false;
+        state.errors.fetch = action.payload;
+      })
+
+      // fetchAllConsultations
+      .addCase(fetchAllConsultations.pending, (state) => {
+        state.loading.fetch = true;
+        state.errors.fetch = null;
+      })
+      .addCase(fetchAllConsultations.fulfilled, (state, action) => {
+        const payload = action.payload || { items: [], meta: {} };
+        const consultations = payload.items || [];
+        // replace consultations map with server result (to keep server-side paging consistent)
+        state.consultations = {};
+        consultations.forEach(consultation => {
+          const id = consultation?.atr_id_consulta ?? consultation?.id;
+          if (!id) return;
+          state.consultations[id] = consultation;
+          // also populate consultationsByPatient for convenience
+          const patientId = consultation?.atr_id_paciente ?? consultation?.patientId ?? consultation?.paciente?.atr_id_paciente;
+          if (patientId) {
+            if (!state.consultationsByPatient[patientId]) state.consultationsByPatient[patientId] = [];
+            if (!state.consultationsByPatient[patientId].includes(id)) {
+              state.consultationsByPatient[patientId].push(id);
+            }
+          }
+        });
+        // update meta
+        state.meta = {
+          total: payload.meta?.total ?? payload.meta?.count ?? state.meta.total,
+          page: action.meta?.arg?.page ?? payload.meta?.page ?? state.meta.page,
+          pageSize: action.meta?.arg?.pageSize ?? payload.meta?.pageSize ?? state.meta.pageSize
+        };
+        state.loading.fetch = false;
+      })
+      .addCase(fetchAllConsultations.rejected, (state, action) => {
         state.loading.fetch = false;
         state.errors.fetch = action.payload;
       })
@@ -486,3 +554,8 @@ export const selectTreatmentsByConsultation = (state, consultationId) =>
 export const selectConsultationLoading = (state) => state.consultations.loading;
 
 export const selectConsultationErrors = (state) => state.consultations.errors;
+
+export const selectAllConsultations = (state) =>
+  Object.values(state.consultations.consultations || {}).filter(Boolean);
+
+export const selectConsultationsMeta = (state) => state.consultations.meta || { total: 0, page: 1, pageSize: 10 };

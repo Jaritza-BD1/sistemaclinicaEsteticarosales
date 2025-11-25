@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Snackbar, Alert, IconButton, Tooltip, Card, CardContent, Stack, Paper, Button, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, Card, CardContent, Stack, Paper, Button, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import './AdminErrores.css';
 import { DataGrid } from '@mui/x-data-grid';
@@ -10,6 +10,7 @@ import MaintenanceForm from '../Components/Maintenance/MaintenanceForm';
 import maintenanceService from '../services/maintenanceService';
 import api from '../services/api';
 import { useAuth } from '../Components/context/AuthContext';
+import { useNotifications } from '../context/NotificationsContext';
 import CloseIcon from '@mui/icons-material/Close';
 
 const AdminErrores = () => {
@@ -22,7 +23,7 @@ const AdminErrores = () => {
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { notify } = useNotifications();
 
   useEffect(() => {
     let mounted = true;
@@ -64,7 +65,7 @@ const AdminErrores = () => {
       } else {
         res = await maintenanceService.create('Errores', values);
       }
-      setSnackbar({ open: true, message: editing ? 'Error actualizado' : 'Error registrado', severity: 'success' });
+      notify({ message: editing ? 'Error actualizado' : 'Error registrado', severity: 'success' });
       if (helpers && helpers.resetForm) helpers.resetForm();
       setEditing(null);
       // registrar en bitácora
@@ -97,9 +98,9 @@ const AdminErrores = () => {
         if (Object.keys(fieldErrors).length) {
           if (helpers && helpers.setErrors) helpers.setErrors(fieldErrors);
         }
-        setSnackbar({ open: true, message: data.message || 'Errores de validación', severity: 'error' });
+        notify({ message: data.message || 'Errores de validación', severity: 'error' });
       } else {
-        setSnackbar({ open: true, message: data.message || err.message || 'Error', severity: 'error' });
+        notify({ message: data.message || err.message || 'Error', severity: 'error' });
       }
     } finally {
       if (helpers && helpers.setSubmitting) helpers.setSubmitting(false);
@@ -110,7 +111,7 @@ const AdminErrores = () => {
     if (!window.confirm('¿Eliminar registro?')) return;
     try {
   await maintenanceService.remove('Errores', id);
-      setSnackbar({ open: true, message: 'Registro eliminado', severity: 'success' });
+      notify({ message: 'Registro eliminado', severity: 'success' });
       // registrar en bitácora
       try {
         await api.post('/bitacora/registrar', {
@@ -123,7 +124,7 @@ const AdminErrores = () => {
       await fetchList();
     } catch (e) {
       console.error('Error eliminando:', e);
-      setSnackbar({ open: true, message: 'Error al eliminar', severity: 'error' });
+      notify({ message: 'Error al eliminar', severity: 'error' });
     }
   };
 
@@ -212,11 +213,7 @@ const AdminErrores = () => {
         </DialogContent>
       </Dialog>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-        <Alert onClose={() => setSnackbar(s => ({ ...s, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </Box>
   );
 };

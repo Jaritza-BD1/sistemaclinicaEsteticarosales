@@ -21,8 +21,6 @@ import {
   useMediaQuery,
   IconButton,
   Tooltip,
-  Alert,
-  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -49,12 +47,13 @@ import {
   Error as ErrorIcon,
   Save as SaveIcon
 } from '@mui/icons-material';
+import { useNotifications } from '../../context/NotificationsContext';
 
 const ExamResult = ({ examId }) => {
   const theme = useTheme();
   
   const [editMode, setEditMode] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const { notify } = useNotifications();
   const [editData, setEditData] = useState(null);
 
   const examDetails = {
@@ -109,7 +108,7 @@ const ExamResult = ({ examId }) => {
   };
 
   const handleUpload = () => {
-    setNotification({ message: 'Función de carga implementada', type: 'info', open: true });
+    notify({ message: 'Función de carga implementada', severity: 'info' });
   };
 
   const handleEdit = () => {
@@ -122,11 +121,11 @@ const ExamResult = ({ examId }) => {
   };
 
   const handleBack = () => {
-    setNotification({ message: 'Navegando hacia atrás', type: 'info', open: true });
+    notify({ message: 'Navegando hacia atrás', severity: 'info' });
   };
 
   const handleSaveEdit = () => {
-    setNotification({ message: 'Resultados actualizados exitosamente', type: 'success', open: true });
+    notify({ message: 'Resultados actualizados exitosamente', severity: 'success' });
     setEditMode(false);
     setEditData(null);
   };
@@ -136,9 +135,7 @@ const ExamResult = ({ examId }) => {
     setEditData(null);
   };
 
-  const handleCloseNotification = () => {
-    setNotification(prev => ({ ...prev, open: false }));
-  };
+  // Notifications handled by NotificationsContext
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -607,20 +604,7 @@ const ExamResult = ({ examId }) => {
       </Dialog>
 
       {/* Notificaciones */}
-      <Snackbar
-        open={notification?.open || false}
-        autoHideDuration={4000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseNotification}
-          severity={notification?.type || 'info'}
-          sx={{ borderRadius: 2 }}
-        >
-          {notification?.message}
-        </Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </Container>
   );
 };

@@ -19,6 +19,11 @@ API.interceptors.response.use(
 
 // Endpoints principales
 export const fetchConsultationsByPatient = (patientId) => API.get(`/?patientId=${patientId}`);
+export const fetchAllConsultations = (params = {}) => {
+  // params can be used for pagination/filtering in future
+  const query = new URLSearchParams(params).toString();
+  return API.get(`/${query ? `?${query}` : ''}`);
+};
 export const getConsultation = (id) => API.get(`/${id}`);
 export const getConsultationByAppointment = (appointmentId) => API.get(`/appointment/${appointmentId}`);
 export const createConsultation = (data) => API.post('/', data);

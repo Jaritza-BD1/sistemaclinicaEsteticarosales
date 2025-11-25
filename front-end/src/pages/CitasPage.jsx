@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppointmentList from '../Components/appointments/AppointmentList';
-import HistorialdeCitas from '../Components/appointments/HistorialConsultas';
 import PagosPendientesPage from './PagosPendientesPage';
 import CitasReportesPage from './CitasReportesPage';
+import HistorialCitas from '../Components/appointments/HistorialCitas';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -15,7 +15,8 @@ import { checkInAppointment, updateAppointmentStatus } from '../services/appoint
 import { APPOINTMENT_STATUS, canTransitionTo, isFinalStatus } from '../config/appointmentStatus';
 import { motion, AnimatePresence } from 'framer-motion';
 // cleaned unused imports
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert, Box, TextField, Typography, Paper, useMediaQuery, IconButton, Tooltip } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, TextField, Typography, Paper, useMediaQuery, IconButton, Tooltip } from '@mui/material';
+import { useNotifications } from '../context/NotificationsContext';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import logoSvg from '../logo.svg';
@@ -51,6 +52,7 @@ export default function CitasPage() {
   };
 
   const dispatch = useDispatch();
+  const { notify } = useNotifications();
   const appointments = useSelector(state => state.appointments.items || []);
   const loading = useSelector(state => state.appointments.status === 'loading');
   const isXs = useMediaQuery(theme => theme.breakpoints.down('sm'));
@@ -209,10 +211,10 @@ export default function CitasPage() {
     try {
       await checkInAppointment(id);
       dispatch(fetchAppointments());
-      setNotif({ open: true, message: 'Check-in realizado', severity: 'success' });
+      notify({ message: 'Check-in realizado', severity: 'success' });
     } catch (err) {
       console.error('Error en check-in:', err);
-      setNotif({ open: true, message: err?.response?.data?.message || err?.message || 'Error en check-in', severity: 'error' });
+      notify({ message: err?.response?.data?.message || err?.message || 'Error en check-in', severity: 'error' });
     }
   };
 
@@ -226,7 +228,7 @@ export default function CitasPage() {
       navigate(`/citas/consulta/${id}`);
     } catch (err) {
       console.error('Error iniciando consulta:', err);
-      setNotif({ open: true, message: err?.response?.data?.error || err?.message || 'Error iniciando consulta', severity: 'error' });
+      notify({ message: err?.response?.data?.error || err?.message || 'Error iniciando consulta', severity: 'error' });
     }
   };
 
@@ -278,10 +280,10 @@ export default function CitasPage() {
     try {
       await dispatch(rescheduleApp({ id, data: payload })).unwrap();
       dispatch(fetchAppointments());
-      setNotif({ open: true, message: 'Cita reprogramada correctamente', severity: 'success' });
+      notify({ message: 'Cita reprogramada correctamente', severity: 'success' });
     } catch (err) {
       console.error('Error reprogramando cita:', err);
-      setNotif({ open: true, message: err?.message || 'Error reprogramando cita', severity: 'error' });
+      notify({ message: err?.message || 'Error reprogramando cita', severity: 'error' });
     }
   };
 
@@ -289,7 +291,6 @@ export default function CitasPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
   const [currentAppointmentId, setCurrentAppointmentId] = React.useState(null);
   const [cancelReason, setCancelReason] = React.useState('');
-  const [notif, setNotif] = React.useState({ open: false, message: '', severity: 'info' });
 
   // openRescheduleDialog removed — reprogram action navigates to edit page instead
 
@@ -300,14 +301,14 @@ export default function CitasPage() {
       await dispatch(cancelApp({ id: currentAppointmentId, reason: cancelReason })).unwrap();
       setCancelDialogOpen(false);
       dispatch(fetchAppointments());
-      setNotif({ open: true, message: 'Cita cancelada correctamente', severity: 'success' });
+      notify({ message: 'Cita cancelada correctamente', severity: 'success' });
     } catch (err) {
       console.error('Error cancelando cita:', err);
-      setNotif({ open: true, message: err?.message || 'Error cancelando cita', severity: 'error' });
+      notify({ message: err?.message || 'Error cancelando cita', severity: 'error' });
     }
   };
 
-  const handleCloseNotif = () => setNotif(prev => ({ ...prev, open: false }));
+  // Notifications handled via NotificationsContext
 
   return (
     <>
@@ -366,28 +367,7 @@ export default function CitasPage() {
         </Box>
       )}
 
-      {/* Historial de consultas: panel independiente dentro de un Accordion (lazy load) */}
-      <Box sx={{ mt: 3 }}>
-        <Accordion expanded={historialExpanded} onChange={() => setHistorialExpanded(prev => !prev)}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle1">Historial de Citas</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            {historialExpanded && (
-              <HistorialdeCitas
-                patientId={
-                  selectedAppointment?.paciente?.atr_id_paciente ||
-                  selectedAppointment?.paciente?.id ||
-                  selectedAppointment?.Patient?.atr_id_paciente ||
-                  selectedAppointment?.paciente?.atr_id ||
-                  selectedAppointment?.Patient?.id ||
-                  null
-                }
-              />
-            )}
-          </AccordionDetails>
-        </Accordion>
-      </Box>
+      {/* Historial de consultas moved to Doctor page */}
 
       {/* Panel de Pagos Pendientes: renderizar la página embebida dentro de un Accordion */}
       <Box sx={{ mt: 2 }}>
@@ -398,6 +378,18 @@ export default function CitasPage() {
           <AccordionDetails>
             {/* Render PagosPendientesPage only when expanded to avoid unnecessary fetches */}
             {pagosExpanded && <PagosPendientesPage />}
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+
+      {/* Panel de Historial de Citas: colocado justo debajo de Pagos Pendientes */}
+      <Box sx={{ mt: 2 }}>
+        <Accordion expanded={historialExpanded} onChange={() => setHistorialExpanded(prev => !prev)}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}> 
+            <Typography variant="subtitle1">Historial de citas</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {historialExpanded && <HistorialCitas />}
           </AccordionDetails>
         </Accordion>
       </Box>
@@ -445,11 +437,7 @@ export default function CitasPage() {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={notif.open} autoHideDuration={6000} onClose={handleCloseNotif} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert onClose={handleCloseNotif} severity={notif.severity} sx={{ width: '100%' }}>
-          {notif.message}
-        </Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </>
   );
 }

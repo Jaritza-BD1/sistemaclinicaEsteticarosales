@@ -82,4 +82,4 @@ const CitasReportesPage = () => {
   );
 };
 
-export default CitasReportesPage; 
+export default CitasReportesPage;

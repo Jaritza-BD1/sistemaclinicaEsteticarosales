@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { Container, Box, Typography, Paper, Alert, Snackbar, useTheme, useMediaQuery } from '@mui/material';
+import { Container, Box, Typography, Paper, Alert, useTheme, useMediaQuery } from '@mui/material';
 import TrashManagement from '../Components/admin/TrashManagement';
 import './RolandPermissionpage.css';
 import { useAuth } from '../Components/context/AuthContext';
+import { useNotifications } from '../context/NotificationsContext';
 
 const TrashPage = () => {
   const { user } = useAuth();
-  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+  const { notify } = useNotifications();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const showNotification = (message, severity = 'success') => setNotification({ open: true, message, severity });
-  const handleCloseNotification = () => setNotification(prev => ({ ...prev, open: false }));
+  const showNotification = (message, severity = 'success') => notify({ message, severity });
 
   if (!user || user.atr_id_rol !== 1) {
     return (
@@ -44,9 +44,7 @@ const TrashPage = () => {
         </Paper>
       </Container>
 
-      <Snackbar open={notification.open} autoHideDuration={6000} onClose={handleCloseNotification} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>{notification.message}</Alert>
-      </Snackbar>
+      {/* Notifications handled by NotificationsContext */}
     </div>
   );
 };
